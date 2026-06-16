@@ -1,0 +1,8 @@
+{
+  "name": "ai-coordination",
+  "version": "1.0.0",
+  "description": "业务对接层插件 — 上下文容灾、状态持久化、错误自我提炼",
+  "author": { "name": "jlc" },
+  "license": "MIT",
+  "keywords": ["coordination", "architecture", "error-knowledge", "five-layer"]
+}
