@@ -1,6 +1,6 @@
 # ai-coordination
 
-分治思想双重落地的 Claude Code 插件 — 五步法错误进化 + 五层架构职责分层。
+分治思想双重落地 — 五步法错误进化 + 五层架构职责分层 | 上下文容灾 · 状态持久化 · 错误自我提炼
 
 [![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
