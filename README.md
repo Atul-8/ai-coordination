@@ -2,7 +2,7 @@
 
 分治思想双重落地 — 五步法错误进化 + 六层架构职责分层 | 上下文容灾 · 状态持久化 · 错误自我提炼
 
-[![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![LGPL-3.0 License](https://img.shields.io/badge/license-LGPL--3.0-blue.svg)](LICENSE)
 
 ## 核心理念：分治思想的双重落地
 
@@ -295,4 +295,4 @@ ai-coordination/
 
 ## License
 
-MIT
+LGPL-3.0
