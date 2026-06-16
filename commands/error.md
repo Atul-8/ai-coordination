@@ -1,12 +1,14 @@
 ---
-description: 记录错误并按五步法提炼 META 规则
+description: 手动补录错误并按五步法提炼 META 规则
 argument-hint: <错误简要描述>
 allowed-tools: Read, Write, Edit, Glob, Grep
 ---
 
 ## Your task
 
-Record an error using the 5-step method and extract a META rule if applicable.
+Manually log an error using the 5-step method and extract a META rule if applicable.
+
+> **注意**：此命令是手动补录入口。正常开发中，遇到错误时 G3 会自动触发五步法提炼，用户无需手动执行此命令。此命令用于用户主动要求记录某个之前遗漏的错误。
 
 The user provides: $ARGUMENTS
 
