@@ -12,6 +12,28 @@
 
 ---
 
+## 最推荐：让 Claude 自己部署
+
+不用记任何命令。打开 Claude Code，把下面这段话发给它：
+
+```
+请帮我部署 ai-coordination 插件：
+1. 克隆 https://github.com/Atul-8/ai-coordination.git 到临时目录
+2. 把 commands/ 复制到 ~/.claude/commands/ai/
+3. 把 skills/coordination/ 复制到 ~/.claude/skills/coordination/
+4. 把 skills/coordination/SKILL.md 的内容追加到 ~/.claude/CLAUDE.md
+5. 完成后报告部署结果
+```
+
+Claude 会自动完成所有步骤。你不需要记住 `cp`、`cat >>` 等命令，也不需要关心路径细节。
+
+**如果想只在某个项目生效**，把第 4 步改为：
+```
+4. 把 skills/coordination/SKILL.md 的内容追加到 /path/to/your-project/CLAUDE.md
+```
+
+---
+
 ## 核心概念
 
 ai-coordination 由两部分组成：

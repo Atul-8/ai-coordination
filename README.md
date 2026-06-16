@@ -1,8 +1,34 @@
 # ai-coordination
 
-业务对接层 Claude Code 插件 — 上下文容灾、状态持久化、错误自我提炼。
+分治思想双重落地的 Claude Code 插件 — 五步法错误进化 + 五层架构职责分层。
 
 [![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
+## 核心理念：分治思想的双重落地
+
+**分治（Divide and Conquer）** 是软件工程最核心的思想——把复杂问题拆成独立子问题分别解决，再合并结果。ai-coordination 将分治在两个维度上系统化落地：
+
+### 纵向递进：五步法 — 错误怎么才能永远不再犯？
+
+```
+症状 → 根因 → 修复 → 规律提炼 → 二次提炼接口(META)
+ "表面现象"  "深层为什么"  "当下怎么修"  "通用模式"   "跨项目预防检查项"
+```
+
+每步有明确输入输出，上一步输出是下一步输入。这不是"记一下错误"，是**结构化的知识提炼流水线**。
+
+### 横向分层：五层架构 — 代码怎么组织才不会乱？
+
+```
+coordination → presentation → interface → core → shared
+    (对接层)       (展现层)     (接口层)    (核心层)  (共享层)
+```
+
+严格单向依赖，coordination 层填补传统三层架构的盲区——**谁来管理开发过程本身？**
+
+### 两者协同
+
+五层架构提供**错误知识的归属层**（coordination），五步法提供**错误知识的提炼路径**。横向保证架构不乱，纵向保证知识不丢。
 
 ## 它解决什么问题？
 
@@ -10,12 +36,30 @@
 |------|---------|
 | AI 会话结束，上下文丢失 | WORKSTATE.md 自动记录断点，新会话秒恢复 |
 | 同样的错误在不同项目中重复出现 | 五步法提炼 META 规则，跨项目自动继承 |
+| 代码架构混乱，改一处动全身 | 五层分治 + 严格单向依赖，职责隔离 |
 | 开发过程不可追溯 | 操作履历、需求追踪、结构地图全程记录 |
 | 多设备开发状态不同步 | 独立 Git 仓库云同步，多机无缝续接 |
 
 ## 安装
 
 > 前提：已安装 Claude Code CLI 和 Git
+
+### 最推荐：直接叫 Claude 帮你部署
+
+不用记任何命令，把这段话发给 Claude：
+
+```
+请帮我部署 ai-coordination 插件：
+1. 克隆 https://github.com/Atul-8/ai-coordination.git
+2. 把 commands/ 复制到 ~/.claude/commands/ai/
+3. 把 skills/coordination/ 复制到 ~/.claude/skills/coordination/
+4. 把 skills/coordination/SKILL.md 的内容追加到 ~/.claude/CLAUDE.md
+5. 完成后报告部署结果
+```
+
+Claude 会自动完成所有步骤，你去喝杯咖啡就好。
+
+### 手动安装
 
 ```bash
 git clone https://github.com/Atul-8/ai-coordination.git
