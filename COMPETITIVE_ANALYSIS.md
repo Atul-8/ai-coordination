@@ -12,6 +12,7 @@
 | **andrej-karpathy-skills**        | 176,683★ | 单文件 CLAUDE.md 行为规范 | Karpathy 四原则：先想后写、简单优先、手术式修改、目标驱动                                             |
 | **claude-mem**                    | 82,698★  | 跨会话持久记忆压缩系统        | Hook 自动捕获工具使用 + AI 语义压缩 + 逐步展开注入                                              |
 | **awesome-claude-code**           | 46,615★  | 生态资源索引             | 社区维护的 skills/hooks/commands/plugins 精选列表                                      |
+| **Planning-with-Files**           | 23,426★  | 持久化文件规划 + 进度追踪    | Manus 式三文件模式（task_plan/findings/progress）+ Hook 生命周期 + 完成门禁 + 17+ 平台       |
 | **awesome-claude-code-subagents** | 21,906★  | 100+ 专业子代理集合       | 按场景拆分的独立 Agent 定义                                                             |
 
 ### 中量级（1,000–10,000★）
@@ -37,20 +38,20 @@
 
 ## 2. 核心能力对比矩阵
 
-| 能力维度     | ai-coordination             | ECC                                   | karpathy-skills       | claude-mem          | pro-workflow       | ADHD            |
-| -------- | --------------------------- | ------------------------------------- | --------------------- | ------------------- | ------------------ | --------------- |
-| 上下文容灾    | **强** — WORKSTATE.md 断点续接   | 强 — Session 适配器 + 状态存储                | 无                     | **强** — 压缩记忆自动注入    | 中 — SQLite 存储      | 无               |
-| 错误自我进化   | **强** — 五步法 + META 提炼       | 中 — Instinct 学习 + Confidence 评分       | 无                     | 无                   | 弱 — 有记录无提炼         | 无               |
-| 跨项目免疫    | **强** — distilled/ 错题本传播    | 弱 — Instinct 可导出但无免疫传播                | 无                     | 无                   | 无                  | 无               |
-| 多机同步     | **强** — 独立 Git 仓库           | 中 — 状态存储 + CLI 查询                     | 无                     | 中 — 需运行本地服务         | 无                  | 无               |
-| Token 优化 | 中 — 按需读取                    | **强** — Model 路由 + Prompt 瘦身          | 无                     | **强** — 渐进展开 + 语义搜索 | 中                  | 无               |
-| 自动化验证    | 弱 — 依赖 AI 自觉                | **强** — Hook 自动 + Eval 循环             | 无                     | **强** — Hook 自动捕获   | **强** — Hook 自动触发  | 无               |
-| 零依赖      | **强** — 纯 Markdown          | 弱 — npm + Rust 控制面 + SQLite           | **强** — 单文件           | 弱 — Node.js + 本地服务  | 弱 — SQLite + Hook  | 弱 — 需 Agent SDK |
-| 可卸载性     | **强** — 删 .ai/ 即可           | 弱 — 多层安装需专用卸载                         | **强** — 删 CLAUDE.md 行 | 中 — 需卸载服务           | 弱 — 需清理 DB/Hook    | 中               |
-| 人可审查     | **强** — 全部 Markdown 明文      | 弱 — 脚本/数据库/Rust 控制面                   | **强** — 单文件可读         | 弱 — 压缩后语义摘要         | 弱 — Hook 脚本黑盒      | 中               |
-| 团队共享     | **强** — 选择性共享 raw/distilled | 中 — Instinct 导入/导出                    | 无                     | 无                   | 无                  | 无               |
-| 行为约束力    | **强** — G1-G4 铁律            | 强 — Instinct + Hook 门禁                | **强** — 四原则           | 中                   | 中                  | 弱               |
-| 跨平台兼容    | **强** — 纯 Markdown          | **强** — 7 平台（Claude/Codex/Cursor/...） | **强** — 支持 Cursor     | 中 — Claude Code 优先  | 弱 — 绑定 Claude Code | 中               |
+| 能力维度     | ai-coordination             | ECC                                   | karpathy-skills       | claude-mem          | Planning-with-Files  | pro-workflow       | ADHD            |
+| -------- | --------------------------- | ------------------------------------- | --------------------- | ------------------- | -------------------- | ------------------ | --------------- |
+| 上下文容灾    | **强** — WORKSTATE.md 断点续接   | 强 — Session 适配器 + 状态存储                | 无                     | **强** — 压缩记忆自动注入    | **强** — 三文件持久化 + /clear 恢复 | 中 — SQLite 存储      | 无               |
+| 错误自我进化   | **强** — 五步法 + META 提炼       | 中 — Instinct 学习 + Confidence 评分       | 无                     | 无                   | 弱 — findings 记录但无提炼  | 弱 — 有记录无提炼         | 无               |
+| 跨项目免疫    | **强** — distilled/ 错题本传播    | 弱 — Instinct 可导出但无免疫传播                | 无                     | 无                   | 无                    | 无                  | 无               |
+| 多机同步     | **强** — 独立 Git 仓库           | 中 — 状态存储 + CLI 查询                     | 无                     | 中 — 需运行本地服务         | 中 — 文件可 Git 管理但无内建   | 无                  | 无               |
+| Token 优化 | 中 — 按需读取                    | **强** — Model 路由 + Prompt 瘦身          | 无                     | **强** — 渐进展开 + 语义搜索 | 中 — 按需读文件            | 中                  | 无               |
+| 自动化验证    | 弱 — 依赖 AI 自觉                | **强** — Hook 自动 + Eval 循环             | 无                     | **强** — Hook 自动捕获   | **强** — Hook 生命周期 + 完成门禁 | **强** — Hook 自动触发  | 无               |
+| 零依赖      | **强** — 纯 Markdown          | 弱 — npm + Rust 控制面 + SQLite           | **强** — 单文件           | 弱 — Node.js + 本地服务  | 中 — Shell 脚本 Hook    | 弱 — SQLite + Hook  | 弱 — 需 Agent SDK |
+| 可卸载性     | **强** — 删 .ai/ 即可           | 弱 — 多层安装需专用卸载                         | **强** — 删 CLAUDE.md 行 | 中 — 需卸载服务           | 中 — 需清理 Hook 脚本      | 弱 — 需清理 DB/Hook    | 中               |
+| 人可审查     | **强** — 全部 Markdown 明文      | 弱 — 脚本/数据库/Rust 控制面                   | **强** — 单文件可读         | 弱 — 压缩后语义摘要         | 中 — Markdown + Shell 脚本 | 弱 — Hook 脚本黑盒      | 中               |
+| 团队共享     | **强** — 选择性共享 raw/distilled | 中 — Instinct 导入/导出                    | 无                     | 无                   | 中 — 文件可共享但无精细控制      | 无                  | 无               |
+| 行为约束力    | **强** — G1-G4 铁律            | 强 — Instinct + Hook 门禁                | **强** — 四原则           | 中                   | 强 — 完成门禁 + Hook 门禁   | 中                  | 弱               |
+| 跨平台兼容    | **强** — 纯 Markdown          | **强** — 7 平台（Claude/Codex/Cursor/...） | **强** — 支持 Cursor     | 中 — Claude Code 优先  | **强** — 17+ 平台       | 弱 — 绑定 Claude Code | 中               |
 
 ---
 
@@ -146,7 +147,38 @@
 
 **与 ai-coordination 的关系**：最直接的竞争对手。claude-mem 做"记忆持久化"，ai-coordination 做"知识进化"。claude-mem 记住事实，ai-coordination 提炼规律。一个横向（广度记忆），一个纵向（深度进化）。
 
-### 3.4 awesome-claude-code（46,615★）及其他索引型项目
+### 3.4 Planning-with-Files（23,426★）
+
+**核心思路**：Manus 式持久化文件规划。灵感来自被 Meta 以 $20 亿收购的 Manus AI——"Markdown is my working memory on disk"。通过三个文件（task_plan.md、findings.md、progress.md）在磁盘上持久化任务规划、研究发现和进度追踪，AI 上下文丢失后可通过读取文件恢复。v3.0 增加了自主模式和完成门禁。
+
+**核心特性**：
+- **三文件模式**：task_plan（阶段规划 + 进度）、findings（研究笔记）、progress（会话日志 + 测试结果）
+- **Hook 全生命周期**：SessionStart/PreToolUse/PostToolUse/Stop/PreCompact 自动注入和同步
+- **完成门禁（Gated Mode）**：5 个条件全部满足才允许结束会话，防止未完成任务退出
+- **Session Recovery**：/clear 后自动恢复上次会话上下文
+- **17+ 平台**：Claude Code、Cursor、Codex、Gemini CLI、GitHub Copilot、Kiro、Hermes、OpenCode 等
+- **SHA-256 签名认证**：防止 plan 文件被篡改
+- **并行计划隔离**：多个并行会话各自独立的 plan 目录
+- **96.7% benchmark 通过率**（Sonnet 4.6）
+
+**优势**：
+- **规划导向最成熟** — 三文件模式经过 Manus 实战验证，理念有 $2B 收购背书
+- **自动化程度高** — Hook 全生命周期覆盖，完成门禁强制任务收尾
+- **跨平台覆盖极广** — 17+ 平台，是目前跨平台最多的 Claude Code 技能
+- **安全认证** — SHA-256 签名防篡改，安全审计通过
+- **A/B 测试验证** — 3/3 盲测胜出，有数据支撑效果
+- **迭代极快** — 40+ 版本，v2→v3 演进清晰
+
+**劣势**：
+- **只做规划，不做错误进化** — findings 记录发现但没有五步法提炼，没有 META 规则
+- **无跨项目免疫** — 每个项目独立 plan，不会把经验传播到其他项目
+- **聚焦任务规划，缺失开发过程管理** — 无需求追踪、无错误知识库、无架构地图
+- **Hook 脚本复杂度高** — Shell 脚本 + 完成门禁逻辑 + 签名认证，卸载不干净
+- **功能单一** — 只解决"规划 + 进度"，其他开发过程痛点（错误管理、需求变更）不覆盖
+
+**与 ai-coordination 的关系**：最相似的"文件持久化"思路，但关注点完全不同。Planning-with-Files 关注"任务规划和进度追踪"，ai-coordination 关注"开发过程管理和错误免疫"。前者回答"做什么、做到哪了"，后者回答"为什么出错、怎么不再犯"。两者底层理念一致（文件系统 = 持久记忆），可组合使用。
+
+### 3.5 awesome-claude-code（46,615★）及其他索引型项目
 
 **核心思路**：纯索引/资源列表，不提供具体功能。
 
@@ -154,7 +186,7 @@
 
 **与 ai-coordination 的关系**：ai-coordination 应争取被收录进此类索引，获得曝光。
 
-### 3.5 pro-workflow（2,312★）
+### 3.6 pro-workflow（2,312★）
 
 **核心思路**：SQLite 存储工作状态，Git Hook 自动触发验证，自纠正循环。
 
@@ -171,7 +203,7 @@
 - 无跨项目传播能力
 - Hook 脚本对用户是黑盒
 
-### 3.6 ADHD（824★）
+### 3.7 ADHD（824★）
 
 **核心思路**：发散思维树 + 多认知框架并行评分剪枝。让 AI 像 ADHD 大脑一样同时从多个角度思考，评分后剪枝，幸存者深化。
 
@@ -187,7 +219,7 @@
 - 依赖 Agent SDK，非纯 Markdown
 - 适用场景偏窄（创意型任务）
 
-### 3.7 vestige / claude-cognitive（555★）
+### 3.8 vestige / claude-cognitive（555★）
 
 **核心思路**：认知记忆 + FSRS 间隔重复算法。29 个大脑模块模拟，3D 仪表盘可视化。
 
@@ -202,7 +234,7 @@
 - 无错误管理体系
 - 更偏实验性质
 
-### 3.8 aprende-skill（12★）
+### 3.9 aprende-skill（12★）
 
 **核心思路**：审查对话历史，自动提炼错误教训。
 
@@ -221,6 +253,7 @@
 | 全栈操作系统 | ECC                              | Skills/Agents/Hook/Instinct/安全/跨平台 | 错误五步法提炼 + META 规则 + 跨项目免疫传播 |
 | 行为规范   | karpathy-skills                  | 约束 AI 不要犯错                         | 记录错误 + 提炼规律 + 跨项目传播         |
 | 记忆持久化  | claude-mem, my-claude-code-setup | 记住发生了什么                            | 从记忆中提炼可预防规律                 |
+| 文件规划   | Planning-with-Files              | 任务规划 + 进度追踪 + 完成门禁 + /clear 恢复     | 错误提炼 + META 规则 + 跨项目免疫      |
 | 自动化工作流 | pro-workflow                     | 自动执行 + 自纠正                         | 错误知识提炼 + 跨项目                |
 | 认知增强   | ADHD, vestige                    | 多角度思考 + 间隔重复                       | 错误进化 + 知识沉淀                 |
 | 错误学习   | aprende-skill                    | 从对话中提炼教训                           | 完整五步法 + META 规则 + 跨项目       |
@@ -285,23 +318,25 @@
 ```
 karpathy-skills 是"驾驶守则" — 告诉 AI 不要违章
 ECC 是"全功能赛车" — 方向盘、仪表盘、安全气囊、维修站全配齐
+Planning-with-Files 是"导航仪" — 规划路线、追踪进度、保证到达目的地
 claude-mem 是"行车记录仪" — 记住每次开车的细节
 ai-coordination 是"保险系统 + 免疫系统" — 出了事故提炼规律，永远不再犯同类事故
 ```
 
-四者非互斥，可叠加使用。
+五者非互斥，可叠加使用。
 
 ### 推荐矩阵
 
-| 人群     | ai-coordination | ECC      | karpathy-skills | claude-mem |
-| ------ | --------------- | -------- | --------------- | ---------- |
-| 长周期项目  | **强烈推荐**        | 推荐       | 推荐              | 推荐         |
-| 多项目并行  | **强烈推荐**        | 推荐       | 可选              | 不推荐（每项目独立） |
-| 团队协作   | **推荐**          | 推荐       | 可选              | 不推荐        |
-| 透明度要求  | **推荐**          | 不推荐      | **推荐**          | 不推荐        |
-| 追求全自动  | 不推荐             | **强烈推荐** | 不推荐             | **强烈推荐**   |
-| 企业级需求  | 不推荐             | **强烈推荐** | 不推荐             | 不推荐        |
-| 创意/跨学科 | 不推荐             | 推荐       | 可选              | 可选         |
+| 人群     | ai-coordination | ECC      | karpathy-skills | Planning-with-Files | claude-mem |
+| ------ | --------------- | -------- | --------------- | ------------------- | ---------- |
+| 长周期项目  | **强烈推荐**        | 推荐       | 推荐              | **强烈推荐**            | 推荐         |
+| 多项目并行  | **强烈推荐**        | 推荐       | 可选              | 推荐                  | 不推荐（每项目独立） |
+| 团队协作   | **推荐**          | 推荐       | 可选              | 推荐                  | 不推荐        |
+| 透明度要求  | **推荐**          | 不推荐      | **推荐**          | 中                   | 不推荐        |
+| 追求全自动  | 不推荐             | **强烈推荐** | 不推荐             | **强烈推荐**            | **强烈推荐**   |
+| 企业级需求  | 不推荐             | **强烈推荐** | 不推荐             | 推荐                  | 不推荐        |
+| 需求/错误管理 | **强烈推荐**     | 推荐       | 不推荐             | 不推荐                 | 不推荐        |
+| 创意/跨学科 | 不推荐             | 推荐       | 可选              | 可选                  | 可选         |
 
 ---
 
@@ -314,8 +349,11 @@ ai-coordination 是"保险系统 + 免疫系统" — 出了事故提炼规律，
 - **ECC / Everything Claude Code**（216K★）做全栈 Agent 操作系统，最接近的是 Instinct 学习机制，但 Instinct 做的是"模式提取"而非"错误免疫"
 - **andrej-karpathy-skills**（176K★）做行为规范，不做状态持久化和错误进化
 - **claude-mem**（82K★）做记忆持久化，不做知识提炼和跨项目免疫
-- **ai-coordination** 做错误进化 + 跨项目免疫，这是三者都没有覆盖的空白地带
+- **Planning-with-Files**（23K★）做任务规划和进度追踪，以文件持久化对抗上下文丢失，但 findings 只记录不提炼，无错误免疫能力
+- **ai-coordination** 做错误进化 + 跨项目免疫，这是以上项目都没有覆盖的空白地带
 
-此外，ai-coordination 在零依赖纯 Markdown（ECC 需 npm + Rust + SQLite，而 ai-coordination 零门槛）、铁律级强制执行（比 karpathy-skills 更严格）、选择性团队共享（ECC 和 claude-mem 都不具备）方面也有差异化优势。
+值得注意的是，Planning-with-Files 与 ai-coordination 底层理念一致——"文件系统 = 持久记忆"，但关注点互补：前者回答"做什么、做到哪了"，后者回答"为什么出错、怎么不再犯"。两者可组合使用。
 
-短板在于自动化程度（不如 ECC / claude-mem / pro-workflow 的 Hook 自动触发）、跨平台覆盖（不如 ECC 的 7 平台）和功能广度（ECC 是全栈，ai-coordination 是单点穿透），这些是后续可迭代的方向。
+此外，ai-coordination 在零依赖纯 Markdown（ECC 需 npm + Rust + SQLite，Planning-with-Files 需 Shell Hook 脚本，而 ai-coordination 零门槛）、铁律级强制执行（比 karpathy-skills 更严格）、选择性团队共享（ECC 和 Planning-with-Files 都不具备）方面也有差异化优势。
+
+短板在于自动化程度（不如 ECC / claude-mem / Planning-with-Files 的 Hook 自动触发）、跨平台覆盖（不如 ECC 的 7 平台 / Planning-with-Files 的 17+ 平台）和功能广度（ECC 是全栈，ai-coordination 是单点穿透），这些是后续可迭代的方向。
