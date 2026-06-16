@@ -421,7 +421,7 @@ ai-coordination 是"保险系统 + 免疫系统" — 出了事故提炼规律，
 | 团队协作   | **推荐**          | 推荐       | 可选              | 推荐                  | 不推荐        |
 | 透明度要求  | **推荐**          | 不推荐      | **推荐**          | 中                   | 不推荐        |
 | 追求全自动  | 不推荐             | **强烈推荐** | 不推荐             | **强烈推荐**            | **强烈推荐**   |
-| 企业级需求  | 不推荐             | **强烈推荐** | 不推荐             | 推荐                  | 不推荐        |
+| 企业级需求  | **推荐**          | **强烈推荐** | 不推荐             | 推荐                  | 不推荐        |
 | 需求/错误管理 | **强烈推荐**     | 推荐       | 不推荐             | 不推荐                 | 不推荐        |
 | 创意/跨学科 | 不推荐             | 推荐       | 可选              | 可选                  | 可选         |
 
@@ -441,6 +441,23 @@ ai-coordination 是"保险系统 + 免疫系统" — 出了事故提炼规律，
 
 值得注意的是，Planning-with-Files 与 ai-coordination 底层理念一致——"文件系统 = 持久记忆"，但关注点互补：前者回答"做什么、做到哪了"，后者回答"为什么出错、怎么不再犯"。两者可组合使用。
 
-此外，ai-coordination 在零依赖纯 Markdown（ECC 需 npm + Rust + SQLite，Planning-with-Files 需 Shell Hook 脚本，而 ai-coordination 零门槛）、铁律级强制执行（比 karpathy-skills 更严格）、选择性团队共享（ECC 和 Planning-with-Files 都不具备）方面也有差异化优势。
+此外，ai-coordination 在零依赖纯 Markdown（ECC 需 npm + Rust + SQLite，Planning-with-Files 需 Shell Hook 脚本，而 ai-coordination 零门槛）、铁律级强制执行（比 karpathy-skills 更严格）、选择性团队共享（ECC 和 Planning-with-Files 都不具备）、企业级架构约束（五层分治 + 严格单向依赖，ECC 无架构约束）方面也有差异化优势。
+
+### 企业级适配分析
+
+五层架构天然覆盖企业级项目的核心关注点：
+
+| 企业级关注点 | 五层架构如何覆盖 | 对应层 |
+|------------|---------------|-------|
+| **安全合规** | 鉴权/加密/限流/数据脱敏统一在接口层管控，下游层无法绕过 | interface |
+| **审计追溯** | 操作日志、需求变更、错误知识库全程记录，coordination 层自动同步 | coordination |
+| **环境隔离** | 环境变量管理、配置项集中在 shared 层，core 层零环境耦合 | shared |
+| **监控告警** | 性能埋点、日志规范、异常体系作为基础设施，所有层统一接入 | shared |
+| **团队协作** | 选择性共享（raw/ 不共享 + distilled/ 共享），.ai/ 独立 Git 仓库 | coordination |
+| **代码质量** | 严格单向依赖防止循环耦合，改一层不影响其他层 | 全局 |
+| **需求追踪** | 每条需求独立文件 + 状态追踪 + 影响范围记录 | coordination |
+| **错误复盘** | 五步法强制分析 + 复现次数追踪 + 自我升级机制 | coordination |
+
+ECC 的企业级优势在于安全扫描（AgentShield）和付费管理后台，但在**架构约束**层面反而是空白——268 个 skill 按"功能"分类而非按"层级"分层，没有依赖方向控制，这在大型团队中正是混乱的根源。ai-coordination 用五层分治从架构层面防止了这种混乱。
 
 短板在于自动化程度（不如 ECC / claude-mem / Planning-with-Files 的 Hook 自动触发）、跨平台覆盖（不如 ECC 的 7 平台 / Planning-with-Files 的 17+ 平台）和功能广度（ECC 是全栈，ai-coordination 是单点穿透），这些是后续可迭代的方向。
