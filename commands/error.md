@@ -12,9 +12,9 @@ The user provides: $ARGUMENTS
 
 ### Steps
 
-1. Read `.ai/ERRORS.md` to get the current maximum ERR number.
+1. If `.ai/` directory doesn't exist, inform user to run `/ai:init` first.
 
-2. If `.ai/` directory doesn't exist, inform user to run `/ai-init` first.
+2. List `.ai/errors/raw/` to find the current maximum ERR number. Files are named `ERR-001.md`, `ERR-002.md`, etc.
 
 3. Based on the user's error description `$ARGUMENTS`, perform 5-step analysis:
 
@@ -28,10 +28,10 @@ The user provides: $ARGUMENTS
 
    **Step 5 — 二次提炼接口 (Cross-project Interface)**: Formulate a reusable check item or coding standard that could prevent this class of errors in ANY project. Format as a META-xxx rule.
 
-4. Append the new `ERR-NNN` entry to `.ai/ERRORS.md` following the standard format:
+4. Create a new file `.ai/errors/raw/ERR-NNN.md` using the template:
 
 ```markdown
-### ERR-NNN: 错误标题
+# ERR-NNN: 错误标题
 
 - **症状**: [description]
 - **根因**: [deep analysis]
@@ -40,8 +40,22 @@ The user provides: $ARGUMENTS
 - **二次提炼接口**: [cross-project reusable check item]
 - **首次出现**: [current date]
 - **复现次数**: 1
+
+---
+
+> 此文件是错误原始记录，保留完整五步法分析过程。
+> 提炼后的 META 规则汇总见 `errors/distilled/meta-rules.md`
 ```
 
-5. If a META rule was extracted, add it to the "二次提炼接口" table at the bottom of ERRORS.md.
+5. If a META rule was extracted, also append it to `.ai/errors/distilled/meta-rules.md` in both the summary table and the detailed section:
 
-6. Confirm the entry was recorded and show the new ERR number and any META rule.
+```markdown
+### META-XXX: 规则标题
+
+- **规则**: 通用规则描述
+- **适用场景**: 哪类代码/场景需要遵守
+- **源错误**: ERR-NNN
+- **检查方式**: 如何在代码审查中验证
+```
+
+6. Confirm the entry was recorded and show the new ERR file path and any META rule.

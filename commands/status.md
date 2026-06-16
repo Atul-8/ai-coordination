@@ -5,18 +5,22 @@ allowed-tools: Read, Glob, Grep
 
 ## Your task
 
-Display the current project coordination state by reading the `.ai/` directory files.
+Display the current project coordination state by reading the `.ai/` directory.
 
 ### Steps
 
 1. Read `.ai/WORKSTATE.md` — show current tasks, unfinished queue, and last interruption point.
 
-2. Read `.ai/REQUIREMENTS.md` — show active requirements.
+2. Read `.ai/STRUCTURE.md` — show project architecture overview.
 
-3. Read `.ai/ERRORS.md` — show error count and any META rules.
+3. List `.ai/requirements/` directory — show active requirements count and titles.
 
-4. Read `.ai/CHANGELOG.md` — show the most recent 5 entries.
+4. List `.ai/errors/raw/` directory — show total error count.
 
-5. Summarize the overall project state in a concise format.
+5. Read `.ai/errors/distilled/meta-rules.md` — show META rules count.
 
-If `.ai/` directory does not exist, inform the user and suggest running `/ai-init` to initialize it.
+6. Read `.ai/changelog/LOG.md` — show the most recent 5 entries.
+
+7. Summarize the overall project state in a concise format.
+
+If `.ai/` directory does not exist, inform the user and suggest running `/ai:init` to initialize it.

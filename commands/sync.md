@@ -12,7 +12,7 @@ The user provides: $ARGUMENTS
 
 ### Steps
 
-1. Check if `.ai/` directory exists. If not, suggest running `/ai-init` first.
+1. Check if `.ai/` directory exists. If not, suggest running `/ai:init` first.
 
 2. Navigate to `.ai/` directory and check if it's a git repository:
    ```bash
@@ -48,3 +48,10 @@ The user provides: $ARGUMENTS
    - Just push: `cd .ai && git push`
 
 6. Report sync result: what was committed, and the remote URL if configured.
+
+### Selective sync note
+
+If the team only wants to share `errors/distilled/` (the refined META rules) rather than raw debug details, they can use `.gitignore` inside `.ai/` to exclude specific directories:
+- Add `errors/raw/` to `.ai/.gitignore` to keep debug details local
+- Add `changelog/` to `.ai/.gitignore` if operation history should not be shared
+- Always share `errors/distilled/` — it's the team's shared knowledge base
