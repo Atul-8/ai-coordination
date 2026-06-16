@@ -148,6 +148,24 @@ cat skills/coordination/SKILL.md >> ~/.claude/CLAUDE.md
 
 团队共享时，只需同步 `distilled/meta-rules.md`，新项目读取即可获得跨项目防线，无需暴露原始调试细节。
 
+## 与同类工具的差异
+
+市面上已有多种 AI 编程记忆/工作流方案，ai-coordination 的独特壁垒是：
+
+**错误自我进化 + 跨项目免疫** — 所有竞品要么关注"记住上下文"，要么关注"约束行为"，没有一家做"从错误中提炼跨项目防线"。
+
+| 维度 | ai-coordination | ECC (216K★) | karpathy-skills (176K★) | claude-mem (82K★) |
+|------|----------------|-------------|------------------------|-------------------|
+| 核心能力 | 错误进化 + 跨项目免疫 | 全栈 Agent 操作系统 | 行为规范四原则 | 记忆压缩 + 语义搜索 |
+| 运行时依赖 | **零** | npm + Rust + SQLite | **零** | Node.js + Worker |
+| 可卸载性 | **删 .ai/ 即可** | 需专用卸载流程 | **删 CLAUDE.md 行** | 需卸载服务 |
+| 错误知识跨项目 | **有（distilled 错题本）** | 无（Instinct 可导出无免疫） | 无 | 无 |
+| 状态持久化 | **有** | **有** | 无 | **有** |
+
+> ECC 是"全功能赛车"，karpathy-skills 是"驾驶守则"，claude-mem 是"行车记录仪"，ai-coordination 是"保险系统 + 免疫系统"——出了事故提炼规律，永远不再犯同类事故。
+>
+> 详见 [竞争格局分析报告](COMPETITIVE_ANALYSIS.md)
+
 ## 五层架构
 
 ```
@@ -184,12 +202,14 @@ ai-coordination/
 │       └── errors/
 │           ├── raw/ERR-000.md
 │           └── distilled/meta-rules.md
+├── COMPETITIVE_ANALYSIS.md       # 竞争格局分析报告
 ├── SCI_GUIDE.md                 # 架构思想与原理详解
 └── INSTALL.md                   # 详细部署文档
 ```
 
 ## 文档
 
+- [竞争格局分析](COMPETITIVE_ANALYSIS.md) — 与同类工具的深度对比
 - [科普指南](SCI_GUIDE.md) — 架构思想和原理详解
 - [详细部署](INSTALL.md) — 完整安装和配置说明
 
