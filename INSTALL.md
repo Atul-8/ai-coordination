@@ -41,7 +41,7 @@ ai-coordination 由两部分组成：
 | 组件 | 作用 | 部署位置 |
 |------|------|---------|
 | **commands + skills** | 提供工具命令和触发条件 | `~/.claude/`（全局共用） |
-| **SKILL.md 规范** | 让 Claude **强制执行**六层架构 | 写入 CLAUDE.md（全局或项目级） |
+| **SKILL.md 规范** | 让 Claude **强制执行**七层架构 | 写入 CLAUDE.md（全局或项目级） |
 
 > 只部署 commands 和 skills，Claude 会"知道"但不"遵守"。SKILL.md 必须写入 CLAUDE.md 才能强制执行。
 
@@ -66,7 +66,7 @@ cp -r skills/coordination/ ~/.claude/skills/coordination/
 cat skills/coordination/SKILL.md >> ~/.claude/CLAUDE.md
 ```
 
-**效果**：任意项目启动 Claude Code 即可使用 `/ai:init` 等命令，且严格遵守六层架构。
+**效果**：任意项目启动 Claude Code 即可使用 `/ai:init` 等命令，且严格遵守七层架构。
 
 **适合**：个人开发者、所有项目都想用这套架构的用户。
 
@@ -89,10 +89,10 @@ cp -r skills/coordination/ ~/.claude/skills/coordination/
 cat skills/coordination/SKILL.md >> /path/to/your-project/CLAUDE.md
 ```
 
-**效果**：只有写入了规范的项目会严格执行六层架构，其他项目命令可用但不强制架构规范。
+**效果**：只有写入了规范的项目会严格执行七层架构，其他项目命令可用但不强制架构规范。
 
 **适合**：
-- 只想在部分项目中使用六层架构
+- 只想在部分项目中使用七层架构
 - 团队项目中，规范跟随项目走（CLAUDE.md 提交到仓库，团队成员自动生效）
 - 担心全局规范影响其他项目
 
@@ -314,7 +314,7 @@ yourname/
 
 初始化时，插件会自动分析项目结构并填充 STRUCTURE.md：
 1. 扫描项目目录，识别常见的分层模式
-2. 将目录映射到六层架构的对应层
+2. 将目录映射到七层架构的对应层
 3. 生成关键模块表（模块名、路径、职责、依赖）
 
 如果分析不准确，可以手动编辑 STRUCTURE.md。
@@ -342,7 +342,7 @@ ls ~/.claude/skills/coordination/
 
 如果是测试模式，确认使用了 `--plugin-dir` 参数启动。
 
-### Q: Claude 不遵守六层架构规范？
+### Q: Claude 不遵守七层架构规范？
 
 必须将 SKILL.md 写入 CLAUDE.md：
 
@@ -391,7 +391,7 @@ skills 提供工具触发，CLAUDE.md 提供强制执行。两者缺一不可。
    rm -rf ~/.claude/commands/ai/
    rm -rf ~/.claude/skills/coordination/
    ```
-3. 从 CLAUDE.md 中移除六层架构相关内容：
+3. 从 CLAUDE.md 中移除七层架构相关内容：
    - 全局模式：编辑 `~/.claude/CLAUDE.md`
    - 项目模式：编辑 `<项目>/CLAUDE.md`
 
@@ -436,16 +436,16 @@ ai-coordination/
 **全局模式**：
 - [ ] `~/.claude/commands/ai/` 目录包含 5 个命令文件
 - [ ] `~/.claude/skills/coordination/` 目录包含 SKILL.md 和 assets/
-- [ ] `~/.claude/CLAUDE.md` 中包含六层架构规范
+- [ ] `~/.claude/CLAUDE.md` 中包含七层架构规范
 
 **项目模式**：
 - [ ] `~/.claude/commands/ai/` 目录包含 5 个命令文件
 - [ ] `~/.claude/skills/coordination/` 目录包含 SKILL.md 和 assets/
-- [ ] 目标项目的 `CLAUDE.md` 中包含六层架构规范
+- [ ] 目标项目的 `CLAUDE.md` 中包含七层架构规范
 
 **测试模式**：
 - [ ] 使用 `--plugin-dir` 参数启动 Claude Code
-- [ ] 当前项目的 `CLAUDE.md` 中包含六层架构规范
+- [ ] 当前项目的 `CLAUDE.md` 中包含七层架构规范
 
 **通用检查**：
 - [ ] `/ai:init` 命令可识别

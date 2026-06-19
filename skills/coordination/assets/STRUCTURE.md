@@ -9,6 +9,8 @@
 | interface | `src/interface/` | 通信客户端、协议适配 |
 | core | `src/core/` | IPC 框架、核心算法 |
 | shared | `src/shared/` | 类型定义、常量 |
+| testing | `src/testing/` | 各层测试 |
+| docs | `docs/` | 使用指南、需求梳理、数据对比、项目介绍 |
 
 ## 关键模块
 

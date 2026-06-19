@@ -38,11 +38,17 @@ Initialize the project's `.ai/` coordination layer directory.
    - Actual directory-to-layer mapping
    - Key modules table (name, path, responsibility, dependencies)
 
-5. Initialize `.ai/` as an independent git repository for cloud sync:
+5. If `$ARGUMENTS` contains a remote Git URL, configure the remote for cloud sync:
+   ```bash
+   cd .ai && git remote add origin $ARGUMENTS
+   ```
+   This enables automatic Git consistency checks on session start (G1 step 5).
+
+6. Initialize `.ai/` as an independent git repository for cloud sync:
    ```bash
    cd .ai && git init && git add -A && git commit -m "init: ai-coordination layer"
    ```
 
-6. Add `.ai/` to the project root `.gitignore` if not already present (the `.ai/` directory manages its own git repo independently).
+7. Add `.ai/` to the project root `.gitignore` if not already present (the `.ai/` directory manages its own git repo independently).
 
-7. Report completion: list the created structure and the detected project layout.
+8. Report completion: list the created structure and the detected project layout.

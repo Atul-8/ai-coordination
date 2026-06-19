@@ -1,6 +1,6 @@
 ---
 description: 查看当前工作状态和对接层信息
-allowed-tools: Read, Glob, Grep
+allowed-tools: Read, Glob, Grep, Bash
 ---
 
 ## Your task
@@ -21,6 +21,13 @@ Display the current project coordination state by reading the `.ai/` directory.
 
 6. Read `.ai/changelog/LOG.md` — show the most recent 5 entries.
 
-7. Summarize the overall project state in a concise format.
+7. **Git sync status** (if `.ai/` has a remote configured):
+   ```bash
+   cd .ai && git remote -v && git fetch origin && git status
+   ```
+   - Report whether local is ahead, behind, or diverged from remote
+   - If diverged, warn about potential numbering conflicts
+
+8. Summarize the overall project state in a concise format.
 
 If `.ai/` directory does not exist, inform the user and suggest running `/ai:init` to initialize it.
