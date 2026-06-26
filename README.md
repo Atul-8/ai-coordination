@@ -161,6 +161,181 @@ cat skills/coordination/SKILL.md >> ~/.claude/CLAUDE.md
 
 > Windows 用户路径对应 `%USERPROFILE%\.claude\`。
 
+## Hook 强制执行方案（可选）
+
+> **适用场景**：如果你发现 Claude 有时候不严格执行 G1-G4 规则，可以启用 Hook 方案强制执行。
+
+### 方案说明
+
+ai-coordination 提供三个 Hook 脚本，通过 Claude Code 的 Hook 机制强制执行铁律：
+
+| Hook | 触发时机 | 强制执行内容 |
+|------|---------|-------------|
+| **PreToolUse** | Write/Edit 调用前 | G2 第一步：写代码前必须在 WORKSTATE.md 登记 |
+| **PostToolUse** | Write/Edit 调用后 | G2 后续步骤：提醒更新 .ai 文件、运行测试 |
+| **Stop** | 会话结束前 | G4 离场检查：输出自检清单 |
+
+### 安装方式
+
+将以下配置添加到 `~/.claude/settings.json` 的 `hooks` 字段：
+
+```json
+"hooks": {
+  "PreToolUse": [
+    {
+      "matcher": "Write|Edit",
+      "hooks": [
+        {
+          "type": "command",
+          "command": "node \"F:/AI/ai-coordination/hooks/pre-tool-use.js\""
+        }
+      ]
+    }
+  ],
+  "PostToolUse": [
+    {
+      "matcher": "Write|Edit",
+      "hooks": [
+        {
+          "type": "command",
+          "command": "node \"F:/AI/ai-coordination/hooks/post-tool-use.js\""
+        }
+      ]
+    }
+  ],
+  "Stop": [
+    {
+      "hooks": [
+        {
+          "type": "command",
+          "command": "node \"F:/AI/ai-coordination/hooks/stop.js\""
+        }
+      ]
+    }
+  ]
+}
+```
+
+> **注意**：Windows 用户需将路径改为实际安装位置，如 `C:/Users/xxx/.claude/plugins/...`
+
+### 工作原理
+
+1. **PreToolUse Hook**：
+   - 检查项目是否有 `.ai/` 目录
+   - 检查目标文件是否在 `.ai/` 目录外（排除 .ai 文件本身的更新）
+   - 检查 `WORKSTATE.md` 是否有「正在进行」的任务登记
+   - **没有登记则阻止操作**，输出提示要求先登记
+
+2. **PostToolUse Hook**：
+   - 代码写入成功后输出提醒
+   - 列出必须执行的同步步骤（更新 WORKSTATE、追加 LOG、检查 STRUCTURE 等）
+   - **不阻止操作**（因为代码已写入），但强制提醒
+
+3. **Stop Hook**：
+   - 会话结束前输出离场检查清单
+   - 显示当前 .ai 状态（最后更新时间、最近操作记录、错误数量等）
+   - **不阻止会话结束**，但强制输出自检清单
+
+### 效果
+
+启用 Hook 后：
+
+- **写代码前不登记 → 操作被阻止**，必须先在 WORKSTATE.md 登记
+- **写代码后 → 自动输出提醒**，列出必须执行的同步步骤
+- **会话结束前 → 自动输出自检清单**，确保不遗漏任何同步任务
+
+这是「铁律」的真正落地：不是靠 Claude 自觉执行，而是靠 Hook 强制拦截。
+
+## 检查脚本（节省 Token）
+
+> **适用场景**：Hook 调用脚本执行检查，避免 Claude 重复读取文件浪费 token。
+
+### 脚本说明
+
+| 脚本 | 位置 | 功能 | 输出格式 |
+|------|------|------|---------|
+| `g1-check.js` | `scripts/` | G1 开门三件事检查 | JSON |
+| `g2-check.js` | `scripts/` | G2 双门禁同步任务清单 | JSON |
+| `g3-error.js` | `scripts/` | G3 错误五步法提炼（生成 ERR 文件） | JSON |
+| `g4-check.js` | `scripts/` | G4 离场检查自检清单 | JSON |
+
+### 工作原理
+
+Hook 脚本调用检查脚本，脚本执行以下操作：
+
+1. **读取文件**：扫描 `.ai/` 目录下的所有相关文件
+2. **分析状态**：提取关键信息（最后更新时间、记录数量、Git 状态等）
+3. **生成报告**：输出 JSON 格式的检查结果
+4. **Hook 解析**：Hook 脚本解析 JSON，输出简洁的提示信息
+
+### Token 节省效果
+
+| 场景 | 传统方式（Claude 读取） | 脚本方式 | 节省 |
+|------|----------------------|---------|------|
+| G1 检查 | 读取 WORKSTATE + meta-rules + Git 状态 | 脚本输出 JSON | ~80% |
+| G2 检查 | Claude 分析变更文件 | 脚本分析层级 | ~70% |
+| G4 检查 | 读取 5+ 个文件 | 脚本汇总输出 | ~90% |
+
+### 手动调用方式
+
+你也可以手动调用脚本获取状态报告：
+
+```bash
+# 初始化对接层
+node F:/AI/ai-coordination/scripts/ai-init.js [project-root] [remote-url]
+
+# 查看状态
+node F:/AI/ai-coordination/scripts/ai-status.js [project-root]
+
+# G1 开门检查
+node F:/AI/ai-coordination/scripts/g1-check.js [project-root]
+
+# G2 同步任务清单
+node F:/AI/ai-coordination/scripts/g2-check.js [project-root] [changed-files]
+
+# G3 错误记录
+node F:/AI/ai-coordination/scripts/g3-error.js [project-root] [error-type] [error-message] [affected-files]
+
+# G4 离场检查
+node F:/AI/ai-coordination/scripts/g4-check.js [project-root]
+
+# 同步到云端
+node F:/AI/ai-coordination/scripts/ai-sync.js [project-root] [remote-url]
+
+# 更新工作状态
+node F:/AI/ai-coordination/scripts/workstate-update.js [project-root] start "任务描述"
+node F:/AI/ai-coordination/scripts/workstate-update.js [project-root] progress 50
+node F:/AI/ai-coordination/scripts/workstate-update.js [project-root] interrupt "file.py:123" "正在修改" "继续完成"
+node F:/AI/ai-coordination/scripts/workstate-update.js [project-root] finish
+node F:/AI/ai-coordination/scripts/workstate-update.js [project-root] queue "新任务"
+node F:/AI/ai-coordination/scripts/workstate-update.js [project-root] dequeue
+
+# 追加操作日志
+node F:/AI/ai-coordination/scripts/changelog-append.js [project-root] "完成" "修改文件" "file1,file2"
+```
+
+输出均为 JSON 格式，便于 Claude 解析或人工查看。
+
+### AI 自动调用机制
+
+| 脚本 | 自动调用时机 | 调用方式 |
+|------|-------------|---------|
+| `g1-check.js` | PreToolUse Hook 触发时 | Hook 脚本调用 |
+| `g2-check.js` | PostToolUse Hook 触发时 | Hook 脚本调用 |
+| `g3-error.js` | 需手动调用或 Claude 主动调用 | `/ai:error` 命令或 Bash |
+| `g4-check.js` | Stop Hook 触发时 | Hook 脚本调用 |
+| `ai-init.js` | 用户执行 `/ai:init` 时 | 命令调用脚本 |
+| `ai-status.js` | 用户执行 `/ai:status` 时 | 命令调用脚本 |
+| `ai-sync.js` | 用户执行 `/ai:sync` 时 | 命令调用脚本 |
+| `workstate-update.js` | Claude 主动调用或手动调用 | Bash 命令 |
+| `changelog-append.js` | PostToolUse Hook 自动调用 | Hook 脚本调用 |
+
+**Hook 自动调用**：G1/G2/G4 检查脚本和 changelog-append 已集成到 Hook 中，Claude 无需主动调用，Hook 会自动执行并输出简洁提示。
+
+**命令调用脚本**：`/ai:init`、`/ai:status`、`/ai:sync` 命令现在调用脚本而非 Claude 直接读取文件，大幅节省 token。
+
+**自动追加 changelog**：每次 Write/Edit 操作后，Hook 自动调用 `changelog-append.js` 追加操作记录，无需 Claude 手动操作。
+
 ## 使用命令
 
 | 命令 | 说明 |
@@ -275,12 +450,26 @@ presentation      interface          core
 
 ```
 ai-coordination/
-├── commands/                    # 命令定义
-│   ├── init.md
-│   ├── status.md
-│   ├── error.md
-│   ├── sync.md
-│   └── uninstall.md
+├── commands/                    # 命令定义（调用脚本）
+│   ├── init.md                  # /ai:init - 初始化对接层
+│   ├── status.md                # /ai:status - 查看状态
+│   ├── sync.md                  # /ai:sync - 同步云端
+│   ├── error.md                 # /ai:error - 记录错误
+│   └── uninstall.md             # /ai:uninstall - 清理对接层
+├── scripts/                     # 检查脚本（节省 token）
+│   ├── ai-init.js               # 初始化对接层脚本
+│   ├── ai-status.js             # 状态查看脚本
+│   ├── ai-sync.js               # 云端同步脚本
+│   ├── g1-check.js              # G1 开门三件事检查
+│   ├── g2-check.js              # G2 双门禁同步任务清单
+│   ├── g3-error.js              # G3 错误五步法提炼
+│   ├── g4-check.js              # G4 离场检查自检清单
+│   ├── workstate-update.js      # 自动更新 WORKSTATE.md
+│   └── changelog-append.js      # 自动追加 changelog/LOG.md
+├── hooks/                       # Hook 强制执行脚本（自动调用脚本）
+│   ├── pre-tool-use.js          # PreToolUse Hook - 调用 g1-check.js
+│   ├── post-tool-use.js         # PostToolUse Hook - 调用 g2-check.js + changelog-append.js
+│   └── stop.js                  # Stop Hook - 调用 g4-check.js
 ├── skills/coordination/         # 技能定义 + 模板
 │   ├── SKILL.md                 # 架构规范（需写入 CLAUDE.md）
 │   └── assets/                  # 初始化模板

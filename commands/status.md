@@ -1,33 +1,35 @@
 ---
 description: 查看当前工作状态和对接层信息
-allowed-tools: Read, Glob, Grep, Bash
+allowed-tools: Bash
 ---
 
 ## Your task
 
-Display the current project coordination state by reading the `.ai/` directory.
+Display the current project coordination state by calling the status script.
 
 ### Steps
 
-1. Read `.ai/WORKSTATE.md` — show current tasks, unfinished queue, and last interruption point.
-
-2. Read `.ai/STRUCTURE.md` — show project architecture overview.
-
-3. List `.ai/requirements/` directory — show active requirements count and titles.
-
-4. List `.ai/errors/raw/` directory — show total error count.
-
-5. Read `.ai/errors/distilled/meta-rules.md` — show META rules count.
-
-6. Read `.ai/changelog/LOG.md` — show the most recent 5 entries.
-
-7. **Git sync status** (if `.ai/` has a remote configured):
+1. Call the status script:
    ```bash
-   cd .ai && git remote -v && git fetch origin && git status
+   node "F:/AI/ai-coordination/scripts/ai-status.js" "$PROJECT_ROOT"
    ```
-   - Report whether local is ahead, behind, or diverged from remote
-   - If diverged, warn about potential numbering conflicts
 
-8. Summarize the overall project state in a concise format.
+2. Parse the JSON output and present a concise summary to the user:
 
-If `.ai/` directory does not exist, inform the user and suggest running `/ai:init` to initialize it.
+   If `hasAiDir: false`:
+   - Inform the user that the project is not using ai-coordination
+   - Suggest running `/ai:init` to initialize
+
+   If `hasAiDir: true`, show:
+   - **工作状态**: workstate.inProgress (or "无进行中任务")
+   - **上次中断点**: workstate.interruption (first line only)
+   - **需求数量**: requirements.count
+   - **错误记录**: errors.count
+   - **META 规则**: metaRules.count
+   - **最近操作**: changelog.recent (last 3 entries)
+   - **Git 同步**: gitSync.syncStatus (synced/ahead/behind/diverged)
+
+3. If `gitSync.syncStatus` is not "synced", warn the user:
+   - "ahead" → suggest running `/ai:sync` to push
+   - "behind" → suggest running `/ai:sync` to pull
+   - "diverged" → warn about potential numbering conflicts

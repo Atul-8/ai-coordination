@@ -1,54 +1,30 @@
 ---
 description: 初始化项目 .ai/ 对接层目录
-allowed-tools: Read, Write, Edit, Glob, Grep, Bash
+allowed-tools: Bash
+argument-hint: [remote-git-url]
 ---
 
 ## Your task
 
-Initialize the project's `.ai/` coordination layer directory.
+Initialize the project's `.ai/` coordination layer directory by calling the script.
+
+The user provides: $ARGUMENTS (optional remote Git URL)
 
 ### Steps
 
-1. Check if `.ai/` directory already exists in the current project root. If it exists with content, ask the user whether to overwrite or skip.
-
-2. Create the directory structure:
-
-```
-.ai/
-  README.md
-  WORKSTATE.md
-  STRUCTURE.md
-  changelog/
-    LOG.md
-  requirements/
-  errors/
-    raw/
-    distilled/
-      meta-rules.md
-```
-
-3. Read template files from `~/.claude/skills/coordination/assets/` and write them:
-   - `assets/README.md`         → `.ai/README.md`
-   - `assets/WORKSTATE.md`      → `.ai/WORKSTATE.md`
-   - `assets/STRUCTURE.md`      → `.ai/STRUCTURE.md` (use as base, then enrich)
-   - `assets/changelog/LOG.md`  → `.ai/changelog/LOG.md`
-   - `assets/errors/distilled/meta-rules.md` → `.ai/errors/distilled/meta-rules.md`
-
-4. Analyze the current project structure using Glob and Grep to populate `STRUCTURE.md` with:
-   - Actual directory-to-layer mapping
-   - Key modules table (name, path, responsibility, dependencies)
-
-5. If `$ARGUMENTS` contains a remote Git URL, configure the remote for cloud sync:
+1. Call the initialization script:
    ```bash
-   cd .ai && git remote add origin $ARGUMENTS
-   ```
-   This enables automatic Git consistency checks on session start (G1 step 5).
-
-6. Initialize `.ai/` as an independent git repository for cloud sync:
-   ```bash
-   cd .ai && git init && git add -A && git commit -m "init: ai-coordination layer"
+   node "F:/AI/ai-coordination/scripts/ai-init.js" "$PROJECT_ROOT" "$ARGUMENTS"
    ```
 
-7. Add `.ai/` to the project root `.gitignore` if not already present (the `.ai/` directory manages its own git repo independently).
+2. Parse the JSON output and report the result to the user:
+   - If `success: true`, list the created files and directories
+   - If `success: false`, show the errors and suggest solutions
 
-8. Report completion: list the created structure and the detected project layout.
+3. If the script reports that `.ai/` already exists with content, ask the user whether to:
+   - Overwrite (delete and reinitialize)
+   - Skip (keep existing content)
+
+4. After successful initialization, suggest the user:
+   - Run `/ai:status` to view the current state
+   - Add a task to WORKSTATE.md before starting development
