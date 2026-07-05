@@ -187,7 +187,7 @@ ai-coordination 提供三个 Hook 脚本，通过 Claude Code 的 Hook 机制强
       "hooks": [
         {
           "type": "command",
-          "command": "node \"F:/AI/ai-coordination/hooks/pre-tool-use.js\""
+          "command": "node \"F:/AI/ai-coordination/src/hooks/pre-tool-use.js\""
         }
       ]
     }
@@ -198,7 +198,7 @@ ai-coordination 提供三个 Hook 脚本，通过 Claude Code 的 Hook 机制强
       "hooks": [
         {
           "type": "command",
-          "command": "node \"F:/AI/ai-coordination/hooks/post-tool-use.js\""
+          "command": "node \"F:/AI/ai-coordination/src/hooks/post-tool-use.js\""
         }
       ]
     }
@@ -208,7 +208,7 @@ ai-coordination 提供三个 Hook 脚本，通过 Claude Code 的 Hook 机制强
       "hooks": [
         {
           "type": "command",
-          "command": "node \"F:/AI/ai-coordination/hooks/stop.js\""
+          "command": "node \"F:/AI/ai-coordination/src/hooks/stop.js\""
         }
       ]
     }
@@ -254,10 +254,10 @@ ai-coordination 提供三个 Hook 脚本，通过 Claude Code 的 Hook 机制强
 
 | 脚本 | 位置 | 功能 | 输出格式 |
 |------|------|------|---------|
-| `g1-check.js` | `scripts/` | G1 开门三件事检查 | JSON |
-| `g2-check.js` | `scripts/` | G2 双门禁同步任务清单 | JSON |
-| `g3-error.js` | `scripts/` | G3 错误五步法提炼（生成 ERR 文件） | JSON |
-| `g4-check.js` | `scripts/` | G4 离场检查自检清单 | JSON |
+| `g1-check.js` | `src/scripts/` | G1 开门三件事检查 | JSON |
+| `g2-check.js` | `src/scripts/` | G2 双门禁同步任务清单 | JSON |
+| `g3-error.js` | `src/scripts/` | G3 错误五步法提炼（生成 ERR 文件） | JSON |
+| `g4-check.js` | `src/scripts/` | G4 离场检查自检清单 | JSON |
 
 ### 工作原理
 
@@ -282,36 +282,36 @@ Hook 脚本调用检查脚本，脚本执行以下操作：
 
 ```bash
 # 初始化对接层
-node F:/AI/ai-coordination/scripts/ai-init.js [project-root] [remote-url]
+node F:/AI/ai-coordination/src/scripts/ai-init.js [project-root] [remote-url]
 
 # 查看状态
-node F:/AI/ai-coordination/scripts/ai-status.js [project-root]
+node F:/AI/ai-coordination/src/scripts/ai-status.js [project-root]
 
 # G1 开门检查
-node F:/AI/ai-coordination/scripts/g1-check.js [project-root]
+node F:/AI/ai-coordination/src/scripts/g1-check.js [project-root]
 
 # G2 同步任务清单
-node F:/AI/ai-coordination/scripts/g2-check.js [project-root] [changed-files]
+node F:/AI/ai-coordination/src/scripts/g2-check.js [project-root] [changed-files]
 
 # G3 错误记录
-node F:/AI/ai-coordination/scripts/g3-error.js [project-root] [error-type] [error-message] [affected-files]
+node F:/AI/ai-coordination/src/scripts/g3-error.js [project-root] [error-type] [error-message] [affected-files]
 
 # G4 离场检查
-node F:/AI/ai-coordination/scripts/g4-check.js [project-root]
+node F:/AI/ai-coordination/src/scripts/g4-check.js [project-root]
 
 # 同步到云端
-node F:/AI/ai-coordination/scripts/ai-sync.js [project-root] [remote-url]
+node F:/AI/ai-coordination/src/scripts/ai-sync.js [project-root] [remote-url]
 
 # 更新工作状态
-node F:/AI/ai-coordination/scripts/workstate-update.js [project-root] start "任务描述"
-node F:/AI/ai-coordination/scripts/workstate-update.js [project-root] progress 50
-node F:/AI/ai-coordination/scripts/workstate-update.js [project-root] interrupt "file.py:123" "正在修改" "继续完成"
-node F:/AI/ai-coordination/scripts/workstate-update.js [project-root] finish
-node F:/AI/ai-coordination/scripts/workstate-update.js [project-root] queue "新任务"
-node F:/AI/ai-coordination/scripts/workstate-update.js [project-root] dequeue
+node F:/AI/ai-coordination/src/scripts/workstate-update.js [project-root] start "任务描述"
+node F:/AI/ai-coordination/src/scripts/workstate-update.js [project-root] progress 50
+node F:/AI/ai-coordination/src/scripts/workstate-update.js [project-root] interrupt "file.py:123" "正在修改" "继续完成"
+node F:/AI/ai-coordination/src/scripts/workstate-update.js [project-root] finish
+node F:/AI/ai-coordination/src/scripts/workstate-update.js [project-root] queue "新任务"
+node F:/AI/ai-coordination/src/scripts/workstate-update.js [project-root] dequeue
 
 # 追加操作日志
-node F:/AI/ai-coordination/scripts/changelog-append.js [project-root] "完成" "修改文件" "file1,file2"
+node F:/AI/ai-coordination/src/scripts/changelog-append.js [project-root] "完成" "修改文件" "file1,file2"
 ```
 
 输出均为 JSON 格式，便于 Claude 解析或人工查看。
@@ -450,29 +450,30 @@ presentation      interface          core
 
 ```
 ai-coordination/
-├── commands/                    # 命令定义（调用脚本）
-│   ├── init.md                  # /ai:init - 初始化对接层
-│   ├── status.md                # /ai:status - 查看状态
-│   ├── sync.md                  # /ai:sync - 同步云端
-│   ├── error.md                 # /ai:error - 记录错误
-│   └── uninstall.md             # /ai:uninstall - 清理对接层
-├── scripts/                     # 检查脚本（节省 token）
-│   ├── ai-init.js               # 初始化对接层脚本
-│   ├── ai-status.js             # 状态查看脚本
-│   ├── ai-sync.js               # 云端同步脚本
-│   ├── g1-check.js              # G1 开门三件事检查
-│   ├── g2-check.js              # G2 双门禁同步任务清单
-│   ├── g3-error.js              # G3 错误五步法提炼
-│   ├── g4-check.js              # G4 离场检查自检清单
-│   ├── workstate-update.js      # 自动更新 WORKSTATE.md
-│   └── changelog-append.js      # 自动追加 changelog/LOG.md
-├── hooks/                       # Hook 强制执行脚本（自动调用脚本）
-│   ├── pre-tool-use.js          # PreToolUse Hook - 调用 g1-check.js
-│   ├── post-tool-use.js         # PostToolUse Hook - 调用 g2-check.js + changelog-append.js
-│   └── stop.js                  # Stop Hook - 调用 g4-check.js
-├── skills/coordination/         # 技能定义 + 模板
-│   ├── SKILL.md                 # 架构规范（需写入 CLAUDE.md）
-│   └── assets/                  # 初始化模板
+├── src/                          # 源代码
+│   ├── hooks/                    # Hook 强制执行脚本（自动调用脚本）
+│   │   ├── pre-tool-use.js       # PreToolUse Hook - 调用 g1-check.js
+│   │   ├── post-tool-use.js      # PostToolUse Hook - 调用 g2-check.js + changelog-append.js
+│   │   └── stop.js               # Stop Hook - 调用 g4-check.js
+│   └── scripts/                  # 检查脚本（节省 token）
+│       ├── ai-init.js            # 初始化对接层脚本
+│       ├── ai-status.js          # 状态查看脚本
+│       ├── ai-sync.js            # 云端同步脚本
+│       ├── g1-check.js           # G1 开门三件事检查
+│       ├── g2-check.js           # G2 双门禁同步任务清单
+│       ├── g3-error.js           # G3 错误五步法提炼
+│       ├── g4-check.js           # G4 离场检查自检清单
+│       ├── workstate-update.js   # 自动更新 WORKSTATE.md
+│       └── changelog-append.js   # 自动追加 changelog/LOG.md
+├── commands/                     # 命令定义（调用脚本）
+│   ├── init.md                   # /ai:init - 初始化对接层
+│   ├── status.md                 # /ai:status - 查看状态
+│   ├── sync.md                   # /ai:sync - 同步云端
+│   ├── error.md                  # /ai:error - 记录错误
+│   └── uninstall.md              # /ai:uninstall - 清理对接层
+├── skills/coordination/          # 技能定义 + 模板
+│   ├── SKILL.md                  # 架构规范（需写入 CLAUDE.md）
+│   └── assets/                   # 初始化模板
 │       ├── README.md
 │       ├── WORKSTATE.md
 │       ├── STRUCTURE.md
@@ -482,8 +483,8 @@ ai-coordination/
 │           ├── raw/ERR-000.md
 │           └── distilled/meta-rules.md
 ├── COMPETITIVE_ANALYSIS.md       # 竞争格局分析报告
-├── SCI_GUIDE.md                 # 架构思想与原理详解
-└── INSTALL.md                   # 详细部署文档
+├── SCI_GUIDE.md                  # 架构思想与原理详解
+└── INSTALL.md                    # 详细部署文档
 ```
 
 ## 文档

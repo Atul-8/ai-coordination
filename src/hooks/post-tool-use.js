@@ -87,11 +87,27 @@ try {
   // 提示已自动追加 changelog
   console.log('');
   console.log('📝 changelog/LOG.md 已自动追加本次操作记录');
+
+  // G2.5 验证提醒：如果修改了底层代码，提醒上层需要重新验证
+  const changedLayer = detectLayerFromResult(filePath);
+  const layersDependingOn = {
+    shared: ['core', 'interface', 'presentation'],
+    core: ['interface', 'presentation'],
+    interface: ['presentation']
+  };
+
+  if (changedLayer && layersDependingOn[changedLayer]) {
+    console.log('');
+    console.log('⚠️ G2.5 验证提醒：' + changedLayer + ' 层已变更，依赖它的上层需要重新验证');
+    console.log('   受影响的层: ' + layersDependingOn[changedLayer].join(', '));
+    console.log('   如需重新验证，运行: node src/scripts/workstate-update.js . verify <layer>');
+  }
+
   console.log('');
 
   // 提供快速更新 WORKSTATE 的命令
   console.log('💡 快速更新中断点：');
-  console.log(`   node scripts/workstate-update.js "${projectRoot}" interrupt "${filePath}" "修改文件" "继续开发"`);
+  console.log(`   node src/scripts/workstate-update.js "${projectRoot}" interrupt "${filePath}" "修改文件" "继续开发"`);
   console.log('');
 
   process.exit(0);
@@ -100,4 +116,30 @@ try {
   console.log('⚠️ G2 提醒：代码已变更，请同步 .ai');
   console.log('');
   process.exit(0);
+}
+
+// 辅助函数：检测文件所属层级
+function detectLayerFromResult(filePath) {
+  const normalized = filePath.toLowerCase().replace(/\\/g, '/');
+
+  if (normalized.includes('ui/') || normalized.includes('components/') || normalized.includes('pages/') || normalized.includes('views/') || normalized.includes('src/app/') || normalized.includes('src/components/')) {
+    return 'presentation';
+  }
+  if (normalized.includes('api/') || normalized.includes('routes/') || normalized.includes('controllers/') || normalized.includes('handlers/') || normalized.includes('interface/') || normalized.includes('adapters/')) {
+    return 'interface';
+  }
+  if (normalized.includes('core/') || normalized.includes('domain/') || normalized.includes('services/') || normalized.includes('business/') || normalized.includes('logic/') || normalized.includes('models/')) {
+    return 'core';
+  }
+  if (normalized.includes('shared/') || normalized.includes('utils/') || normalized.includes('lib/') || normalized.includes('common/') || normalized.includes('helpers/') || normalized.includes('constants/')) {
+    return 'shared';
+  }
+  if (normalized.includes('test/') || normalized.includes('tests/') || normalized.includes('__tests__/') || normalized.includes('spec/') || normalized.includes('.test.') || normalized.includes('.spec.')) {
+    return 'testing';
+  }
+  if (normalized.includes('docs/') || normalized.endsWith('.md')) {
+    return 'docs';
+  }
+
+  return null;
 }

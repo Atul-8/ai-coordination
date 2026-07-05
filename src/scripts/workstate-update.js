@@ -11,6 +11,7 @@
  * - finish - 完成当前任务（移到「已完成」，清空「正在进行」）
  * - queue <task-desc> - 添加到「未完成队列」
  * - dequeue - 从「未完成队列」取出第一个作为「正在进行」
+ * - verify <layer> - 标记某层验证通过（shared/core/interface/presentation）
  *
  * 输出：JSON 格式的更新结果
  */
@@ -152,9 +153,59 @@ switch (action) {
     }
     break;
 
+  case 'verify':
+    // 标记某层验证通过（G2.5 先验证后开发）
+    // 用法：node workstate-update.js . verify shared
+    const verifyLayer = args[0];
+    const validLayers = ['shared', 'core', 'interface', 'presentation'];
+
+    if (!verifyLayer || !validLayers.includes(verifyLayer)) {
+      result.errors.push('无效的层名: ' + (verifyLayer || '(空)') + '，有效值: ' + validLayers.join(', '));
+      break;
+    }
+
+    // 读取当前验证标记
+    const verifyMatch = content.match(/\[验证: ([^\]]+)\]/);
+    let verifyMap = {};
+
+    if (verifyMatch) {
+      // 解析已有标记，如 "shared✓ core✗"
+      verifyMatch[1].split(/\s+/).forEach(part => {
+        const layer = part.replace(/[✓✗]/g, '');
+        const passed = part.includes('✓');
+        if (validLayers.includes(layer)) {
+          verifyMap[layer] = passed;
+        }
+      });
+    }
+
+    // 标记该层为已验证
+    verifyMap[verifyLayer] = true;
+
+    // 生成新的验证标记字符串
+    const verifyStr = validLayers.map(l => l + (verifyMap[l] ? '✓' : '✗')).join(' ');
+    const newVerifyTag = `[验证: ${verifyStr}]`;
+
+    // 在「正在进行」任务行中追加或更新验证标记
+    if (verifyMatch) {
+      // 替换已有标记
+      content = content.replace(/\[验证: [^\]]+\]/, newVerifyTag);
+    } else {
+      // 在「正在进行」行末尾追加
+      content = content.replace(
+        /(- \[.+?\]) 进度: (\d+% \| 上次更新: .+)/,
+        `$1 进度: $2 ${newVerifyTag}`
+      );
+    }
+
+    result.updated = true;
+    result.verifiedLayer = verifyLayer;
+    result.verificationStatus = verifyMap;
+    break;
+
   default:
     result.errors.push('未知操作: ' + action);
-    result.errors.push('可用操作: start, progress, interrupt, finish, queue, dequeue');
+    result.errors.push('可用操作: start, progress, interrupt, finish, queue, dequeue, verify');
 }
 
 // 写入更新后的内容

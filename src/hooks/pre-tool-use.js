@@ -80,6 +80,26 @@ try {
     console.log('🔄 Git 同步：' + result.gitSync.action);
   }
 
+  // G2.5 先验证后开发 — 检查底层依赖是否已验证
+  const targetLayer = detectLayer(filePath);
+  const layerDeps = {
+    presentation: ['interface', 'shared'],
+    interface: ['core', 'shared'],
+    core: ['shared'],
+    shared: [],
+    testing: [],
+    docs: []
+  };
+
+  if (targetLayer && layerDeps[targetLayer] && layerDeps[targetLayer].length > 0 && result.layerVerification) {
+    const unverifiedDeps = layerDeps[targetLayer].filter(dep => !result.layerVerification[dep]);
+    if (unverifiedDeps.length > 0) {
+      console.log('⚠️ G2.5 验证提醒：即将修改 ' + targetLayer + ' 层代码，但底层依赖未验证');
+      console.log('   未验证的层: ' + unverifiedDeps.join(', '));
+      console.log('   运行: node src/scripts/workstate-update.js . verify <layer>');
+    }
+  }
+
   process.exit(0);
 } catch (e) {
   // 脚本执行失败，使用简化版检查
@@ -92,4 +112,30 @@ try {
     }
   }
   process.exit(0);
+}
+
+// 辅助函数：检测文件所属层级
+function detectLayer(filePath) {
+  const normalized = filePath.toLowerCase().replace(/\\/g, '/');
+
+  if (normalized.includes('ui/') || normalized.includes('components/') || normalized.includes('pages/') || normalized.includes('views/') || normalized.includes('src/app/') || normalized.includes('src/components/')) {
+    return 'presentation';
+  }
+  if (normalized.includes('api/') || normalized.includes('routes/') || normalized.includes('controllers/') || normalized.includes('handlers/') || normalized.includes('interface/') || normalized.includes('adapters/')) {
+    return 'interface';
+  }
+  if (normalized.includes('core/') || normalized.includes('domain/') || normalized.includes('services/') || normalized.includes('business/') || normalized.includes('logic/') || normalized.includes('models/')) {
+    return 'core';
+  }
+  if (normalized.includes('shared/') || normalized.includes('utils/') || normalized.includes('lib/') || normalized.includes('common/') || normalized.includes('helpers/') || normalized.includes('constants/')) {
+    return 'shared';
+  }
+  if (normalized.includes('test/') || normalized.includes('tests/') || normalized.includes('__tests__/') || normalized.includes('spec/') || normalized.includes('.test.') || normalized.includes('.spec.')) {
+    return 'testing';
+  }
+  if (normalized.includes('docs/') || normalized.endsWith('.md')) {
+    return 'docs';
+  }
+
+  return null;
 }

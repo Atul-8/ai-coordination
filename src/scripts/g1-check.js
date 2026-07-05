@@ -51,6 +51,21 @@ if (fs.existsSync(workstatePath)) {
     interruption: interruptionMatch ? interruptionMatch[0].trim() : null,
     lastUpdate: content.match(/上次更新: (\d{4}-\d{2}-\d{2} \d{2}:\d{2})/)?.[1] || null
   };
+
+  // 解析 G2.5 验证标记
+  const verifyMatch = content.match(/\[验证: ([^\]]+)\]/);
+  if (verifyMatch) {
+    const verifyMap = {};
+    const validLayers = ['shared', 'core', 'interface', 'presentation'];
+    verifyMatch[1].split(/\s+/).forEach(part => {
+      const layer = part.replace(/[✓✗]/g, '');
+      const passed = part.includes('✓');
+      if (validLayers.includes(layer)) {
+        verifyMap[layer] = passed;
+      }
+    });
+    result.layerVerification = verifyMap;
+  }
 } else {
   result.workstate = { exists: false };
   result.errors.push('WORKSTATE.md 不存在');

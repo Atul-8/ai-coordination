@@ -112,6 +112,51 @@ result.tasks.push({
   reminder: '若有新增/变更业务需求，新建 requirements/REQ-NNN.md'
 });
 
+// 6. G2.5 先验证后开发 — 检查底层依赖是否已验证
+// 依赖关系：presentation → interface → core → shared
+const layerDeps = {
+  presentation: ['interface', 'shared'],
+  interface: ['core', 'shared'],
+  core: ['shared'],
+  shared: []
+};
+
+// 读取 WORKSTATE.md 中的验证标记
+let verifyMap = {};
+const workstatePath = path.join(aiDir, 'WORKSTATE.md');
+if (fs.existsSync(workstatePath)) {
+  const wsContent = fs.readFileSync(workstatePath, 'utf-8');
+  const verifyMatch = wsContent.match(/\[验证: ([^\]]+)\]/);
+  if (verifyMatch) {
+    const validLayers = ['shared', 'core', 'interface', 'presentation'];
+    verifyMatch[1].split(/\s+/).forEach(part => {
+      const layer = part.replace(/[✓✗]/g, '');
+      const passed = part.includes('✓');
+      if (validLayers.includes(layer)) {
+        verifyMap[layer] = passed;
+      }
+    });
+  }
+}
+
+// 检查变更层的底层依赖是否已验证
+layersWithChanges.forEach(layer => {
+  const deps = layerDeps[layer];
+  if (deps && deps.length > 0) {
+    const unverifiedDeps = deps.filter(dep => !verifyMap[dep]);
+    if (unverifiedDeps.length > 0) {
+      result.tasks.push({
+        type: 'verify-dependencies',
+        priority: 'high',
+        description: `G2.5 验证提醒：${layer} 层的底层依赖未验证`,
+        layer: layer,
+        unverifiedDeps: unverifiedDeps,
+        reminder: `开发 ${layer} 层代码前，必须先验证 ${unverifiedDeps.join(', ')} 层的依赖可用。运行：node src/scripts/workstate-update.js . verify <layer>`
+      });
+    }
+  }
+});
+
 // 输出结果
 console.log(JSON.stringify(result, null, 2));
 

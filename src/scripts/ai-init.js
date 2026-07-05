@@ -47,7 +47,7 @@ const structure = {
 
 // 获取模板目录（从 ai-coordination 安装位置）
 const scriptDir = __dirname;
-const templateDir = path.join(scriptDir, '..', 'skills', 'coordination', 'assets');
+const templateDir = path.join(scriptDir, '..', '..', 'skills', 'coordination', 'assets');
 
 // 创建目录和文件
 Object.entries(structure).forEach(([relPath, defaultValue]) => {

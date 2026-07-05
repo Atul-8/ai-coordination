@@ -34,6 +34,7 @@ if (!fs.existsSync(g4Script)) {
   console.log('[ ] 本次架构变更是否已更新到 STRUCTURE.md？');
   console.log('[ ] 本次错误是否已按五步法记录？');
   console.log('[ ] 本次代码变更是否已运行对应层测试？');
+  console.log('[ ] 本次开发的各层验证是否已完成？（G2.5 先验证后开发）');
   console.log('[ ] 若 .ai/ 有远程仓库，是否已 git push？');
   console.log('');
   console.log('自检没过就结束会话 = 遗留问题给未来的自己');

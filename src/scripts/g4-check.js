@@ -249,6 +249,53 @@ result.checks.push({
   action: '确认本次代码变更已运行对应层测试'
 });
 
+// 8. G2.5 层验证完整性检查
+const verifyWsPath = path.join(aiDir, 'WORKSTATE.md');
+if (fs.existsSync(verifyWsPath)) {
+  const wsContent = fs.readFileSync(verifyWsPath, 'utf-8');
+  const verifyMatch = wsContent.match(/\[验证: ([^\]]+)\]/);
+  const inProgressMatch = wsContent.match(/## 正在进行\n(- .+\n)/);
+
+  if (verifyMatch && inProgressMatch) {
+    const validLayers = ['shared', 'core', 'interface', 'presentation'];
+    const verifyMap = {};
+    verifyMatch[1].split(/\s+/).forEach(part => {
+      const layer = part.replace(/[✓✗]/g, '');
+      const passed = part.includes('✓');
+      if (validLayers.includes(layer)) {
+        verifyMap[layer] = passed;
+      }
+    });
+
+    const unverifiedLayers = validLayers.filter(l => verifyMap[l] === false);
+    const allVerified = unverifiedLayers.length === 0;
+
+    result.checks.push({
+      id: 'layer-verification',
+      name: 'G2.5 层验证完整性',
+      status: allVerified ? 'pass' : 'warning',
+      detail: allVerified
+        ? '所有层验证已通过'
+        : `未验证的层: ${unverifiedLayers.join(', ')}`,
+      verificationStatus: verifyMap,
+      action: allVerified ? null : `运行: node src/scripts/workstate-update.js . verify <layer>`
+    });
+
+    if (!allVerified) {
+      result.warnings.push('部分层验证未完成（G2.5 先验证后开发）');
+    }
+  } else {
+    // 没有验证标记，提醒但不警告
+    result.checks.push({
+      id: 'layer-verification',
+      name: 'G2.5 层验证完整性',
+      status: 'manual',
+      detail: '未找到验证标记',
+      action: '若本次涉及多层开发，请在 WORKSTATE.md 中记录验证状态'
+    });
+  }
+}
+
 // 计算总体状态
 const failedCount = result.checks.filter(c => c.status === 'fail').length;
 const warningCount = result.checks.filter(c => c.status === 'warning').length;

@@ -14,7 +14,7 @@ The user provides: $ARGUMENTS (optional remote Git URL)
 
 1. Call the initialization script:
    ```bash
-   node "F:/AI/ai-coordination/scripts/ai-init.js" "$PROJECT_ROOT" "$ARGUMENTS"
+   node "$(dirname "$0")/../src/scripts/ai-init.js" "$PROJECT_ROOT" "$ARGUMENTS"
    ```
 
 2. Parse the JSON output and report the result to the user:
