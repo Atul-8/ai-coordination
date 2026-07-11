@@ -5,12 +5,15 @@
 | 层级 | 目录 | 说明 |
 |------|------|------|
 | coordination | `.ai/` | 开发状态持久化、上下文容灾 |
-| presentation | `src/presentation/` | 主窗口、UI 组件 |
-| interface | `src/interface/` | 通信客户端、协议适配 |
-| core | `src/core/` | IPC 框架、核心算法 |
-| shared | `src/shared/` | 类型定义、常量 |
-| testing | `src/testing/` | 各层测试 |
-| docs | `docs/` | 使用指南、需求梳理、数据对比、项目介绍 |
+| presentation | （待识别） | 用户交互、视图渲染 |
+| interface | （待识别） | 对外接口、协议适配 |
+| core | （待识别） | 业务逻辑、核心算法 |
+| shared | （待识别） | 常量、工具函数、通用类型 |
+| testing | （待识别） | 各层测试 |
+| docs | （待识别） | 使用指南、需求梳理、数据对比、项目介绍 |
+
+> 上表「目录」列为占位符，由 `/ai:init` 自动扫描项目结构后回填实际路径；
+> 也可手动编辑为本项目的真实分层映射，并补全下方「关键模块」表。
 
 ## 关键模块
 

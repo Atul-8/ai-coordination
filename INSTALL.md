@@ -328,6 +328,16 @@ yourname/
 4. 所有成员使用同一个 `/ai:sync` 目标
 5. 工作前先同步拉取最新状态，工作后及时推送更新
 
+### Hook 强制执行（可选）
+
+如果发现 Claude 偶尔不严格执行 G1–G4 规则，可启用 Hook 方案强制拦截。ai-coordination 提供三个 Hook 脚本（位于 `src/hooks/`）：
+
+- **PreToolUse**（Write/Edit 前）：G1 检查 + G2 登记 + G2.5 底层依赖验证提醒
+- **PostToolUse**（Write/Edit 后）：G2 同步提醒 + 自动追加 changelog
+- **Stop**（会话结束前）：G4 离场检查自检清单
+
+将对应配置添加到 `~/.claude/settings.json` 的 `hooks` 字段，`command` 指向本仓库的 `src/hooks/*.js`。完整配置示例见 [README.md — Hook 强制执行方案](README.md)。
+
 ---
 
 ## 常见问题
@@ -405,6 +415,21 @@ skills 提供工具触发，CLAUDE.md 提供强制执行。两者缺一不可。
 ai-coordination/
 ├── .claude-plugin/
 │   └── plugin.json              # 插件元数据
+├── src/                         # 源代码（Hook + 检查脚本）
+│   ├── hooks/                   # Hook 强制执行脚本
+│   │   ├── pre-tool-use.js      # PreToolUse — G1 检查 + G2.5 验证提醒
+│   │   ├── post-tool-use.js     # PostToolUse — G2 同步提醒 + changelog 追加
+│   │   └── stop.js              # Stop — G4 离场检查
+│   └── scripts/                 # 检查脚本（节省 token）
+│       ├── ai-init.js           # 初始化对接层
+│       ├── ai-status.js         # 状态查看
+│       ├── ai-sync.js           # 云端同步
+│       ├── g1-check.js          # G1 开门三件事检查
+│       ├── g2-check.js          # G2 双门禁同步清单
+│       ├── g3-error.js          # G3 错误五步法提炼
+│       ├── g4-check.js          # G4 离场检查
+│       ├── workstate-update.js  # 更新 WORKSTATE.md
+│       └── changelog-append.js  # 追加 changelog/LOG.md
 ├── commands/                    # → 部署到 ~/.claude/commands/ai/
 │   ├── init.md
 │   ├── status.md
@@ -422,6 +447,7 @@ ai-coordination/
 │       └── errors/
 │           ├── raw/ERR-000.md
 │           └── distilled/meta-rules.md
+├── COMPETITIVE_ANALYSIS.md      # 竞争格局分析
 ├── README.md
 ├── SCI_GUIDE.md                 # 科普指南
 └── INSTALL.md                   # 本文件

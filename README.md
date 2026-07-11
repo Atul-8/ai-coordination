@@ -171,7 +171,7 @@ ai-coordination 提供三个 Hook 脚本，通过 Claude Code 的 Hook 机制强
 
 | Hook | 触发时机 | 强制执行内容 |
 |------|---------|-------------|
-| **PreToolUse** | Write/Edit 调用前 | G2 第一步：写代码前必须在 WORKSTATE.md 登记 |
+| **PreToolUse** | Write/Edit 调用前 | G1 检查 + G2 登记 + G2.5 底层依赖验证提醒 |
 | **PostToolUse** | Write/Edit 调用后 | G2 后续步骤：提醒更新 .ai 文件、运行测试 |
 | **Stop** | 会话结束前 | G4 离场检查：输出自检清单 |
 
@@ -187,7 +187,7 @@ ai-coordination 提供三个 Hook 脚本，通过 Claude Code 的 Hook 机制强
       "hooks": [
         {
           "type": "command",
-          "command": "node \"F:/AI/ai-coordination/src/hooks/pre-tool-use.js\""
+          "command": "node \"<plugin-dir>/src/hooks/pre-tool-use.js\""
         }
       ]
     }
@@ -198,7 +198,7 @@ ai-coordination 提供三个 Hook 脚本，通过 Claude Code 的 Hook 机制强
       "hooks": [
         {
           "type": "command",
-          "command": "node \"F:/AI/ai-coordination/src/hooks/post-tool-use.js\""
+          "command": "node \"<plugin-dir>/src/hooks/post-tool-use.js\""
         }
       ]
     }
@@ -208,7 +208,7 @@ ai-coordination 提供三个 Hook 脚本，通过 Claude Code 的 Hook 机制强
       "hooks": [
         {
           "type": "command",
-          "command": "node \"F:/AI/ai-coordination/src/hooks/stop.js\""
+          "command": "node \"<plugin-dir>/src/hooks/stop.js\""
         }
       ]
     }
@@ -216,7 +216,7 @@ ai-coordination 提供三个 Hook 脚本，通过 Claude Code 的 Hook 机制强
 }
 ```
 
-> **注意**：Windows 用户需将路径改为实际安装位置，如 `C:/Users/xxx/.claude/plugins/...`
+> **注意**：将 `<plugin-dir>` 替换为本仓库实际的克隆/安装路径，如 `<plugin-dir>`、`C:/Users/xxx/.claude/plugins/ai-coordination` 等。
 
 ### 工作原理
 
@@ -225,6 +225,7 @@ ai-coordination 提供三个 Hook 脚本，通过 Claude Code 的 Hook 机制强
    - 检查目标文件是否在 `.ai/` 目录外（排除 .ai 文件本身的更新）
    - 检查 `WORKSTATE.md` 是否有「正在进行」的任务登记
    - **没有登记则阻止操作**，输出提示要求先登记
+   - **G2.5 验证提醒**：识别目标文件所属层级，若其底层依赖尚未验证，输出提醒（不阻止操作）
 
 2. **PostToolUse Hook**：
    - 代码写入成功后输出提醒
@@ -258,6 +259,11 @@ ai-coordination 提供三个 Hook 脚本，通过 Claude Code 的 Hook 机制强
 | `g2-check.js` | `src/scripts/` | G2 双门禁同步任务清单 | JSON |
 | `g3-error.js` | `src/scripts/` | G3 错误五步法提炼（生成 ERR 文件） | JSON |
 | `g4-check.js` | `src/scripts/` | G4 离场检查自检清单 | JSON |
+| `ai-init.js` | `src/scripts/` | 初始化对接层目录 | JSON |
+| `ai-status.js` | `src/scripts/` | 汇总输出项目状态 | JSON |
+| `ai-sync.js` | `src/scripts/` | 同步到云端 Git 仓库 | JSON |
+| `workstate-update.js` | `src/scripts/` | 更新 WORKSTATE.md（任务/进度/中断点） | JSON |
+| `changelog-append.js` | `src/scripts/` | 追加 changelog/LOG.md 操作记录 | JSON |
 
 ### 工作原理
 
@@ -282,36 +288,36 @@ Hook 脚本调用检查脚本，脚本执行以下操作：
 
 ```bash
 # 初始化对接层
-node F:/AI/ai-coordination/src/scripts/ai-init.js [project-root] [remote-url]
+node <plugin-dir>/src/scripts/ai-init.js [project-root] [remote-url]
 
 # 查看状态
-node F:/AI/ai-coordination/src/scripts/ai-status.js [project-root]
+node <plugin-dir>/src/scripts/ai-status.js [project-root]
 
 # G1 开门检查
-node F:/AI/ai-coordination/src/scripts/g1-check.js [project-root]
+node <plugin-dir>/src/scripts/g1-check.js [project-root]
 
 # G2 同步任务清单
-node F:/AI/ai-coordination/src/scripts/g2-check.js [project-root] [changed-files]
+node <plugin-dir>/src/scripts/g2-check.js [project-root] [changed-files]
 
 # G3 错误记录
-node F:/AI/ai-coordination/src/scripts/g3-error.js [project-root] [error-type] [error-message] [affected-files]
+node <plugin-dir>/src/scripts/g3-error.js [project-root] [error-type] [error-message] [affected-files]
 
 # G4 离场检查
-node F:/AI/ai-coordination/src/scripts/g4-check.js [project-root]
+node <plugin-dir>/src/scripts/g4-check.js [project-root]
 
 # 同步到云端
-node F:/AI/ai-coordination/src/scripts/ai-sync.js [project-root] [remote-url]
+node <plugin-dir>/src/scripts/ai-sync.js [project-root] [remote-url]
 
 # 更新工作状态
-node F:/AI/ai-coordination/src/scripts/workstate-update.js [project-root] start "任务描述"
-node F:/AI/ai-coordination/src/scripts/workstate-update.js [project-root] progress 50
-node F:/AI/ai-coordination/src/scripts/workstate-update.js [project-root] interrupt "file.py:123" "正在修改" "继续完成"
-node F:/AI/ai-coordination/src/scripts/workstate-update.js [project-root] finish
-node F:/AI/ai-coordination/src/scripts/workstate-update.js [project-root] queue "新任务"
-node F:/AI/ai-coordination/src/scripts/workstate-update.js [project-root] dequeue
+node <plugin-dir>/src/scripts/workstate-update.js [project-root] start "任务描述"
+node <plugin-dir>/src/scripts/workstate-update.js [project-root] progress 50
+node <plugin-dir>/src/scripts/workstate-update.js [project-root] interrupt "file.py:123" "正在修改" "继续完成"
+node <plugin-dir>/src/scripts/workstate-update.js [project-root] finish
+node <plugin-dir>/src/scripts/workstate-update.js [project-root] queue "新任务"
+node <plugin-dir>/src/scripts/workstate-update.js [project-root] dequeue
 
 # 追加操作日志
-node F:/AI/ai-coordination/src/scripts/changelog-append.js [project-root] "完成" "修改文件" "file1,file2"
+node <plugin-dir>/src/scripts/changelog-append.js [project-root] "完成" "修改文件" "file1,file2"
 ```
 
 输出均为 JSON 格式，便于 Claude 解析或人工查看。
