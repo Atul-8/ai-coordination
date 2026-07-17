@@ -26,6 +26,20 @@ description: >
 > 以下规则是**铁律**，不是建议。违反任意一条即为失职。
 > 任何时候你觉得"这不重要可以跳过"，**你错了，必须执行。**
 
+### G0 — PM 路由前置（强制默认入口）
+
+PM 是任何开发会话的**唯一默认入口**。会话以 PM 的 system prompt 启动（`.claude/settings.json` 的 `"agent": "pm"`，或 `claude --agent pm`）。PM 在内部执行 G1-G4，本节其余铁律对 PM 同样强制生效。
+
+- **常驻语义**：PM 的"常驻"= 文件驻留 `.claude/agents/` + `memory: project` 跨会话沉淀知识，不是一直在线的进程（subagent 每次调用都是新实例）。
+- **调度用 Agent 工具**（不是 Task）。专家 subagent 继承 G1-G4。
+- **协作模式**：默认**顺序委派**（PM 串行调度，每次拿结果再决定下一步）；双向通信需启用 `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`。
+- **生命周期**：resident（文件在 `.claude/agents/`，自动可调度）/ on-demand（在 `.ai/agents/stash/`，PM 调度前 `agent-registry.js activate <name>` 上线，几秒热重载）。
+- **META 全局化**：所有 META 规则集中存于全局仓库（默认 `C:\.ai_meta`，env `AI_META_DIR` 可配；Unix `~/.ai_meta`），项目通过脚本读取重定向只读引用；PM 提炼的 META 直接写全局。配套软件 **ai-meta-sync** 负责跨设备 git 同步——**有它则多机共享，无它则单机使用，本 skill 两种情况都正常工作**。
+- **任务表驱动**：开发者通过 `/ai:pm` 提需求 → PM 归类写入任务表 → 专家按任务表各干各的、互不干扰。
+- **全新 `.claude/agents/` 目录需重启会话**才被扫描——PM 必须作为种子常驻，后续 on-demand agent 才能热上线。
+
+**对外接口**：开发者只需 `/ai:pm`（任何需求 / 任务对接 PM）。其余命令（`/ai:init` `/ai:status` `/ai:agents` `/ai:fetch` `/ai:dispatch` 等）为 **PM 内部工具**，不对开发者暴露。
+
 ### G1 — 会话开门三件事（项目含 .ai/ 时，做任何编码之前）
 
 1. **判断当前会话类型**：是否为软件项目开发？
@@ -313,12 +327,19 @@ presentation      interface          core
 从 raw 中提炼的通用规则汇总表：
 
 ```markdown
-### META-XXX: 规则标题
+### META-NNN-CATEGORY: 规则标题
 
 - **规则**: 通用规则描述
 - **适用场景**: 哪类代码/场景需要遵守
 - **源错误**: ERR-NNN（可跨项目引用）
 - **检查方式**: 如何在代码审查中验证
+- **类别(category)**: <受控词表之一>
+- **关联层(layer)**: core, interface
+- **关联专家(applies_to)**: <专家 slug>
+- **触发关键词(keywords)**: <检索关键词>
+
+> CATEGORY 受控词表：`ASYNC | SECURITY | CONCURRENCY | DEPENDENCY | LAYERING | API_CONTRACT | DATA_INTEGRITY | ERROR_HANDLING | TESTING | PERFORMANCE | BUILD | STATE_MGMT`
+> 类别 / 关联层 / 关联专家 / 触发关键词为必填（G3 提炼时缺一不可，供 `meta-retriever.js` 检索，为未来 RAG 预留 `embedding` 字段）。
 ```
 
 **跨项目传播**：新项目只需复制 `distilled/meta-rules.md` 即可继承防线。

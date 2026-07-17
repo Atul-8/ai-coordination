@@ -61,6 +61,26 @@ presentation      interface          core
 | 开发过程不可追溯 | 操作履历、需求追踪、结构地图全程记录 |
 | 多设备开发状态不同步 | 独立 Git 仓库云同步，多机无缝续接 |
 | 多设备并行开发导致编号冲突 | 自动检测冲突，本地编号顺延，确保全局唯一 |
+| 遇到不同领域问题不会切专家，单体硬扛 | **[新]** PM 编排 + 按项目驻场专家 + 按需上线 |
+| META 规则笼统，无法按类检索挂载 | **[新]** 分类 META（受控词表）+ 关键词检索，预留向量 RAG |
+
+## 调度编排层（v1.1 新增）
+
+在七层架构之上新增一层「调度编排」，把"问题 → 对的专家"自动化：
+
+```
+用户请求 → [常驻 PM agent] 解析&分类 → 检索本地 Agent Registry
+           → 驻场专家直接调度 / 按需专家(测试·安全)事件触发上线
+           → 顺序委派编排（专家 → 测试 → 回流 → 修改）→ 提炼分类 META
+```
+
+- **常驻 PM**：唯一默认入口（G0 路由），`memory: project` 跨会话沉淀项目认知。
+- **专家双生命周期**：resident（`.claude/agents/`，自动可调度）/ on-demand（`.ai/agents/stash/`，PM 调度前 `activate` 上线）。
+- **三级来源（本地优先）**：项目 `.ai/agents/` → 用户全局 `~/.ai-coordination/agents/` → 远程 `agency-agents-zh` 按需拉取（`/ai:fetch`）。
+- **分类 META**：规则带 category / layer / keywords，`meta-retriever.js` 关键词检索，为未来向量 RAG 预留 `embedding` 字段。
+- **零运行时依赖**：所有脚本仅用 Node 内置模块。
+
+> 详见 `skills/coordination/assets/agents/README.md` 与 SKILL.md 的 G0 路由。
 
 ## 安装
 
@@ -346,11 +366,20 @@ node <plugin-dir>/src/scripts/changelog-append.js [project-root] "完成" "修�
 
 | 命令 | 说明 |
 |------|------|
-| `/ai:init` | 初始化项目 `.ai/` 对接层目录 |
-| `/ai:status` | 查看当前工作状态和对接层信息 |
-| `/ai:error <描述>` | 记录错误并按五步法提炼 META 规则 |
-| `/ai:sync [remote-url]` | 同步 `.ai/` 目录到云端 Git 仓库 |
-| `/ai:uninstall` | 清理项目的 `.ai/` 对接层目录 |
+| `/ai:pm <需求>` | **唯一对外入口** —— 任何需求/任务交给 PM 归类、写任务表、调度专家执行 |
+
+> 以下为 **PM 内部工具**（开发者通常无需直接使用，由 PM 自行调用）：
+>
+> | 内部命令 | 用途 |
+> |---------|------|
+> | `/ai:init` | 初始化对接层（PM 首次启用） |
+> | `/ai:status` | 查看工作状态 |
+> | `/ai:agents` | 管理 agent registry |
+> | `/ai:fetch` | 按需拉取专家 |
+> | `/ai:dispatch` | 调度分析 |
+> | `/ai:error` | 手动补录错误 |
+> | `/ai:sync` | 同步对接层 |
+> | `/ai:uninstall` | 清理对接层 |
 
 ### 典型工作流
 
@@ -461,8 +490,8 @@ ai-coordination/
 │   │   ├── pre-tool-use.js       # PreToolUse Hook - 调用 g1-check.js
 │   │   ├── post-tool-use.js      # PostToolUse Hook - 调用 g2-check.js + changelog-append.js
 │   │   └── stop.js               # Stop Hook - 调用 g4-check.js
-│   └── scripts/                  # 检查脚本（节省 token）
-│       ├── ai-init.js            # 初始化对接层脚本
+│   └── scripts/                  # 检查脚本（节省 token，零依赖）
+│       ├── ai-init.js            # 初始化对接层（含 .ai/agents/）
 │       ├── ai-status.js          # 状态查看脚本
 │       ├── ai-sync.js            # 云端同步脚本
 │       ├── g1-check.js           # G1 开门三件事检查
@@ -470,24 +499,44 @@ ai-coordination/
 │       ├── g3-error.js           # G3 错误五步法提炼
 │       ├── g4-check.js           # G4 离场检查自检清单
 │       ├── workstate-update.js   # 自动更新 WORKSTATE.md
-│       └── changelog-append.js   # 自动追加 changelog/LOG.md
+│       ├── changelog-append.js   # 自动追加 changelog/LOG.md
+│       ├── meta-index.js         # [新] META 规则索引生成（md→json）
+│       ├── meta-retriever.js     # [新] META 规则检索（关键词档，预留向量 RAG）
+│       ├── meta-classify.js      # [新] META 规则分类建议（受控词表）
+│       ├── agent-registry.js     # [新] Agent 注册表（三级存储 + 双生命周期）
+│       ├── agent-roster.js       # [新] 项目结构 → 驻场专家提议
+│       ├── pm-dispatch.js        # [新] PM 调度链建议（任务 → 专家 + META）
+│       ├── agent-fetch.js        # [新] 从 agency-agents-zh 按需拉取专家
+│       └── lib/                  # [新] 共享模块
+│           ├── detect-layer.js   #     层级检测（DRY，4 处去重）
+│           └── agent-format.js   #     agent 框架封装（slug 化 / 注入前导）
 ├── commands/                     # 命令定义（调用脚本）
 │   ├── init.md                   # /ai:init - 初始化对接层
 │   ├── status.md                 # /ai:status - 查看状态
 │   ├── sync.md                   # /ai:sync - 同步云端
 │   ├── error.md                  # /ai:error - 记录错误
+│   ├── agents.md                 # [新] /ai:agents - 管理 agent registry
+│   ├── fetch.md                  # [新] /ai:fetch - 按需拉取专家 agent
+│   ├── dispatch.md               # [新] /ai:dispatch - PM 调度分析
 │   └── uninstall.md              # /ai:uninstall - 清理对接层
 ├── skills/coordination/          # 技能定义 + 模板
-│   ├── SKILL.md                  # 架构规范（需写入 CLAUDE.md）
+│   ├── SKILL.md                  # 架构规范（含 G0 路由，需写入 CLAUDE.md）
 │   └── assets/                   # 初始化模板
 │       ├── README.md
 │       ├── WORKSTATE.md
 │       ├── STRUCTURE.md
 │       ├── changelog/LOG.md
 │       ├── requirements/REQ-000.md
-│       └── errors/
-│           ├── raw/ERR-000.md
-│           └── distilled/meta-rules.md
+│       ├── errors/
+│       │   ├── raw/ERR-000.md
+│       │   └── distilled/meta-rules.md   # 分类 META（RAG-ready 格式）
+│       └── agents/               # [新] 调度编排层种子资源
+│           ├── pm.md             #     项目经理（常驻，编排中枢）
+│           ├── embedded-firmware-engineer.md / pc-host-engineer.md
+│           ├── tester.md / security-engineer.md / code-reviewer.md / software-architect.md
+│           ├── registry.json     #     agent 注册表模板
+│           ├── ROSTER.md         #     驻场名单模板
+│           └── README.md         #     agents 目录说明
 ├── COMPETITIVE_ANALYSIS.md       # 竞争格局分析报告
 ├── SCI_GUIDE.md                  # 架构思想与原理详解
 └── INSTALL.md                    # 详细部署文档
