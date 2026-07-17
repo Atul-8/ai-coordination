@@ -9,6 +9,7 @@
 const fs = require('fs');
 const path = require('path');
 const { execSync } = require('child_process');
+const { detectLayerFromDir } = require('./lib/detect-layer');
 
 const projectRoot = process.argv[2] || process.cwd();
 const remoteUrl = process.argv[3] || '';
@@ -42,7 +43,11 @@ const structure = {
   'changelog/LOG.md': null,
   'requirements/': null,
   'errors/raw/': null,
-  'errors/distilled/meta-rules.md': null
+  'errors/distilled/meta-rules.md': null,
+  'TASKS.md': null,
+  'agents/registry.json': null,
+  'agents/ROSTER.md': null,
+  'agents/stash/': null
 };
 
 // 获取模板目录（从 ai-coordination 安装位置）
@@ -88,8 +93,8 @@ structureContent += '| 目录 | 推测层级 | 说明 |\n';
 structureContent += '|------|---------|------|\n';
 
 projectDirs.forEach(dir => {
-  const layer = detectLayer(dir);
-  structureContent += `| ${dir} | ${layer || '未确定'} | |\n';
+  const layer = detectLayerFromDir(dir);
+  structureContent += `| ${dir} | ${layer || '未确定'} | |\n`;
 });
 
 fs.writeFileSync(structurePath, structureContent);
@@ -130,6 +135,13 @@ if (fs.existsSync(gitignorePath)) {
 
 result.success = result.errors.length === 0;
 result.message = result.success ? '初始化成功' : '初始化失败';
+if (result.success) {
+  result.next_steps = [
+    'node src/scripts/agent-roster.js . --write  生成驻场名单',
+    'node src/scripts/meta-index.js .  生成 META 索引',
+    '启用 PM 编排：agent-registry.js add pm --source <plugin>/skills/coordination/assets/agents/pm.md --lifecycle resident，然后重启会话'
+  ];
+}
 
 console.log(JSON.stringify(result, null, 2));
 
@@ -238,27 +250,4 @@ function scanProjectDirs(projectRoot) {
   return dirs;
 }
 
-function detectLayer(dirPath) {
-  const normalized = dirPath.toLowerCase();
-
-  if (normalized.includes('ui') || normalized.includes('components') || normalized.includes('pages') || normalized.includes('views') || normalized.includes('app')) {
-    return 'presentation';
-  }
-  if (normalized.includes('api') || normalized.includes('routes') || normalized.includes('controllers') || normalized.includes('handlers') || normalized.includes('interface')) {
-    return 'interface';
-  }
-  if (normalized.includes('core') || normalized.includes('domain') || normalized.includes('services') || normalized.includes('business') || normalized.includes('models')) {
-    return 'core';
-  }
-  if (normalized.includes('shared') || normalized.includes('utils') || normalized.includes('lib') || normalized.includes('common') || normalized.includes('helpers')) {
-    return 'shared';
-  }
-  if (normalized.includes('test') || normalized.includes('tests') || normalized.includes('__tests__') || normalized.includes('spec')) {
-    return 'testing';
-  }
-  if (normalized.includes('docs') || normalized.includes('documentation')) {
-    return 'docs';
-  }
-
-  return null;
-}
+// detectLayer / detectLayerFromDir 已抽到 ./lib/detect-layer.js（DRY，四处去重）

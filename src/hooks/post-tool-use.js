@@ -7,6 +7,7 @@
 const { execSync } = require('child_process');
 const path = require('path');
 const fs = require('fs');
+const { detectLayer } = require('../scripts/lib/detect-layer');
 
 const toolName = process.env.CLAUDE_TOOL_NAME || '';
 const toolInput = JSON.parse(process.env.CLAUDE_TOOL_INPUT || '{}');
@@ -89,7 +90,7 @@ try {
   console.log('📝 changelog/LOG.md 已自动追加本次操作记录');
 
   // G2.5 验证提醒：如果修改了底层代码，提醒上层需要重新验证
-  const changedLayer = detectLayerFromResult(filePath);
+  const changedLayer = detectLayer(filePath);
   const layersDependingOn = {
     shared: ['core', 'interface', 'presentation'],
     core: ['interface', 'presentation'],
@@ -118,28 +119,4 @@ try {
   process.exit(0);
 }
 
-// 辅助函数：检测文件所属层级
-function detectLayerFromResult(filePath) {
-  const normalized = filePath.toLowerCase().replace(/\\/g, '/');
-
-  if (normalized.includes('ui/') || normalized.includes('components/') || normalized.includes('pages/') || normalized.includes('views/') || normalized.includes('src/app/') || normalized.includes('src/components/')) {
-    return 'presentation';
-  }
-  if (normalized.includes('api/') || normalized.includes('routes/') || normalized.includes('controllers/') || normalized.includes('handlers/') || normalized.includes('interface/') || normalized.includes('adapters/')) {
-    return 'interface';
-  }
-  if (normalized.includes('core/') || normalized.includes('domain/') || normalized.includes('services/') || normalized.includes('business/') || normalized.includes('logic/') || normalized.includes('models/')) {
-    return 'core';
-  }
-  if (normalized.includes('shared/') || normalized.includes('utils/') || normalized.includes('lib/') || normalized.includes('common/') || normalized.includes('helpers/') || normalized.includes('constants/')) {
-    return 'shared';
-  }
-  if (normalized.includes('test/') || normalized.includes('tests/') || normalized.includes('__tests__/') || normalized.includes('spec/') || normalized.includes('.test.') || normalized.includes('.spec.')) {
-    return 'testing';
-  }
-  if (normalized.includes('docs/') || normalized.endsWith('.md')) {
-    return 'docs';
-  }
-
-  return null;
-}
+// detectLayer 已抽到 ../scripts/lib/detect-layer.js（DRY，四处去重）

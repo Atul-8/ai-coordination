@@ -11,6 +11,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const { detectLayer } = require('./lib/detect-layer');
 
 const projectRoot = process.argv[2] || process.cwd();
 const changedFilesStr = process.argv[3] || '';
@@ -161,31 +162,7 @@ layersWithChanges.forEach(layer => {
 console.log(JSON.stringify(result, null, 2));
 
 // 辅助函数
-function detectLayer(filePath) {
-  const normalized = filePath.toLowerCase().replace(/\\/g, '/');
-
-  // 常见目录模式
-  if (normalized.includes('ui/') || normalized.includes('components/') || normalized.includes('pages/') || normalized.includes('views/') || normalized.includes('src/app/') || normalized.includes('src/components/')) {
-    return 'presentation';
-  }
-  if (normalized.includes('api/') || normalized.includes('routes/') || normalized.includes('controllers/') || normalized.includes('handlers/') || normalized.includes('interface/') || normalized.includes('adapters/')) {
-    return 'interface';
-  }
-  if (normalized.includes('core/') || normalized.includes('domain/') || normalized.includes('services/') || normalized.includes('business/') || normalized.includes('logic/') || normalized.includes('models/')) {
-    return 'core';
-  }
-  if (normalized.includes('shared/') || normalized.includes('utils/') || normalized.includes('lib/') || normalized.includes('common/') || normalized.includes('helpers/') || normalized.includes('constants/')) {
-    return 'shared';
-  }
-  if (normalized.includes('test/') || normalized.includes('tests/') || normalized.includes('__tests__/') || normalized.includes('spec/') || normalized.includes('.test.') || normalized.includes('.spec.')) {
-    return 'testing';
-  }
-  if (normalized.includes('docs/') || normalized.endsWith('.md') && !normalized.includes('.ai/')) {
-    return 'docs';
-  }
-
-  return null;
-}
+// detectLayer 已抽到 ./lib/detect-layer.js（DRY，四处去重）
 
 function getTestTypes(layers) {
   const testMap = {
