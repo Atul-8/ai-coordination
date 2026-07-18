@@ -21,7 +21,7 @@ The user provides: $ARGUMENTS（agent-key）
 1. 调用拉取脚本（默认入 stash 并登记 registry）：
 
    ```bash
-   node "$(dirname "$0")/../src/scripts/agent-fetch.js" "$PROJECT_ROOT" "$ARGUMENTS" --to stash
+   node "E:/AI/ai-coordination/src/scripts/agent-fetch.js" "$PWD" "$ARGUMENTS" --to stash
    ```
 
 2. 解析 JSON 输出，向用户报告：

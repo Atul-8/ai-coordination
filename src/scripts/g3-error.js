@@ -25,6 +25,7 @@ const affectedFiles = affectedFilesStr.split(',').filter(f => f.trim());
 const aiDir = path.join(projectRoot, '.ai');
 const errorsRawDir = path.join(aiDir, 'errors', 'raw');
 const metaRulesPath = path.join(aiDir, 'errors', 'distilled', 'meta-rules.md');
+const gitDir = path.join(aiDir, '.git');   // 顶层声明，供 getNextErrNumber() 与末尾 commit 共用
 
 // 检查 .ai/ 目录
 if (!fs.existsSync(aiDir)) {
@@ -42,8 +43,7 @@ if (!fs.existsSync(path.join(aiDir, 'errors', 'distilled'))) {
 
 // 获取下一个 ERR 编号
 function getNextErrNumber() {
-  // 先检查远程是否有更新（如果有 Git 仓库）
-  const gitDir = path.join(aiDir, '.git');
+  // 先检查远程是否有更新（如果有 Git 仓库）—— gitDir 用顶层声明
   if (fs.existsSync(gitDir)) {
     try {
       execSync('git fetch origin', { cwd: aiDir, stdio: 'pipe' });

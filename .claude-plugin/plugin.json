@@ -4,5 +4,14 @@
   "description": "业务对接层插件 — 上下文容灾、状态持久化、错误自我提炼、PM 调度编排、分类 META 规则",
   "author": { "name": "ai-coordination-team" },
   "license": "LGPL-3.0",
-  "keywords": ["coordination", "architecture", "error-knowledge", "seven-layer", "agents", "subagent", "pm", "rag", "meta-rules"]
+  "keywords": ["coordination", "architecture", "error-knowledge", "seven-layer", "agents", "subagent", "pm", "rag", "meta-rules"],
+  "agents": [
+    "./skills/coordination/assets/agents/pm.md",
+    "./skills/coordination/assets/agents/software-architect.md",
+    "./skills/coordination/assets/agents/tester.md",
+    "./skills/coordination/assets/agents/security-engineer.md",
+    "./skills/coordination/assets/agents/code-reviewer.md",
+    "./skills/coordination/assets/agents/embedded-firmware-engineer.md",
+    "./skills/coordination/assets/agents/pc-host-engineer.md"
+  ]
 }

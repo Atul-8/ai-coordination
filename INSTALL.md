@@ -338,6 +338,15 @@ yourname/
 
 将对应配置添加到 `~/.claude/settings.json` 的 `hooks` 字段，`command` 指向本仓库的 `src/hooks/*.js`。完整配置示例见 [README.md — Hook 强制执行方案](README.md)。
 
+### 状态栏 agent 显示（可选）
+
+如需在状态栏实时查看当前运行的 agent（PM 调度的专家 subagent + 会话 agent 身份），ai-coordination 提供两个 statusLine 脚本（位于 `src/scripts/`）：
+
+- **`subagent-statusline.js`**：在输入框下方面板显示 PM 此刻调度的每个专家 subagent（动态实时，核心价值）
+- **`ccline-agent-wrapper.js`**：在主状态栏显示会话 agent 身份（如「项目经理」），自动包裹现有 ccline
+
+将配置添加到 `~/.claude/settings.json`（与 `statusLine` 平级），`command` 指向本仓库的 `src/scripts/*.js`。完整配置、前提条件与降级说明见 [README.md — 状态栏 agent 显示](README.md)。
+
 ---
 
 ## 常见问题

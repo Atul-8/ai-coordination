@@ -11,7 +11,7 @@ Display the current project coordination state by calling the status script.
 
 1. Call the status script:
    ```bash
-   node "$(dirname "$0")/../src/scripts/ai-status.js" "$PROJECT_ROOT"
+   node "E:/AI/ai-coordination/src/scripts/ai-status.js" "$PWD"
    ```
 
 2. Parse the JSON output and present a concise summary to the user:

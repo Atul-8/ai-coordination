@@ -14,25 +14,25 @@ The user provides: $ARGUMENTS（可选：`list` | `activate <name>` | `deactivat
 1. **无参数或 `list`** —— 列出 registry：
 
    ```bash
-   node "$(dirname "$0")/../src/scripts/agent-registry.js" "$PROJECT_ROOT" list
+   node "E:/AI/ai-coordination/src/scripts/agent-registry.js" "$PWD" list
    ```
 
 2. **`activate <name>` / `deactivate <name>`** —— 上线 / 下线按需专家：
 
    ```bash
-   node "$(dirname "$0")/../src/scripts/agent-registry.js" "$PROJECT_ROOT" activate $NAME
+   node "E:/AI/ai-coordination/src/scripts/agent-registry.js" "$PWD" activate $NAME
    ```
 
 3. **`sync`** —— 同步 registry 与 `.claude/agents/` 实际文件：
 
    ```bash
-   node "$(dirname "$0")/../src/scripts/agent-registry.js" "$PROJECT_ROOT" sync
+   node "E:/AI/ai-coordination/src/scripts/agent-registry.js" "$PWD" sync
    ```
 
 4. **`roster`** —— 基于项目结构重新生成驻场名单：
 
    ```bash
-   node "$(dirname "$0")/../src/scripts/agent-roster.js" "$PROJECT_ROOT" --write
+   node "E:/AI/ai-coordination/src/scripts/agent-roster.js" "$PWD" --write
    ```
 
 5. 解析 JSON 输出，向用户报告 agent 列表（`name` / `lifecycle` / `active` / `source`）。

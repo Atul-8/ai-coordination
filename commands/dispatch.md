@@ -15,13 +15,13 @@ The user provides: $ARGUMENTS（任务描述）
 1. 先确保 META 索引最新：
 
    ```bash
-   node "$(dirname "$0")/../src/scripts/meta-index.js" "$PROJECT_ROOT" >/dev/null
+   node "E:/AI/ai-coordination/src/scripts/meta-index.js" "$PWD" >/dev/null
    ```
 
 2. 调用调度分析：
 
    ```bash
-   node "$(dirname "$0")/../src/scripts/pm-dispatch.js" "$PROJECT_ROOT" "$ARGUMENTS"
+   node "E:/AI/ai-coordination/src/scripts/pm-dispatch.js" "$PWD" "$ARGUMENTS"
    ```
 
 3. 解析 JSON 输出，向用户报告：

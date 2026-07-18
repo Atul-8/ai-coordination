@@ -267,6 +267,54 @@ ai-coordination 提供三个 Hook 脚本，通过 Claude Code 的 Hook 机制强
 
 这是「铁律」的真正落地：不是靠 Claude 自觉执行，而是靠 Hook 强制拦截。
 
+## 状态栏 agent 显示（可选）
+
+> **适用场景**：在状态栏实时看到「当前运行的 agent」——PM 此刻调度了哪个专家、当前会话本身是不是 PM。
+
+ai-coordination 提供两个 statusLine 脚本，覆盖 Claude Code 的两层 agent 显示：
+
+| 脚本 | 显示位置 | 显示内容 |
+|------|---------|---------|
+| **`subagent-statusline.js`** | 输入框下方的 agent 面板 | PM 此刻调度的每个专家 subagent（动态实时，核心价值） |
+| **`ccline-agent-wrapper.js`** | 主状态栏那一行 | 当前会话的 agent 身份（如「项目经理」），自动包裹现有 ccline |
+
+### 安装方式
+
+将以下两段配置添加到 `~/.claude/settings.json`（与 `statusLine` / `hooks` 平级）：
+
+**运行中的 subagent 面板**（推荐，纯增量无风险）：
+
+```json
+"subagentStatusLine": {
+  "type": "command",
+  "command": "node \"<plugin-dir>/src/scripts/subagent-statusline.js\""
+}
+```
+
+**主状态栏会话 agent 段**（包裹现有 ccline，替换原 `statusLine.command`）：
+
+```json
+"statusLine": {
+  "type": "command",
+  "command": "node \"<plugin-dir>/src/scripts/ccline-agent-wrapper.js\"",
+  "padding": 0
+}
+```
+
+> **注意**：将 `<plugin-dir>` 替换为本仓库实际的克隆/安装路径。主状态栏脚本会自动定位并调用 `~/.claude/ccline/ccline`（Windows 为 `ccline.exe`），保留 ccline 原有全部显示，仅在最前面追加一个 agent 段；若你不用 ccline，该段可不配。
+
+### 前提与降级
+
+- **会话 agent 段**：仅当用 `claude --agent pm` 启动、或在 `settings.json` 顶层设了 `"agent": "pm"` 时，主状态栏才会出现「项目经理」段；普通会话该字段缺省，退化为与裸 ccline 完全一致。
+- **运行中 subagent 面板**：需较新版本 Claude Code 支持 `subagentStatusLine`；不支持则该配置静默无效，不报错。
+- **未识别的 agent**（非 ai-coordination 专家，如 `general-purpose`）：原样显示 slug，不报错。
+
+### 工作原理
+
+- 两个脚本共用 `src/scripts/lib/agent-names.js`（slug ↔ 中文显示名映射，静态保底 + 动态扫描 `~/.claude/agents/` 与项目 `.ai/agents/stash/`）。
+- `subagent-statusline.js` 从 stdin 读 `tasks[]`，按官方 `{id, content}` 协议逐行输出，渲染 `图标 · 中文名 · 状态 · token`，非法输入静默不报错。
+- `ccline-agent-wrapper.js` 透传原始 stdin 给 ccline，三层 fallback 保证状态栏永不挂（JSON 解析失败 / ccline 不可用 / 全失败 均有兜底）。
+
 ## 检查脚本（节省 Token）
 
 > **适用场景**：Hook 调用脚本执行检查，避免 Claude 重复读取文件浪费 token。

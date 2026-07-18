@@ -14,7 +14,7 @@ The user provides: $ARGUMENTS (optional remote Git URL)
 
 1. Call the sync script:
    ```bash
-   node "$(dirname "$0")/../src/scripts/ai-sync.js" "$PROJECT_ROOT" "$ARGUMENTS"
+   node "E:/AI/ai-coordination/src/scripts/ai-sync.js" "$PWD" "$ARGUMENTS"
    ```
 
 2. Parse the JSON output and report the result:

@@ -15,20 +15,20 @@ allowed-tools: Bash, Read, Write, Edit
 1. **归类分析**：解析需求，判断问题类别与所属层。不确定时用 meta-classify 辅助：
 
    ```bash
-   node "$(dirname "$0")/../src/scripts/meta-classify.js" "$PROJECT_ROOT" "$ARGUMENTS"
+   node "E:/AI/ai-coordination/src/scripts/meta-classify.js" "$PWD" "$ARGUMENTS"
    ```
 
 2. **写入任务表**：把需求写入 `.ai/TASKS.md`（PM 与专家的协作看板）：
 
    ```bash
-   node "$(dirname "$0")/../src/scripts/tasks.js" "$PROJECT_ROOT" add "$ARGUMENTS" --cat <CATEGORY> --to <expert-slug>
+   node "E:/AI/ai-coordination/src/scripts/tasks.js" "$PWD" add "$ARGUMENTS" --cat <CATEGORY> --to <expert-slug>
    ```
 
 3. **查调度链 + 相关 META**（全局仓库 C:\.ai_meta，自动重定向）：
 
    ```bash
-   node "$(dirname "$0")/../src/scripts/meta-index.js" "$PROJECT_ROOT" >/dev/null
-   node "$(dirname "$0")/../src/scripts/pm-dispatch.js" "$PROJECT_ROOT" "$ARGUMENTS"
+   node "E:/AI/ai-coordination/src/scripts/meta-index.js" "$PWD" >/dev/null
+   node "E:/AI/ai-coordination/src/scripts/pm-dispatch.js" "$PWD" "$ARGUMENTS"
    ```
 
 4. **调度执行**：按 `suggested_chain` 调度专家（驻场直接用 Agent 工具调；按需专家先 `agent-registry.js activate <name>` 上线再调）。以 PM 身份驱动 G1-G4，专家各干各的、互不干扰。
