@@ -271,12 +271,15 @@ ai-coordination 提供三个 Hook 脚本，通过 Claude Code 的 Hook 机制强
 
 > **适用场景**：在状态栏实时看到「当前运行的 agent」——PM 此刻调度了哪个专家、当前会话本身是不是 PM。
 
-ai-coordination 提供两个 statusLine 脚本，覆盖 Claude Code 的两层 agent 显示：
+ai-coordination 提供三个 statusLine 脚本，覆盖 Claude Code 的两层 agent 显示：
 
 | 脚本 | 显示位置 | 显示内容 |
 |------|---------|---------|
 | **`subagent-statusline.js`** | 输入框下方的 agent 面板 | PM 此刻调度的每个专家 subagent（动态实时，核心价值） |
-| **`ccline-agent-wrapper.js`** | 主状态栏那一行 | 当前会话的 agent 身份（如「项目经理」），自动包裹现有 ccline |
+| **`ccline-agent-wrapper.js`** | 主状态栏那一行 | 当前会话的 agent 身份（如「项目经理」），自动包裹现有 ccline（CCometixLine） |
+| **`hud-agent-wrapper.js`** | 主状态栏那一行 | 同上，但包裹的是 claude-hud 插件（保留 hud 的 Context 进度条、manual mode 等全部功能） |
+
+> 主状态栏两个 wrapper **二选一**：按你已装的 statusLine 引擎挑选。装了 CCometixLine 用 ccline 版；装了 claude-hud 插件用 hud 版；都没装则任选其一（wrapper 会降级为仅显示 agent 段）。
 
 ### 安装方式
 
@@ -291,8 +294,9 @@ ai-coordination 提供两个 statusLine 脚本，覆盖 Claude Code 的两层 ag
 }
 ```
 
-**主状态栏会话 agent 段**（包裹现有 ccline，替换原 `statusLine.command`）：
+**主状态栏会话 agent 段**（二选一，替换原 `statusLine.command`）：
 
+ccline 版（包裹 CCometixLine）：
 ```json
 "statusLine": {
   "type": "command",
@@ -301,19 +305,30 @@ ai-coordination 提供两个 statusLine 脚本，覆盖 Claude Code 的两层 ag
 }
 ```
 
-> **注意**：将 `<plugin-dir>` 替换为本仓库实际的克隆/安装路径。主状态栏脚本会自动定位并调用 `~/.claude/ccline/ccline`（Windows 为 `ccline.exe`），保留 ccline 原有全部显示，仅在最前面追加一个 agent 段；若你不用 ccline，该段可不配。
+hud 版（包裹 claude-hud 插件）：
+```json
+"statusLine": {
+  "type": "command",
+  "command": "node \"<plugin-dir>/src/scripts/hud-agent-wrapper.js\"",
+  "padding": 0
+}
+```
+
+> **注意**：将 `<plugin-dir>` 替换为本仓库实际的克隆/安装路径。`statusLine.command` 是字面字符串，Claude Code 不解析其中的环境变量——**跨机器部署时每台机器都要把 `<plugin-dir>` 改成本机的实际路径**。两个 wrapper 内部都会自动定位引擎：
+> - ccline 版：自动找 `~/.claude/ccline/ccline`（Windows 为 `ccline.exe`），可用 `AI_COORDINATION_CCLINE` env 覆盖。
+> - hud 版：自动找 `${CLAUDE_CONFIG_DIR:-~/.claude}/plugins/cache/claude-hud/claude-hud/<最新版本>/dist/index.js`，可用 `AI_COORDINATION_HUD_PATH` env 覆盖。
 
 ### 前提与降级
 
-- **会话 agent 段**：仅当用 `claude --agent pm` 启动、或在 `settings.json` 顶层设了 `"agent": "pm"` 时，主状态栏才会出现「项目经理」段；普通会话该字段缺省，退化为与裸 ccline 完全一致。
+- **会话 agent 段**：仅当用 `claude --agent pm` 启动、或在 `settings.json` 顶层设了 `"agent": "pm"` 时，主状态栏才会出现「项目经理」段；普通会话该字段缺省，退化为与裸 ccline/hud 完全一致。
 - **运行中 subagent 面板**：需较新版本 Claude Code 支持 `subagentStatusLine`；不支持则该配置静默无效，不报错。
 - **未识别的 agent**（非 ai-coordination 专家，如 `general-purpose`）：原样显示 slug，不报错。
 
 ### 工作原理
 
-- 两个脚本共用 `src/scripts/lib/agent-names.js`（slug ↔ 中文显示名映射，静态保底 + 动态扫描 `~/.claude/agents/` 与项目 `.ai/agents/stash/`）。
+- 三个脚本共用 `src/scripts/lib/agent-names.js`（slug ↔ 中文显示名映射，静态保底 + 动态扫描 `~/.claude/agents/` 与项目 `.ai/agents/stash/`）。
 - `subagent-statusline.js` 从 stdin 读 `tasks[]`，按官方 `{id, content}` 协议逐行输出，渲染 `图标 · 中文名 · 状态 · token`，非法输入静默不报错。
-- `ccline-agent-wrapper.js` 透传原始 stdin 给 ccline，三层 fallback 保证状态栏永不挂（JSON 解析失败 / ccline 不可用 / 全失败 均有兜底）。
+- `ccline-agent-wrapper.js` / `hud-agent-wrapper.js` 透传原始 stdin 给底层引擎，三层 fallback 保证状态栏永不挂（JSON 解析失败 / 引擎不可用 / 全失败 均有兜底）。两者结构对称，仅「调用哪种引擎」不同：ccline 版 spawn `ccline.exe`，hud 版 spawn `node dist/index.js`。
 
 ## 检查脚本（节省 Token）
 

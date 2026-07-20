@@ -340,12 +340,40 @@ yourname/
 
 ### 状态栏 agent 显示（可选）
 
-如需在状态栏实时查看当前运行的 agent（PM 调度的专家 subagent + 会话 agent 身份），ai-coordination 提供两个 statusLine 脚本（位于 `src/scripts/`）：
+如需在状态栏实时查看当前运行的 agent（PM 调度的专家 subagent + 会话 agent 身份），ai-coordination 提供三个 statusLine 脚本（位于 `src/scripts/`）：
 
 - **`subagent-statusline.js`**：在输入框下方面板显示 PM 此刻调度的每个专家 subagent（动态实时，核心价值）
-- **`ccline-agent-wrapper.js`**：在主状态栏显示会话 agent 身份（如「项目经理」），自动包裹现有 ccline
+- **`ccline-agent-wrapper.js`**：在主状态栏显示会话 agent 身份（如「项目经理」），自动包裹现有 ccline（CCometixLine）
+- **`hud-agent-wrapper.js`**：同上，但包裹的是 claude-hud 插件（保留 hud 的 Context 进度条、manual mode 等全部功能）
 
-将配置添加到 `~/.claude/settings.json`（与 `statusLine` 平级），`command` 指向本仓库的 `src/scripts/*.js`。完整配置、前提条件与降级说明见 [README.md — 状态栏 agent 显示](README.md)。
+**按你已装的 statusLine 引擎二选一**（ccline 和 hud 选一个）：
+
+| 你装了 | 用哪个 wrapper | 依赖位置 |
+|---|---|---|
+| CCometixLine（`~/.claude/ccline/ccline.exe`） | `ccline-agent-wrapper.js` | ccline 二进制 |
+| claude-hud 插件（`enabledPlugins.claude-hud`） | `hud-agent-wrapper.js` | hud 在 plugins/cache 下 |
+| 都没装 | 两个 wrapper 都会降级为仅显示 agent 段 | — |
+
+**配置方法**（以 hud 为例，将 `<plugin-dir>` 替换为本仓库在你机器上的实际路径）：
+
+```json
+{
+  "statusLine": {
+    "type": "command",
+    "command": "node \"<plugin-dir>/src/scripts/hud-agent-wrapper.js\"",
+    "padding": 0
+  },
+  "subagentStatusLine": {
+    "type": "command",
+    "command": "node \"<plugin-dir>/src/scripts/subagent-statusline.js\""
+  },
+  "agent": "pm"
+}
+```
+
+> **跨机器部署**：`statusLine.command` 是字面字符串，Claude Code 不解析其中的环境变量。所以每台新机器都需要把 `<plugin-dir>` 替换为该机器上 ai-coordination 仓库的实际克隆路径（例如 `F:/AI/ai-coordination` 或 `/home/you/ai-coordination`）。hud 版 wrapper 会自动从 `${CLAUDE_CONFIG_DIR:-~/.claude}/plugins/cache/claude-hud/claude-hud/<最新版本>/dist/index.js` 查找 hud 入口，无需手动配置 hud 路径；非标准安装位置可用 `AI_COORDINATION_HUD_PATH` 环境变量覆盖。
+
+完整配置、前提条件与降级说明见 [README.md — 状态栏 agent 显示](README.md)。
 
 ---
 

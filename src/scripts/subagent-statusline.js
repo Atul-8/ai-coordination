@@ -24,6 +24,7 @@
  */
 
 const fs = require('fs');
+const { detectByDescription } = require('./lib/agent-names');
 
 // 同步读 stdin（fd 0）。statusLine 经管道收 JSON；读失败返回空串。
 function readStdinSync() {
@@ -62,9 +63,24 @@ function fmtTokens(n) {
 function renderTask(task) {
   // harness 不提供 subagent 类型 slug（task.type 是 local_agent 任务分类），
   // 故主显示名取 description/label；PM 调度时应把 agent 身份写入 description。
-  const name = task.description || task.label || task.type || 'subagent';
+  const rawName = task.description || task.label || task.type || 'subagent';
+  // 尝试从 description 反推专家身份（图标 + 中文名）；未命中回退默认 🧑‍💻
+  const detected = detectByDescription(rawName);
+  let icon, name;
+  if (detected) {
+    icon = detected.icon;
+    // 若 description 已以中文名开头（后接可选分隔符），剥掉避免重复
+    let rest = rawName;
+    if (rest.startsWith(detected.displayName)) {
+      rest = rest.slice(detected.displayName.length).replace(/^[\s:：\-—·]+/, '');
+    }
+    name = rest ? `${detected.displayName} · ${rest}` : detected.displayName;
+  } else {
+    icon = '🧑‍💻';
+    name = rawName;
+  }
   const st = mapStatus(task.status);
-  const parts = [`${C.cyan}🧑‍💻 ${name}${C.reset}`];
+  const parts = [`${C.cyan}${icon} ${name}${C.reset}`];
   if (st) parts.push(`${st.color}${st.label}${C.reset}`);
   const tk = fmtTokens(task.tokenCount);
   if (tk) parts.push(`${C.gray}· ${tk}${C.reset}`);
