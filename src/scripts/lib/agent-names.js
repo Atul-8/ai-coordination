@@ -20,6 +20,7 @@ const os = require('os');
 // 静态映射表（保底，覆盖 ai-coordination 已知专家）
 const STATIC_NAMES = {
   'pm': '项目经理',
+  'project-assistant': '项目助理',
   'software-architect': '软件架构师',
   'tester': '测试工程师',
   'security-engineer': '安全工程师',
@@ -29,7 +30,7 @@ const STATIC_NAMES = {
 };
 
 // 专家身份关键词（用于从 task.description 反推 agent slug）
-// 选择原则：该专家独有、不会跨专家误命中的术语；中文显示名已由 detectByDescription 优先匹配，此处只列领域词
+// ���择原则：该专家独有、不会跨专家误命中的术语；中文显示名已由 detectByDescription 优先匹配，此处只列领域词
 const KEYWORDS = {
   'software-architect': ['架构', '分层', 'DDD', '依赖治理', '技术选型', '七层'],
   'tester': ['测试', '回归', '覆盖率', 'E2E', '单元测试', '集成测试'],
@@ -37,12 +38,14 @@ const KEYWORDS = {
   'code-reviewer': ['代码审查', 'code review', '静态分析', '代码质量'],
   'embedded-firmware-engineer': ['嵌入式', '固件', '驱动', '中断', 'DMA', 'HID', 'CMSIS', 'RTOS', 'USB'],
   'pc-host-engineer': ['上位机', 'Qt', 'QSerialPort', '串口', 'Modbus', 'CAN', 'QChart', 'QCustomPlot'],
+  'project-assistant': ['项目助理', 'project-assistant', 'PA drain', 'pa-inbox', '规则池管家', 'META 入库', '消息队列消费', '沉淀消费'],
   'pm': ['项目经理', 'PM 调度', '编排']
 };
 
 // 图标映射（slug → emoji）；未命中用 DEFAULT_ICON
 const ICONS = {
   'pm': '🧑‍💼',
+  'project-assistant': '📋',
   'software-architect': '🏗️',
   'tester': '🧪',
   'security-engineer': '🔒',
