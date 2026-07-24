@@ -100,7 +100,30 @@ function parseFrontmatterName(content) {
   return fmLine.replace(/^name:\s*/, '').replace(/^["']|["']$/g, '').trim() || null;
 }
 
-// 扫描目录下所有 .md 的 frontmatter name，写入 out（已有 key 不覆盖，静态优先）
+// 增强 frontmatter 解析：提取中文显示名（B2 修复核心）
+// 优先级：display_name 字段 > description 首句（到中文句号）> name 字段
+// 这样动态扫描能拿到中文显示名，新增专家即使忘加 STATIC_NAMES 也能被识别
+function parseFrontmatterDisplayName(content) {
+  const m = String(content).match(/^---\r?\n([\s\S]*?)\r?\n---/);
+  if (!m) return null;
+  const lines = m[1].split(/\r?\n/);
+  // 1. display_name 字段（显式声明，最高优先）
+  const dnLine = lines.find(l => /^display_name:\s*.+/.test(l));
+  if (dnLine) return dnLine.replace(/^display_name:\s*/, '').replace(/^["']|["']$/g, '').trim() || null;
+  // 2. description 首句（所有 agent description 都是"中文名。详细描述"格式）
+  const descLine = lines.find(l => /^description:\s*.+/.test(l));
+  if (descLine) {
+    const desc = descLine.replace(/^description:\s*/, '').replace(/^["']|["']$/g, '').trim();
+    const firstClause = desc.split('。')[0].trim();
+    if (firstClause) return firstClause;
+  }
+  // 3. 回退 name 字段
+  const nameLine = lines.find(l => /^name:\s*.+/.test(l));
+  if (nameLine) return nameLine.replace(/^name:\s*/, '').replace(/^["']|["']$/g, '').trim() || null;
+  return null;
+}
+
+// 扫描目录下所有 .md 的 frontmatter 显示名，写入 out（已有 key 不覆盖，静态优先）
 function scanAgentDir(dir, out) {
   let files;
   try { files = fs.readdirSync(dir); } catch (e) { return; }   // 目录不存在/不可读 → 静默跳过
@@ -110,7 +133,7 @@ function scanAgentDir(dir, out) {
     if (out[slug]) continue;                                   // 静态优先，不覆盖
     let content;
     try { content = fs.readFileSync(path.join(dir, f), 'utf8'); } catch (e) { continue; }
-    const name = parseFrontmatterName(content);
+    const name = parseFrontmatterDisplayName(content);
     if (name) out[slug] = name;
   }
 }
@@ -118,9 +141,12 @@ function scanAgentDir(dir, out) {
 // 构建完整映射：静态优先 + 动态补充（resident 全局 + on-demand 项目本地）
 // projectRoot 可选，默认 process.cwd()
 function buildMap(projectRoot) {
+  const root = projectRoot || process.cwd();
   const map = Object.assign({}, STATIC_NAMES);
   scanAgentDir(path.join(os.homedir(), '.claude', 'agents'), map);
-  scanAgentDir(path.join(projectRoot || process.cwd(), '.ai', 'agents', 'stash'), map);
+  // B2 修复：补扫项目级 .claude/agents/（resident 实际位置，原只扫全局 → 新增专家若不在 STATIC_NAMES 会漏）
+  scanAgentDir(path.join(root, '.claude', 'agents'), map);
+  scanAgentDir(path.join(root, '.ai', 'agents', 'stash'), map);
   return map;
 }
 
@@ -137,6 +163,7 @@ module.exports = {
   ICONS,
   DEFAULT_ICON,
   parseFrontmatterName,
+  parseFrontmatterDisplayName,
   buildMap,
   getDisplayName,
   detectByDescription

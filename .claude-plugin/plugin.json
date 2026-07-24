@@ -7,6 +7,7 @@
   "keywords": ["coordination", "architecture", "error-knowledge", "seven-layer", "agents", "subagent", "pm", "rag", "meta-rules"],
   "agents": [
     "./skills/coordination/assets/agents/pm.md",
+    "./skills/coordination/assets/agents/project-assistant.md",
     "./skills/coordination/assets/agents/software-architect.md",
     "./skills/coordination/assets/agents/tester.md",
     "./skills/coordination/assets/agents/security-engineer.md",

@@ -35,7 +35,7 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const { execFileSync } = require('child_process');
-const { getDisplayName } = require('./lib/agent-names');
+const { getDisplayName, ICONS, DEFAULT_ICON } = require('./lib/agent-names');
 
 // 同步读 stdin（fd 0）。读失败返回空串。
 function readStdinSync() {
@@ -99,7 +99,8 @@ try {
   const data = JSON.parse(rawStdin);
   const agentName = data && data.agent && data.agent.name;
   if (agentName) {
-    agentSegment = `\x1b[36m🧑‍💼 ${getDisplayName(agentName)}\x1b[0m`;
+    const icon = ICONS[agentName] || DEFAULT_ICON;
+    agentSegment = `\x1b[36m${icon} ${getDisplayName(agentName)}\x1b[0m`;
   }
 } catch (e) {
   // JSON 解析失败：agent 段留空，原始 stdin 仍透传给 hud
