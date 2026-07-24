@@ -1,0 +1,31 @@
+{
+  "name": "ai-coordination",
+  "owner": {
+    "name": "Atul-8",
+    "url": "https://github.com/Atul-8"
+  },
+  "metadata": {
+    "description": "ai-coordination framework — 七层分治架构 + PM 调度编排 + PA 异步沉淀 + 分类 META 知识池 + G1-G4 铁律",
+    "version": "1.2.0"
+  },
+  "plugins": [
+    {
+      "name": "ai-coordination",
+      "source": "./",
+      "description": "业务对接层插件：上下文容灾、状态持久化、错误自我提炼、PM 调度编排、PA 异步沉淀、分类 META 规则池、消息队列解耦。常驻 PM（编排调度）+ PA（规则池管家）+ 6 个按需专家。",
+      "category": "workflow",
+      "tags": [
+        "coordination",
+        "architecture",
+        "seven-layer",
+        "error-knowledge",
+        "agents",
+        "pm",
+        "pa",
+        "meta-rules",
+        "message-queue",
+        "claude-code"
+      ]
+    }
+  ]
+}
