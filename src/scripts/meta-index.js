@@ -16,7 +16,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const projectRoot = process.argv[2] || process.cwd();
+const projectRoot = require('./lib/project-validate')(process.argv[2]);
 const { resolveMetaSource, CATEGORIES } = require('./lib/meta-paths');
 const src = resolveMetaSource(projectRoot);
 

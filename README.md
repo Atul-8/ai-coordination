@@ -1,6 +1,8 @@
 # ai-coordination
 
-分治思想双重落地 — 五步法错误进化 + 七层架构职责分层 | 上下文容灾 · 状态持久化 · 错误自我提炼
+分治思想双重落地 — 五步法错误进化 + 七层架构职责分层 | 上下文容灾 · 状态持久化 · 错误自我提炼 · **PM+PA 双 agent 编排** · **消息队列解耦沉淀** · **分类 META 知识池**
+
+**当前版本：v1.2.1**（见 [CHANGELOG](#changelog)）| **分发**：`/plugin install ai-coordination@ai-coordination`
 
 [![LGPL-3.0 License](https://img.shields.io/badge/license-LGPL--3.0-blue.svg)](LICENSE)
 
@@ -82,11 +84,89 @@ presentation      interface          core
 
 > 详见 `skills/coordination/assets/agents/README.md` 与 SKILL.md 的 G0 路由。
 
+## v1.2 架构演进：PA + 消息队列 + 分类全局池
+
+v1.1 的 PM 单常驻模型在实战中暴露死结：**PM 同时背"编排调度"和"META 沉淀"两份职责，沉淀被主责持续挤占，全局规则池长期为空**。v1.2 引入第二个常驻 agent 解耦。
+
+### 角色 三分
+
+| 角色 | 唯一职责 | 不做 |
+|------|---------|------|
+| **PM** | 对外入口 / 编排调度 / 任务表 | ❌ 不亲自入库 |
+| **PA（project-assistant，新常驻）** | 规则池管家：消费 inbox → 分类入库 → 维护索引 | ❌ 不对外、不调度、不写业务代码 |
+| **专家** | 业务代码 / 测试 / 审查 / 产消息到 inbox | ❌ 不直接写全局池 |
+
+### 生产者-队列-消费者解耦
+
+```
+[专家] ──生产──┐                     ┌──────────────┐                  ┌─────────────────┐
+[PM]   ──生产──┼──→ .ai/pa-inbox/ ──→│  PA agent    │──→ C:\.ai_meta/rules/<CAT>/META-NNN.md
+                     MSG-*.md         │  drain 模式   │                  （12 个受控词表分目录）
+                                      └──────────────┘
+```
+
+- **生产者**（任何 agent）：`pa-inbox.js produce` 写 MSG-*.md，立即返回不阻塞
+- **消费者**（PA）：`meta-persist.js drain` 批量消费 + ACK=删除，失败打 `# FAILED` 标记
+- **PA 唤醒**：PM 在 G1 开门 / G4 离场 / 积压≥3 条时调起
+
+### 分类全局池（拒绝大杂烩）
+
+```
+C:\.ai_meta/                       跨项目共享（手动 git push/pull 同步）
+  rules/<CATEGORY>/META-NNN.md     按 12 个受控词表分目录，每条规则独立文件
+    ASYNC/ SECURITY/ CONCURRENCY/ DEPENDENCY/ LAYERING/ API_CONTRACT/
+    DATA_INTEGRITY/ ERROR_HANDLING/ TESTING/ PERFORMANCE/ BUILD/ STATE_MGMT/
+```
+
+**分类决策**：生产者明确指定 `suggested_category` → PA 信任采纳；未指定 → 才用 `meta-classify` 兜底（见 META-006-LAYERING 教训）。
+
+> 详见 `.ai/decisions/ADR-001-project-assistant-and-message-queue.md`。
+
+## v1.3 架构演进：tool 子层 + 递归分治 + 逻辑分层澄清
+
+### testing 层加 `tool` 子层
+
+实际软件开发会出现两类"工具"无法归类：① 为测本项而开发的独立测试软件（HIL 测试台 / 协议模拟器 / fuzz）② 第三方测试软件适配层。v1.3 加 `testing/tool/` 子层承载（保持"七层"命名不变）。
+
+### 大型工具自身要套完整分治（递归）
+
+`testing/tool/<tool-name>/` 成长到多模块时，本身应套一套完整七层分治（自己的 shared/core/interface/testing），而非混成一团。同理适用于第三方适配层、独立 CLI、模拟器。
+
+### 分层是逻辑，不是物理模板
+
+**澄清**：分层是职责划分，不是强制"根目录建 7 个文件夹"。可全部放 `src/`、可细分、可扁平——AI 与用户按实际决定，只要保证 ① 逻辑职责清晰 ② 依赖方向合规。
+
+> 详见 `.ai/decisions/ADR-002-tool-sublayer-and-logical-layering.md`。
+
 ## 安装
+
+### 方式 1：Plugin Marketplace 安装（v1.2+ 推荐）
+
+在 Claude Code 里跑两行命令，所有 agent / commands / hooks 自动加载：
+
+```bash
+# 1. 添加本仓库为 marketplace（一次性）
+/plugin marketplace add Atul-8/ai-coordination
+
+# 2. 安装 plugin（一次性，所有项目自动生效）
+/plugin install ai-coordination@ai-coordination
+```
+
+**前置条件**：
+- Claude Code 较新版本（支持 `/plugin` 命令）
+- GitHub 仓库 `Atul-8/ai-coordination` 对你可访问（public 对所有人，private 需授权）
+
+安装后：
+- ✅ `claude --agent pm` / `--agent project-assistant` 等全局可用
+- ✅ `/ai:pm` / `/ai:init` 等命令全局可用
+- ✅ 任何项目含 `.ai/` 目录即启用 G1-G4 铁律
+- ✅ 8 个 agent（PM + PA + 6 专家）+ 9 个命令 + 3 个 hook 自动加载
+
+### 方式 2：手动部署（旧方式，等价但繁琐）
 
 > 前提：已安装 Claude Code CLI 和 Git
 
-### 最推荐：直接叫 Claude 帮你部署
+#### 最推荐：直接叫 Claude 帮你部署
 
 不用记任何命令，把这段话发给 Claude：
 
@@ -614,3 +694,45 @@ ai-coordination/
 ## License
 
 LGPL-3.0
+
+## CHANGELOG
+
+### v1.2.1（2026-07-25）
+- PM agent 合并版作为分发源（保留"眼里有活"+ 加入 PA 调度机制）
+- 6 专家 v1.2 pa-inbox 回流协议同步到分发源
+- 全局 agent-names.js 加 PA 中文名 + 图标，修 hud/ccline wrapper 图标硬编码 bug
+- pa-inbox.js 加 projectRoot 校验（防 slug 误用，ERR-007）
+- 18 个 CLI 脚本统一 projectRoot 校验（lib/project-validate.js）
+
+### v1.2.0（2026-07-25）
+- **PA agent + 消息队列 + 分类全局池**（ADR-001）
+- testing/tool 子层 + 递归分治 + 逻辑分层澄清（ADR-002）
+- marketplace.json + plugin.json v1.2.0（启用 `/plugin install` 分发）
+- 分支策略：master（稳定分发）/ dev（开发）
+
+### v1.1（2026-07-18）
+- 调度编排层：PM + 6 专家 agent + G0 路由
+- 分类 META（受控词表）+ meta-retriever 检索
+- statusLine agent 显示（subagent-statusline + ccline/hud wrapper）
+
+### v1.0（2026-07-13）
+- 七层分治架构 + G1-G4 铁律
+- 五步法错误提炼 + META 规则
+- .ai/ coordination 层目录结构
+
+## 分支策略
+
+| 分支 | 用途 |
+|------|------|
+| `master` | **稳定分发版**（用户 `/plugin install` 看到的，纯净无 dogfood 痕迹） |
+| `dev` | **开发版**（含 `.ai/` dogfood 状态、`.claude/agents/` 开发绕过机制） |
+
+**工作流**：dev 开发 → 稳定 merge master + 打 tag → push origin 两个分支
+
+**为什么这样分**：master 被 `/plugin install` 拉取时应该是干净的发布版；开发期的 dogfood 状态、实验性代码留在 dev，不污染分发。
+
+## 分发与可见性
+
+- 仓库：`https://github.com/Atul-8/ai-coordination`
+- 当前为 **私有 marketplace**（仅授权用户可 `/plugin install`）
+- 若要改为 public（全网可装），改 GitHub 仓库可见性即可，marketplace.json 无需改

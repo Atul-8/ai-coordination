@@ -13,7 +13,7 @@ const fs = require('fs');
 const path = require('path');
 const { execSync } = require('child_process');
 
-const projectRoot = process.argv[2] || process.cwd();
+const projectRoot = require('./lib/project-validate')(process.argv[2]);
 const task = process.argv[3] || '';
 const registryPath = path.join(projectRoot, '.ai', 'agents', 'registry.json');
 const scriptDir = __dirname;

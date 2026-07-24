@@ -19,7 +19,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const projectRoot = process.argv[2] || process.cwd();
+const projectRoot = require('./lib/project-validate')(process.argv[2]);
 const action = process.argv[3] || '';
 const args = process.argv.slice(4);
 

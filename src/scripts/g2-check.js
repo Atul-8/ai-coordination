@@ -13,7 +13,7 @@ const fs = require('fs');
 const path = require('path');
 const { detectLayer } = require('./lib/detect-layer');
 
-const projectRoot = process.argv[2] || process.cwd();
+const projectRoot = require('./lib/project-validate')(process.argv[2]);
 const changedFilesStr = process.argv[3] || '';
 const changedFiles = changedFilesStr.split(',').filter(f => f.trim());
 

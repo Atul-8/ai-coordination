@@ -13,7 +13,7 @@ const fs = require('fs');
 const path = require('path');
 const { detectLayer } = require('./lib/detect-layer');
 
-const projectRoot = process.argv[2] || process.cwd();
+const projectRoot = require('./lib/project-validate')(process.argv[2]);
 const writeFlag = process.argv.indexOf('--write') !== -1;
 const aiAgentsDir = path.join(projectRoot, '.ai', 'agents');
 const rosterPath = path.join(aiAgentsDir, 'ROSTER.md');

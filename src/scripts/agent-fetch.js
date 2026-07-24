@@ -18,7 +18,7 @@ const os = require('os');
 const https = require('https');
 const { wrap, slugFromKey } = require('./lib/agent-format');
 
-const projectRoot = process.argv[2] || process.cwd();
+const projectRoot = require('./lib/project-validate')(process.argv[2]);
 const agentKey = process.argv[3];
 
 function parseOpts(argv, start) {

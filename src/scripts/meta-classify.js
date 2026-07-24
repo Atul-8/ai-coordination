@@ -9,7 +9,7 @@
  * 规则量少时用关键词分类，量多后可平滑切向量。零依赖。
  */
 
-const projectRoot = process.argv[2] || process.cwd();
+const projectRoot = require('./lib/project-validate')(process.argv[2]);
 const text = process.argv[3] || '';
 
 // category 受控词表（与 SKILL.md / meta-rules.md 一致）+ 关键词

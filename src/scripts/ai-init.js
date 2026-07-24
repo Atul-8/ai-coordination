@@ -11,7 +11,7 @@ const path = require('path');
 const { execSync } = require('child_process');
 const { detectLayerFromDir } = require('./lib/detect-layer');
 
-const projectRoot = process.argv[2] || process.cwd();
+const projectRoot = require('./lib/project-validate')(process.argv[2]);
 const remoteUrl = process.argv[3] || '';
 const aiDir = path.join(projectRoot, '.ai');
 

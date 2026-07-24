@@ -12,7 +12,49 @@
 
 ---
 
-## 最推荐：让 Claude 自己部署
+## 方式 1：Plugin Marketplace 安装（v1.2+ 推荐）
+
+**最快方式**——在 Claude Code 里跑两行命令，所有 agent / commands / hooks 自动加载：
+
+```bash
+# 1. 添加 ai-coordination 仓库为 marketplace（一次性）
+/plugin marketplace add Atul-8/ai-coordination
+
+# 2. 安装 plugin（一次性，所有项目自动生效）
+/plugin install ai-coordination@ai-coordination
+```
+
+**安装后立即获得**：
+- ✅ 8 个 agent（PM + PA 项目助理 + 6 专家）—— `claude --agent pm` / `--agent project-assistant` 等全局可用
+- ✅ 9 个命令（`/ai:pm` `/ai:init` `/ai:status` 等）全局可用
+- ✅ 3 个 hook（G1/G2/G4 铁律强制执行）自动加载
+- ✅ 任何项目含 `.ai/` 目录即启用 G1-G4 铁律
+- ✅ 跨项目共享的全局 META 规则池（`C:\.ai_meta` 或 `~/.ai_meta`）
+
+**前置条件**：
+- Claude Code 较新版本（支持 `/plugin` 命令）
+- 仓库 `Atul-8/ai-coordination` 对你可访问（public 对所有人，private 需 GitHub 授权）
+
+**升级**：
+```bash
+# 仓库 push 新版本后，在 Claude Code 里
+/plugin update ai-coordination@ai-coordination
+```
+
+**卸载**：
+```bash
+/plugin uninstall ai-coordination@ai-coordination
+# 可选：移除 marketplace
+/plugin marketplace remove ai-coordination
+```
+
+> **与方式 2 的关系**：方式 1 是 v1.2+ 的推荐姿势（自动、干净、可升级），方式 2（手动 cp）是 v1.1 时代的旧办法，两者效果等价但方式 1 更省心。
+
+---
+
+## 方式 2：手动部署（旧方式，等价但繁琐）
+
+### 最推荐：让 Claude 自己部署
 
 不用记任何命令。打开 Claude Code，把下面这段话发给它：
 

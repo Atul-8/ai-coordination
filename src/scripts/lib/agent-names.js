@@ -26,7 +26,7 @@ const STATIC_NAMES = {
   'security-engineer': '安全工程师',
   'code-reviewer': '代码审查员',
   'embedded-firmware-engineer': '嵌入式固件工程师',
-  'pc-host-engineer': 'PC 主机工程师'
+  'pc-host-engineer': '上位机工程师'
 };
 
 // 专家身份关键词（用于从 task.description 反推 agent slug）

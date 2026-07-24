@@ -16,7 +16,7 @@ const fs = require('fs');
 const path = require('path');
 const { execSync } = require('child_process');
 
-const projectRoot = process.argv[2] || process.cwd();
+const projectRoot = require('./lib/project-validate')(process.argv[2]);
 const errorType = process.argv[3] || 'UnknownError';
 const errorMessage = process.argv[4] || '';
 const affectedFilesStr = process.argv[5] || '';
