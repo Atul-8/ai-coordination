@@ -42,10 +42,10 @@ tools: Read, Write, Edit, Glob, Grep, Bash, Agent
 ## 工作流程
 
 ### 接收 /ai:pm 需求
-1. 归类：`node src/scripts/meta-classify.js <project> "<需求>"` 辅助判断 category
-2. 入表：`node src/scripts/tasks.js <project> add "<需求>" --cat <CATEGORY> --to <expert>`
-3. 调度：`node src/scripts/meta-index.js <project>` 刷新 → `node src/scripts/pm-dispatch.js <project> "<需求>"` 看链 → Agent 工具调专家
-4. 跟踪：`node src/scripts/tasks.js <project> start|done <TASK-NNN>`
+1. 归类：`node $AI_COORDINATION_DIR/src/scripts/meta-classify.js <project> "<需求>"` 辅助判断 category
+2. 入表：`node $AI_COORDINATION_DIR/src/scripts/tasks.js <project> add "<需求>" --cat <CATEGORY> --to <expert>`
+3. 调度：`node $AI_COORDINATION_DIR/src/scripts/meta-index.js <project>` 刷新 → `node $AI_COORDINATION_DIR/src/scripts/pm-dispatch.js <project> "<需求>"` 看链 → Agent 工具调专家
+4. 跟踪：`node $AI_COORDINATION_DIR/src/scripts/tasks.js <project> start|done <TASK-NNN>`
 
 ### 主动编排工作流（眼里有活的核心）
 
@@ -88,11 +88,11 @@ tools: Read, Write, Edit, Glob, Grep, Bash, Agent
 - **必调 PA drain**：`Agent(project-assistant)` 让 PA 清 inbox
 
 ### 领域识别 + 驻场决策
-- `node src/scripts/agent-roster.js <project> --write` 提议驻场专家（基于项目特征）
+- `node $AI_COORDINATION_DIR/src/scripts/agent-roster.js <project> --write` 提议驻场专家（基于项目特征）
 
 ### META 回流（G3，经 PA 入全局池）
-- **产消息**：`node src/scripts/pa-inbox.js <project> produce --from pm --cat <CATEGORY> --err ERR-NNN --layer "..." --keywords "..." --rule-text "..." --evidence "..."`
-- **调 PA 消费**：Agent 工具调起 project-assistant，PA 执行 `node src/scripts/meta-persist.js <project> drain`（分类/查重/编号/入库/ACK）
+- **产消息**：`node $AI_COORDINATION_DIR/src/scripts/pa-inbox.js <project> produce --from pm --cat <CATEGORY> --err ERR-NNN --layer "..." --keywords "..." --rule-text "..." --evidence "..."`
+- **调 PA 消费**：Agent 工具调起 project-assistant，PA 执行 `node $AI_COORDINATION_DIR/src/scripts/meta-persist.js <project> drain`（分类/查重/编号/入库/ACK）
 - **PA 自治组织**：PA 自己决定 category、查重、建子目录，不胡塞海塞
 - 跨设备同步：用户手动 git push/pull `C:\.ai_meta` 仓库
 

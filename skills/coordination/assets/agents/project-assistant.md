@@ -28,7 +28,7 @@ tools: Read, Write, Edit, Glob, Grep, Bash
 
 每次被 PM 调起，执行以下步骤：
 
-1. **扫描 inbox**：`node src/scripts/pa-inbox.js <project> list` 查看积压。inbox 空则直接报告"无待处理"退出。
+1. **扫描 inbox**：`node $AI_COORDINATION_DIR/src/scripts/pa-inbox.js <project> list` 查看积压。inbox 空则直接报告"无待处理"退出。
 2. **逐条处理**（meta-persist.js drain 内部完成）：
    - **分类决策**：生产者明确指定 `suggested_category` 且在受控词表 → **直接采纳**（信任生产者上下文，见 META-006-LAYERING 教训）；未指定/不在词表 → 才用 `meta-classify.js` 兜底判定
    - **查重**：`meta-retriever.js` 检查是否与已有规则重复（score ≥ 阈值）
@@ -55,7 +55,7 @@ tools: Read, Write, Edit, Glob, Grep, Bash
 
 写消息到 `.ai/pa-inbox/`：
 ```bash
-node src/scripts/pa-inbox.js <project> produce \
+node $AI_COORDINATION_DIR/src/scripts/pa-inbox.js <project> produce \
   --from <self-name> \
   --cat <SUGGESTED_CATEGORY> \
   --err ERR-NNN \
@@ -70,16 +70,16 @@ node src/scripts/pa-inbox.js <project> produce \
 
 ```bash
 # drain（主路径，循环处理到空）
-node src/scripts/meta-persist.js <project> drain
+node $AI_COORDINATION_DIR/src/scripts/meta-persist.js <project> drain
 
 # 单条处理（调试用）
-node src/scripts/meta-persist.js <project> process-one [MSG-xxx.md]
+node $AI_COORDINATION_DIR/src/scripts/meta-persist.js <project> process-one [MSG-xxx.md]
 
 # 查询下一编号
-node src/scripts/meta-persist.js <project> next-id
+node $AI_COORDINATION_DIR/src/scripts/meta-persist.js <project> next-id
 
 # 迁移老 meta-rules.md（一次性，已执行过）
-node src/scripts/meta-persist.js <project> migrate-legacy
+node $AI_COORDINATION_DIR/src/scripts/meta-persist.js <project> migrate-legacy
 ```
 
 ### 受控词表（必须遵守）

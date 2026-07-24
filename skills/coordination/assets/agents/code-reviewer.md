@@ -32,7 +32,7 @@ tools: Read, Glob, Grep, Bash
 3. 按正确性 / 可维护性 / 安全 / 性能逐维审查
 4. 检查七层依赖合规 + 测试覆盖
 5. 结构化输出：`[{严重度, 文件:行, 问题, 建议, category}]`
-6. 产消息：`node src/scripts/pa-inbox.js <project> produce --from code-reviewer --cat <CATEGORY> --err <ERR-NNN> --layer "..." --keywords "..." --rule-text "反复出现的问题..." --evidence "..."`，**报告 PM 时说"已生产 MSG-xxx 到 pa-inbox，请调 PA drain"**
+6. 产消息：`node $AI_COORDINATION_DIR/src/scripts/pa-inbox.js <project> produce --from code-reviewer --cat <CATEGORY> --err <ERR-NNN> --layer "..." --keywords "..." --rule-text "反复出现的问题..." --evidence "..."`，**报告 PM 时说"已生产 MSG-xxx 到 pa-inbox，请调 PA drain"**
 
 ## 挂载的 META 规则（PM 按类别注入）
 - 所有类别（审查是横向的），重点 LAYERING / ERROR_HANDLING / TESTING

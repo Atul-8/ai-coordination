@@ -33,7 +33,7 @@ tools: Read, Write, Edit, Glob, Grep, Bash
 3. 提出方案（模块图、依赖、接口、分层落点）
 4. 权衡 tradeoff，必要时写 ADR
 5. 落地到 STRUCTURE.md（更新分层映射）
-6. 产消息：`node src/scripts/pa-inbox.js <project> produce --from software-architect --cat LAYERING --err <ERR-NNN> --layer "coordination,core" --keywords "..." --rule-text "架构教训..." --evidence "..."`，**报告 PM 时说"已生产 MSG-xxx 到 pa-inbox，请调 PA drain"**
+6. 产消息：`node $AI_COORDINATION_DIR/src/scripts/pa-inbox.js <project> produce --from software-architect --cat LAYERING --err <ERR-NNN> --layer "coordination,core" --keywords "..." --rule-text "架构教训..." --evidence "..."`，**报告 PM 时说"已生产 MSG-xxx 到 pa-inbox，请调 PA drain"**
 
 ## 挂载的 META 规则（PM 按类别注入）
 - LAYERING / DEPENDENCY 类

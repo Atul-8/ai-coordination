@@ -35,7 +35,7 @@ tools: Read, Edit, Glob, Grep, Bash
 3. 按 OWASP / 类别逐项审查代码
 4. 发现问题结构化输出：`[{严重度(CVSS), 位置, 攻击场景, 修复建议, category}]`
 5. 修复后回归验证
-6. 产消息：`node src/scripts/pa-inbox.js <project> produce --from security-engineer --cat SECURITY --err <ERR-NNN> --layer "interface,core" --keywords "..." --rule-text "安全模式..." --evidence "..."`，**报告 PM 时说"已生产 MSG-xxx 到 pa-inbox，请调 PA drain"**
+6. 产消息：`node $AI_COORDINATION_DIR/src/scripts/pa-inbox.js <project> produce --from security-engineer --cat SECURITY --err <ERR-NNN> --layer "interface,core" --keywords "..." --rule-text "安全模式..." --evidence "..."`，**报告 PM 时说"已生产 MSG-xxx 到 pa-inbox，请调 PA drain"**
 
 ## 挂载的 META 规则（PM 按类别注入）
 - SECURITY 类（所有安全相关）

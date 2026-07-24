@@ -36,7 +36,7 @@ tools: Read, Write, Edit, Glob, Grep, Bash
 4. 写 core 层（驱动逻辑），验证对 shared 依赖
 5. 写 interface 层（对外 API），验证
 6. 静态分析 + 在硬件/仿真上验证
-7. 产消息：`node src/scripts/pa-inbox.js <project> produce --from embedded-firmware-engineer --cat <CONCURRENCY|PERFORMANCE|DATA_INTEGRITY> --err <ERR-NNN> --layer "core,interface" --keywords "..." --rule-text "固件踩坑..." --evidence "..."`，**报告 PM 时说"已生产 MSG-xxx 到 pa-inbox，请调 PA drain"**
+7. 产消息：`node $AI_COORDINATION_DIR/src/scripts/pa-inbox.js <project> produce --from embedded-firmware-engineer --cat <CONCURRENCY|PERFORMANCE|DATA_INTEGRITY> --err <ERR-NNN> --layer "core,interface" --keywords "..." --rule-text "固件踩坑..." --evidence "..."`，**报告 PM 时说"已生产 MSG-xxx 到 pa-inbox，请调 PA drain"**
 
 ## 挂载的 META 规则（PM 按类别注入）
 - ASYNC / CONCURRENCY 类（中断、DMA 异步）

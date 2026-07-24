@@ -34,7 +34,7 @@ tools: Read, Write, Edit, Glob, Grep, Bash
 3. 编写 / 补充对应层测试（异常优先）
 4. 运行 + 收集结果
 5. 缺陷结构化输出给 PM：`[{严重度, 文件:行, 复现步骤, 建议类别}]`
-6. 回归用例入库；产消息：`node src/scripts/pa-inbox.js <project> produce --from tester --cat TESTING --err <ERR-NNN> --layer "testing,core" --keywords "..." --rule-text "缺陷规律..." --evidence "..."`，**报告 PM 时说"已生产 MSG-xxx 到 pa-inbox，请调 PA drain"**
+6. 回归用例入库；产消息：`node $AI_COORDINATION_DIR/src/scripts/pa-inbox.js <project> produce --from tester --cat TESTING --err <ERR-NNN> --layer "testing,core" --keywords "..." --rule-text "缺陷规律..." --evidence "..."`，**报告 PM 时说"已生产 MSG-xxx 到 pa-inbox，请调 PA drain"**
 
 ## 挂载的 META 规则（PM 按类别注入）
 - TESTING 类（所有测试相关）
