@@ -22,6 +22,16 @@ const fs = require('fs');
 const path = require('path');
 
 const projectRoot = process.argv[2] || process.cwd();
+// 校验：projectRoot 必须是存在的目录（防 slug 误用导致静默写到错误位置，见 ERR-007）
+// 用户/agent 可能传 "ai-coordination" 这种 slug，会被 path.join 解析成相对路径 → 写到 cwd/ai-coordination/.ai/pa-inbox/（错误位置）
+// 正确用法：<project> = "." 或绝对路径如 "E:/AI/my-project"
+if (!fs.existsSync(projectRoot) || !fs.statSync(projectRoot).isDirectory()) {
+  console.log(JSON.stringify({
+    ok: false,
+    error: `<project> 路径不存在或非目录: "${projectRoot}"。应为项目根路径（如 . 或 E:/AI/my-project），不是项目名 slug。详见 ERR-007 / META-002-API_CONTRACT`
+  }, null, 2));
+  process.exit(1);
+}
 const action = process.argv[3];
 
 // 智能解析：--xxx val 成 opts，孤立非 -- 开头的进 _（位置参数）
