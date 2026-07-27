@@ -2,7 +2,8 @@
  * meta-paths.js — META 仓库路径解析（全局优先 + 项目本地回退 + 分类目录结构）
  *
  * 全局仓库（默认 C:\.ai_meta / ~/.ai_meta，env AI_META_DIR 可配）是所有 META 规则的**唯一真相源**。
- * 配套软件 ai-meta-sync 负责 git 后台同步；本 skill 兼容有/无该软件（无则单机 git 仓库）。
+ * 全局仓库本身是 git 仓库，git push/pull 即跨设备同步。remote 决定池子性质：
+ *   指向 gitee.com/eai-code/ai-meta = 社区公共池；改成自己的私有仓库 = 工具私有池。
  *
  * v2 结构（PA agent 接管后）：
  *   <GLOBAL_META_DIR>/
@@ -116,7 +117,8 @@ function ensureGlobalMeta() {
     '# 全局 META 规则仓库',
     '',
     '> 所有项目的 META 规则集中于此，由 **项目助理（PA）agent** 自治分类入库、维护索引。',
-    '> 配套软件 ai-meta-sync 负责 git 后台同步；本 skill 兼容有/无该软件。',
+    '> 全局仓库本身是 git 仓库，git push/pull 即跨设备同步。remote 决定池子性质：',
+    '> 指向 gitee.com/eai-code/ai-meta = 公共池（社区共享）；改成自己的私有仓库 = 私有池。',
     '',
     '## 目录结构',
     '',
@@ -192,7 +194,7 @@ function ensureGlobalMeta() {
       execSync('git add -A', { cwd: GLOBAL_META_DIR, stdio: 'pipe' });
       execSync('git commit -m "init: global meta repo (v2 categorized structure)"', { cwd: GLOBAL_META_DIR, stdio: 'pipe' });
     } catch (e) {
-      // git 可能不可用或已初始化，忽略——后台同步项目会处理 git 远程配置
+      // git 可能不可用或已初始化，忽略——用户可通过 git remote add 配置公共池/私有池
     }
   }
   return { existed: false, initialized: true, dir: GLOBAL_META_DIR, rulesDir };

@@ -94,7 +94,7 @@ tools: Read, Write, Edit, Glob, Grep, Bash, Agent
 - **产消息**：`node $AI_COORDINATION_DIR/src/scripts/pa-inbox.js <project> produce --from pm --cat <CATEGORY> --err ERR-NNN --layer "..." --keywords "..." --rule-text "..." --evidence "..."`
 - **调 PA 消费**：Agent 工具调起 project-assistant，PA 执行 `node $AI_COORDINATION_DIR/src/scripts/meta-persist.js <project> drain`（分类/查重/编号/入库/ACK）
 - **PA 自治组织**：PA 自己决定 category、查重、建子目录，不胡塞海塞
-- 跨设备同步：用户手动 git push/pull `C:\.ai_meta` 仓库
+- 跨设备同步：用户手动 git push/pull `C:\.ai_meta` 仓库；remote 指向 `gitee.com/eai-code/ai-meta` = **公共池**（社区共享），改成私有仓库 = **私有池**
 
 ### PA 唤醒时机（���制）
 - **G1 开门必调**：清掉跨会话积压

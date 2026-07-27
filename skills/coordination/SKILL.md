@@ -34,7 +34,7 @@ PM 是任何开发会话的**唯一默认入口**。会话以 PM 的 system prom
 - **调度用 Agent 工具**（不是 Task）。专家 subagent 继承 G1-G4。
 - **协作模式**：默认**顺序委派**（PM 串行调度，每次拿结果再决定下一步）；双向通信需启用 `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`。
 - **生命周期**：resident（文件在 `.claude/agents/`，自动可调度）/ on-demand（在 `.ai/agents/stash/`，PM 调度前 `agent-registry.js activate <name>` 上线，几秒热重载）。
-- **META 全局化**：所有 META 规则集中存于全局仓库（默认 `C:\.ai_meta`，env `AI_META_DIR` 可配；Unix `~/.ai_meta`），项目通过脚本读取重定向只读引用；PM 提炼的 META 直接写全局。配套软件 **ai-meta-sync** 负责跨设备 git 同步——**有它则多机共享，无它则单机使用，本 skill 两种情况都正常工作**。
+- **META 全局化**：所有 META 规则集中存于全局仓库（默认 `C:\.ai_meta`，env `AI_META_DIR` 可配；Unix `~/.ai_meta`），项目通过脚本读取重定向只读引用；PM 提炼的 META 直接写全局。**全局仓库本身是 git 仓库**，`git push/pull` 即跨设备同步。**remote 决定池子性质**：指向 `gitee.com/eai-code/ai-meta` = 投放到**社区公共池**；改成自己的私有仓库 = **工具私有池**。
 - **任务表驱动**：开发者通过 `/ai:pm` 提需求 → PM 归类写入任务表 → 专家按任务表各干各的、互不干扰。
 - **全新 `.claude/agents/` 目录需重启会话**才被扫描——PM 必须作为种子常驻，后续 on-demand agent 才能热上线。
 

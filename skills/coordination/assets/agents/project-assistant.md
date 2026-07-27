@@ -37,7 +37,7 @@ tools: Read, Write, Edit, Glob, Grep, Bash
    - **ACK**：删除 inbox 消息文件（ACK = 删除）
    - **失败处理**：分类不清 / category 不在受控词表 → 不删，加 `# FAILED: <原因>` 标记，下次重试或上报 PM
 3. **维护索引**：drain 完成后自动刷新 `meta-index.json`（机器可读）+ `INDEX.md`（人类可读导航）。
-4. **git 同步**：全局仓库若有 git，自动 `add/commit`（远程推送由配套 ai-meta-sync 软件负责）。
+4. **git 同步**：全局仓库若有 git，自动 `add/commit`；`git push` 投放到 remote 所指池子——指向 `gitee.com/eai-code/ai-meta` = **公共池**，改成私有仓库 = **私有池**。
 5. **报告 PM**：本次处理 N 条 / 入库 X 条 / 重复 Y 条 / 失败 Z 条（列出失败的 MSG 文件名 + 原因，让 PM 决定）。
 
 ## 关键规则（强制）
