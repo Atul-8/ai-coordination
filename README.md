@@ -643,24 +643,34 @@ ai-coordination/
 │       ├── g4-check.js           # G4 离场检查自检清单
 │       ├── workstate-update.js   # 自动更新 WORKSTATE.md
 │       ├── changelog-append.js   # 自动追加 changelog/LOG.md
-│       ├── meta-index.js         # [新] META 规则索引生成（md→json）
-│       ├── meta-retriever.js     # [新] META 规则检索（关键词档，预留向量 RAG）
-│       ├── meta-classify.js      # [新] META 规则分类建议（受控词表）
-│       ├── agent-registry.js     # [新] Agent 注册表（三级存储 + 双生命周期）
-│       ├── agent-roster.js       # [新] 项目结构 → 驻场专家提议
-│       ├── pm-dispatch.js        # [新] PM 调度链建议（任务 → 专家 + META）
-│       ├── agent-fetch.js        # [新] 从 agency-agents-zh 按需拉取专家
-│       └── lib/                  # [新] 共享模块
+│       ├── tasks.js              # [v1.1] 任务表 CRUD（PM 维护，专家读取）
+│       ├── meta-index.js         # [v1.1] META 规则索引生成（md→json）
+│       ├── meta-retriever.js     # [v1.1] META 规则检索（关键词档，预留向量 RAG）
+│       ├── meta-classify.js      # [v1.1] META 规则分类建议（受控词表）
+│       ├── meta-persist.js       # [v1.2] PA 主武器：META 入库（drain/查重/编号到全局仓库）
+│       ├── pa-inbox.js           # [v1.2] PA 消息队列（生产/列表/ACK）
+│       ├── agent-registry.js     # [v1.1] Agent 注册表（三级存储 + 双生命周期）
+│       ├── agent-roster.js       # [v1.1] 项目结构 → 驻场专家提议
+│       ├── pm-dispatch.js        # [v1.1] PM 调度链建议（任务 → 专家 + META）
+│       ├── agent-fetch.js        # [v1.1] 从 agency-agents-zh 按需拉取专家
+│       ├── ccline-agent-wrapper.js  # [v1.1] statusLine 包装（ccline 引擎 + 会话 agent 段）
+│       ├── hud-agent-wrapper.js     # [v1.1] statusLine 包装（claude-hud 引擎 + 会话 agent 段）
+│       ├── subagent-statusline.js   # [v1.1] subagent 面板渲染（显示 PM 调度的专家）
+│       └── lib/                  # 共享模块
 │           ├── detect-layer.js   #     层级检测（DRY，4 处去重）
-│           └── agent-format.js   #     agent 框架封装（slug 化 / 注入前导）
+│           ├── agent-format.js   #     agent 框架封装（slug 化 / 注入前导）
+│           ├── agent-names.js    #     slug ↔ 中文显示名映射（statusLine 渲染用）
+│           ├── meta-paths.js     #     META 全局仓库路径解析（C:\.ai_meta 重定向）
+│           └── project-validate.js  # [v1.2.3] projectRoot 校验（防 slug 误用，ERR-007）
 ├── commands/                     # 命令定义（调用脚本）
+│   ├── pm.md                     # [v1.1] /ai:pm - 唯一对外入口（PM 归类 + 调度）
 │   ├── init.md                   # /ai:init - 初始化对接层
 │   ├── status.md                 # /ai:status - 查看状态
 │   ├── sync.md                   # /ai:sync - 同步云端
 │   ├── error.md                  # /ai:error - 记录错误
-│   ├── agents.md                 # [新] /ai:agents - 管理 agent registry
-│   ├── fetch.md                  # [新] /ai:fetch - 按需拉取专家 agent
-│   ├── dispatch.md               # [新] /ai:dispatch - PM 调度分析
+│   ├── agents.md                 # [v1.1] /ai:agents - 管理 agent registry
+│   ├── fetch.md                  # [v1.1] /ai:fetch - 按需拉取专家 agent
+│   ├── dispatch.md               # [v1.1] /ai:dispatch - PM 调度分析
 │   └── uninstall.md              # /ai:uninstall - 清理对接层
 ├── skills/coordination/          # 技能定义 + 模板
 │   ├── SKILL.md                  # 架构规范（含 G0 路由，需写入 CLAUDE.md）
@@ -673,13 +683,17 @@ ai-coordination/
 │       ├── errors/
 │       │   ├── raw/ERR-000.md
 │       │   └── distilled/meta-rules.md   # 分类 META（RAG-ready 格式）
-│       └── agents/               # [新] 调度编排层种子资源
-│           ├── pm.md             #     项目经理（常驻，编排中枢）
+│       └── agents/               # 调度编排层种子资源
+│           ├── pm.md             #     项目经理（常驻，编排中枢，唯一对外入口）
+│           ├── project-assistant.md  # [v1.2] PA 项目助理（常驻，规则池管家）
 │           ├── embedded-firmware-engineer.md / pc-host-engineer.md
 │           ├── tester.md / security-engineer.md / code-reviewer.md / software-architect.md
 │           ├── registry.json     #     agent 注册表模板
 │           ├── ROSTER.md         #     驻场名单模板
 │           └── README.md         #     agents 目录说明
+├── .claude-plugin/               # [v1.2] Claude Code 插件市场配置
+│   ├── plugin.json               #     插件清单
+│   └── marketplace.json          #     marketplace 元数据
 ├── COMPETITIVE_ANALYSIS.md       # 竞争格局分析报告
 ├── SCI_GUIDE.md                  # 架构思想与原理详解
 └── INSTALL.md                    # 详细部署文档
