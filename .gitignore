@@ -1,5 +1,6 @@
-# Claude Code plugin cache
-.claude-plugin/cache/
+# Node / pi package
+node_modules/
+*.log
 
 # OS files
 .DS_Store
@@ -20,8 +21,12 @@ desktop.ini
 *.pem
 *.key
 
-# Claude Code local state
+# Claude Code local state (v1 legacy, frozen)
 .claude/
+.claude-plugin/cache/
 
-# ai-coordination layer
+# ai-coordination layer (project-local data, never in package repo)
 .ai/
+
+# local scratch
+add/

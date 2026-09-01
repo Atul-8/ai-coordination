@@ -1,752 +1,114 @@
-# ai-coordination
+# pi-ai-coordination
 
-分治思想双重落地 — 五步法错误进化 + 七层架构职责分层 | 上下文容灾 · 状态持久化 · 错误自我提炼 · **PM+PA 双 agent 编排** · **消息队列解耦沉淀** · **分类 META 知识池**
+ai-coordination 七层分治框架（v1.2.1，Claude Code 插件）的 **pi 原生重构版**。
 
-**当前版本：v1.2.1**（见 [CHANGELOG](#changelog)）| **分发**：`/plugin install ai-coordination@ai-coordination`
+七层架构不变：coordination（协调）→ presentation（表示）→ interface（接口）→ core（核心）→ shared（共享）+ testing（测试）+ docs（文档）。
+变的是承载方式——全面拥抱 pi 原生能力（会话树、AGENTS.md、扩展、prompt 模板、包机制）。
 
-[![LGPL-3.0 License](https://img.shields.io/badge/license-LGPL--3.0-blue.svg)](LICENSE)
+## 旧 → 新映射（四个重构点）
 
-## 核心理念：分治思想的双重落地
+| # | 旧（Claude Code 版） | 新（pi 版） |
+| --- | --- | --- |
+| 1 | `WORKSTATE.md` + `LOG.md` 手写续作 | **删除**。pi 原生会话树承担：`/resume` `/tree` `/fork`、JSONL、`$PI_SESSION_FILE`；任务↔会话用 todo.md 行内 `@session:xxxxxxxx` 关联 |
+| 2 | `cat SKILL.md >> CLAUDE.md`（全局追加） | `init-project.js` 运行时把 **`AGENTS.md`** 部署到项目根（幂等插桩），按项目生效 |
+| 3 | `TASKS.md` + tasks.js（PM 任务表） | **todo.md 单一事实源**：`/plan` 计划模式产出 `docs/plans/PLAN-NNN-*.md` → 步骤自动登记 → `/issue` 同步 git issues（gh / GITEE_TOKEN） |
+| 4 | 手工指派 + pm-dispatch 消息队列 | **`/go`** 阶段性调度：交互确认 → 按序执行 → 逐项归档；多 agent 接入各阶段时常驻 PM 动态派发（见下） |
 
-**分治（Divide and Conquer）** 是软件工程最核心的思想——把复杂问题拆成独立子问题分别解决，再合并结果。ai-coordination 将分治在两个维度上系统化落地：
+G0–G4 铁律精简后保留在 `skills/coordination/SKILL.md`（G1 自动化进扩展 session_start；G2/G2.5/G3/G4 成为纪律卡片；G3 五步错误提炼 + META 池原样保留）。
 
-### 纵向递进：五步法 — 错误怎么才能永远不再犯？
+## 设计原则：全局插件，项目数据
 
-```
-症状 → 根因 → 修复 → 规律提炼 → 二次提炼接口(META)
- "表面现象"  "深层为什么"  "当下怎么修"  "通用模式"   "跨项目预防检查项"
-```
+经过 Claude Code 时期的实践，本框架**不适合 MCP 形式**（工具粒度粗、上下文开销大、无法参与 UI/命令生命周期），
+也不应该回到侵入式全局 CLAUDE.md。V2.0 定位：**框架 = 全局插件；项目 = 纯数据**。
 
-每步有明确输入输出，上一步输出是下一步输入。这不是"记一下错误"，是**结构化的知识提炼流水线**。
+| 层 | 位置 | 说明 |
+| --- | --- | --- |
+| 框架代码（扩展/技能/提示词/脚本） | `~/.pi/agent/npm/node_modules/pi-ai-coordination/`（`pi install` 管理） | 全局唯一，所有项目共享；升级 = `pi update` |
+| 项目数据（.ai/、todo.md、AGENTS.md、docs/plans/） | 各项目根 | `init-project.js` 实例化，随项目 git 走 |
+| 全局池（META 经验 + 智能体调配） | `C:\.ai_global`（AI_GLOBAL_DIR 可覆盖） | 跨项目资产，可选 git 同步 |
 
-### 横向分层：七层架构 — 代码怎么组织才不会乱？
+项目内唯一被复制的代码是 `.ai/scripts/issues.js`（为提示词提供稳定路径，init 时自动刷新为包内最新版；源头在包内）。
 
-```
-                  coordination（对接层）
-                  开发状态持久化、上下文容灾
-                       ↓ 可读取所有层
-    ┌─────────────────┼─────────────────┐
-    ↓                 ↓                 ↓
-presentation      interface          core
-（展现层）        （接口层）          （核心层）
-用户交互/视图     对外接口/协议适配    业务逻辑/核心算法
-    ↓                 ↓                 ↓
-    └─────────────────┼─────────────────┘
-                      ↓ 均可依赖
-                  shared（共享层）
-                  常量、工具函数、通用类型、配置项
-                  不依赖任何其他层，被所有层依赖
-                      ↑ 被所有层依赖
-                      ↓ 可测试所有层
-                  testing（测试层）
-                  各层接口验证、集成测试、回归守护
-                  不被任何层依赖，可依赖所有被测层
-                      ↑ 被所有层依赖
-                  docs（文档层）
-                  人与项目交互接口：使用者指南、需求梳理、数据对比
-                  可读取所有层信息，禁止被任何代码层依赖
-```
+> **Claude Code V2.0 对应目标**：后续整合回 Claude Code 时，也应做成 **plugin**（全局安装、项目级数据），
+> 而不是旧版 `cat SKILL.md >> CLAUDE.md` 的侵入式全局追加。届时本包的 skills/prompts 结构可直接映射。
 
-严格单向依赖：上层依赖下层，shared 是**地基**——不依赖任何人，但所有人依赖它。testing 是**守门员**——可测试所有被测层，但不被任何业务层依赖。coordination 层填补传统三层架构的盲区——**谁来管理开发过程本身？** docs 层填补另一个盲区——**谁来对接人？**
-
-### 两者协同
-
-七层架构提供**错误知识的归属层**（coordination），五步法提供**错误知识的提炼路径**。横向保证架构不乱，纵向保证知识不丢。
-
-## 它解决什么问题？
-
-| 痛点 | 解决方式 |
-|------|---------|
-| AI 会话结束，上下文丢失 | WORKSTATE.md 自动记录断点，新会话秒恢复 |
-| 同样的错误在不同项目中重复出现 | 五步法提炼 META 规则，跨项目自动继承 |
-| 代码架构混乱，改一处动全身 | 七层分治 + 严格单向依赖，职责隔离 |
-| 开发过程不可追溯 | 操作履历、需求追踪、结构地图全程记录 |
-| 多设备开发状态不同步 | 独立 Git 仓库云同步，多机无缝续接 |
-| 多设备并行开发导致编号冲突 | 自动检测冲突，本地编号顺延，确保全局唯一 |
-| 遇到不同领域问题不会切专家，单体硬扛 | **[新]** PM 编排 + 按项目驻场专家 + 按需上线 |
-| META 规则笼统，无法按类检索挂载 | **[新]** 分类 META（受控词表）+ 关键词检索，预留向量 RAG |
-
-## 调度编排层（v1.1 新增）
-
-在七层架构之上新增一层「调度编排」，把"问题 → 对的专家"自动化：
-
-```
-用户请求 → [常驻 PM agent] 解析&分类 → 检索本地 Agent Registry
-           → 驻场专家直接调度 / 按需专家(测试·安全)事件触发上线
-           → 顺序委派编排（专家 → 测试 → 回流 → 修改）→ 提炼分类 META
-```
-
-- **常驻 PM**：唯一默认入口（G0 路由），`memory: project` 跨会话沉淀项目认知。
-- **专家双生命周期**：resident（`.claude/agents/`，自动可调度）/ on-demand（`.ai/agents/stash/`，PM 调度前 `activate` 上线）。
-- **三级来源（本地优先）**：项目 `.ai/agents/` → 用户全局 `~/.ai-coordination/agents/` → 远程 `agency-agents-zh` 按需拉取（`/ai:fetch`）。
-- **分类 META**：规则带 category / layer / keywords，`meta-retriever.js` 关键词检索，为未来向量 RAG 预留 `embedding` 字段。
-- **零运行时依赖**：所有脚本仅用 Node 内置模块。
-
-> 详见 `skills/coordination/assets/agents/README.md` 与 SKILL.md 的 G0 路由。
-
-## v1.2 架构演进：PA + 消息队列 + 分类全局池
-
-v1.1 的 PM 单常驻模型在实战中暴露死结：**PM 同时背"编排调度"和"META 沉淀"两份职责，沉淀被主责持续挤占，全局规则池长期为空**。v1.2 引入第二个常驻 agent 解耦。
-
-### 角色 三分
-
-| 角色 | 唯一职责 | 不做 |
-|------|---------|------|
-| **PM** | 对外入口 / 编排调度 / 任务表 | ❌ 不亲自入库 |
-| **PA（project-assistant，新常驻）** | 规则池管家：消费 inbox → 分类入库 → 维护索引 | ❌ 不对外、不调度、不写业务代码 |
-| **专家** | 业务代码 / 测试 / 审查 / 产消息到 inbox | ❌ 不直接写全局池 |
-
-### 生产者-队列-消费者解耦
-
-```
-[专家] ──生产──┐                     ┌──────────────┐                  ┌─────────────────┐
-[PM]   ──生产──┼──→ .ai/pa-inbox/ ──→│  PA agent    │──→ C:\.ai_meta/rules/<CAT>/META-NNN.md
-                     MSG-*.md         │  drain 模式   │                  （12 个受控词表分目录）
-                                      └──────────────┘
-```
-
-- **生产者**（任何 agent）：`pa-inbox.js produce` 写 MSG-*.md，立即返回不阻塞
-- **消费者**（PA）：`meta-persist.js drain` 批量消费 + ACK=删除，失败打 `# FAILED` 标记
-- **PA 唤醒**：PM 在 G1 开门 / G4 离场 / 积压≥3 条时调起
-
-### 分类全局池（拒绝大杂烩）
-
-```
-C:\.ai_meta/                       跨项目共享（手动 git push/pull 同步）
-  rules/<CATEGORY>/META-NNN.md     按 12 个受控词表分目录，每条规则独立文件
-    ASYNC/ SECURITY/ CONCURRENCY/ DEPENDENCY/ LAYERING/ API_CONTRACT/
-    DATA_INTEGRITY/ ERROR_HANDLING/ TESTING/ PERFORMANCE/ BUILD/ STATE_MGMT/
-```
-
-**分类决策**：生产者明确指定 `suggested_category` → PA 信任采纳；未指定 → 才用 `meta-classify` 兜底（见 META-006-LAYERING 教训）。
-
-> 详见 `.ai/decisions/ADR-001-project-assistant-and-message-queue.md`。
-
-## v1.3 架构演进：tool 子层 + 递归分治 + 逻辑分层澄清
-
-### testing 层加 `tool` 子层
-
-实际软件开发会出现两类"工具"无法归类：① 为测本项而开发的独立测试软件（HIL 测试台 / 协议模拟器 / fuzz）② 第三方测试软件适配层。v1.3 加 `testing/tool/` 子层承载（保持"七层"命名不变）。
-
-### 大型工具自身要套完整分治（递归）
-
-`testing/tool/<tool-name>/` 成长到多模块时，本身应套一套完整七层分治（自己的 shared/core/interface/testing），而非混成一团。同理适用于第三方适配层、独立 CLI、模拟器。
-
-### 分层是逻辑，不是物理模板
-
-**澄清**：分层是职责划分，不是强制"根目录建 7 个文件夹"。可全部放 `src/`、可细分、可扁平——AI 与用户按实际决定，只要保证 ① 逻辑职责清晰 ② 依赖方向合规。
-
-> 详见 `.ai/decisions/ADR-002-tool-sublayer-and-logical-layering.md`。
-
-## 安装
-
-### 方式 1：Plugin Marketplace 安装（v1.2+ 推荐）
-
-在 Claude Code 里跑两行命令，所有 agent / commands / hooks 自动加载：
+## 安装与初始化
 
 ```bash
-# 1. 添加本仓库为 marketplace（一次性）
-/plugin marketplace add Atul-8/ai-coordination
+# 安装包（任选其一）
+pi install git:github.com/Atul-8/ai-coordination@pi-ai-coordination   # GitHub 分支分发（推荐）
+pi install /path/to/pi-ai-coordination                                # 本地路径
 
-# 2. 安装 plugin（一次性，所有项目自动生效）
-/plugin install ai-coordination@ai-coordination
+# 项目初始化（幂等；同时确保全局池 C:\.ai_global）
+node "%USERPROFILE%\.pi\agent\git\github.com\Atul-8\ai-coordination\scripts\init-project.js" <项目根>
+# 或 unix：
+# node ~/.pi/agent/git/github.com/Atul-8/ai-coordination/scripts/init-project.js <项目根>
 ```
 
-**前置条件**：
-- Claude Code 较新版本（支持 `/plugin` 命令）
-- GitHub 仓库 `Atul-8/ai-coordination` 对你可访问（public 对所有人，private 需授权）
-
-安装后：
-- ✅ `claude --agent pm` / `--agent project-assistant` 等全局可用
-- ✅ `/ai:pm` / `/ai:init` 等命令全局可用
-- ✅ 任何项目含 `.ai/` 目录即启用 G1-G4 铁律
-- ✅ 8 个 agent（PM + PA + 6 专家）+ 9 个命令 + 3 个 hook 自动加载
-
-### 方式 2：手动部署（旧方式，等价但繁琐）
-
-> 前提：已安装 Claude Code CLI 和 Git
-
-#### 最推荐：直接叫 Claude 帮你部署
-
-不用记任何命令，把这段话发给 Claude：
+初始化产物：
 
 ```
-请帮我部署 ai-coordination 插件：
-1. 克隆 https://github.com/Atul-8/ai-coordination.git
-2. 把 commands/ 复制到 ~/.claude/commands/ai/
-3. 把 skills/coordination/ 复制到 ~/.claude/skills/coordination/
-4. 把 skills/coordination/SKILL.md 的内容追加到 ~/.claude/CLAUDE.md
-5. 完成后报告部署结果
+<项目>/
+├── AGENTS.md            # 运行时规范（pi 自动加载）
+├── todo.md              # 任务事实源
+├── docs/plans/          # /plan 产出
+└── .ai/                 # coordination 层（STRUCTURE/REQ/ERR/META/issues.js）
+
+C:\.ai_global\           # 全局池（AI_GLOBAL_DIR 可覆盖；类 Unix ~/.ai_global）
+├── meta/                # 全局 META 经验池（原 C:\.ai_meta 迁移于此）
+│   ├── raw/
+│   └── distilled/meta-rules.md   # ### META-NNNN
+└── agents/              # 全局智能体调配
+    ├── registry.json    # namespace 固定 pi-dynamic-workflows
+    ├── cards/{pm,writer,reviewer,tester,architect}.md
+    └── dynamic-dispatch.example.js
 ```
 
-Claude 会自动完成所有步骤，你去喝杯咖啡就好。
-
-### 手动安装
-
-```bash
-git clone https://github.com/Atul-8/ai-coordination.git
-cd ai-coordination
-```
-
-## 三种部署模式
-
-| 模式 | 规范写入位置 | 生效范围 | 适用场景 |
-|------|-------------|---------|---------|
-| **全局模式** | `~/.claude/CLAUDE.md` | 所有项目 | 重度用户，所有项目都想用 |
-| **项目模式** | `<项目>/CLAUDE.md` | 仅指定项目 | 只在部分项目中启用 |
-| **测试模式** | `<项目>/CLAUDE.md` | 仅当前项目 | 临时试用，不部署文件 |
-
-> **为什么必须写入 CLAUDE.md？** commands 和 skills 提供工具和触发条件，但 Claude 只有读取 CLAUDE.md 中的规范才会**强制执行**七层架构。纯靠 skills 触发，Claude 会"知道"但不"遵守"。
-
-### 全局模式
-
-所有项目自动生效，无需逐个配置：
-
-```bash
-cd /path/to/ai-coordination
-
-# 1. 部署命令和技能
-cp -r commands/ ~/.claude/commands/ai/
-cp -r skills/coordination/ ~/.claude/skills/coordination/
-
-# 2. 写入全局 CLAUDE.md
-cat skills/coordination/SKILL.md >> ~/.claude/CLAUDE.md
-```
-
-### 项目模式
-
-只在指定项目中生效，其他项目不受影响：
-
-```bash
-cd /path/to/ai-coordination
-
-# 1. 部署命令和技能（全局，所有项目共用命令）
-cp -r commands/ ~/.claude/commands/ai/
-cp -r skills/coordination/ ~/.claude/skills/coordination/
-
-# 2. 写入目标项目的 CLAUDE.md（而非全局）
-cat skills/coordination/SKILL.md >> /path/to/your-project/CLAUDE.md
-```
-
-> 命令和技能可全局部署（让 `/ai:init` 等命令在任何项目可用），规范可以选择只写入特定项目。
-
-### 测试模式
-
-不复制任何文件，用 `--plugin-dir` 临时加载，规范写入当前项目：
-
-```bash
-cd /path/to/your-project
-
-# 1. 临时加载命令和技能
-claude --plugin-dir /path/to/ai-coordination
-
-# 2. 在 Claude 中执行：将规范写入当前项目 CLAUDE.md
-# 或手动执行：
-cat /path/to/ai-coordination/skills/coordination/SKILL.md >> ./CLAUDE.md
-```
-
-> 退出会话后命令消失，但 CLAUDE.md 中的规范保留。
-
-## 新电脑复刻
-
-全局模式一键复刻：
-
-```bash
-git clone https://github.com/Atul-8/ai-coordination.git
-cd ai-coordination
-cp -r commands/ ~/.claude/commands/ai/
-cp -r skills/coordination/ ~/.claude/skills/coordination/
-cat skills/coordination/SKILL.md >> ~/.claude/CLAUDE.md
-```
-
-> Windows 用户路径对应 `%USERPROFILE%\.claude\`。
-
-## Hook 强制执行方案（可选）
-
-> **适用场景**：如果你发现 Claude 有时候不严格执行 G1-G4 规则，可以启用 Hook 方案强制执行。
-
-### 方案说明
-
-ai-coordination 提供三个 Hook 脚本，通过 Claude Code 的 Hook 机制强制执行铁律：
-
-| Hook | 触发时机 | 强制执行内容 |
-|------|---------|-------------|
-| **PreToolUse** | Write/Edit 调用前 | G1 检查 + G2 登记 + G2.5 底层依赖验证提醒 |
-| **PostToolUse** | Write/Edit 调用后 | G2 后续步骤：提醒更新 .ai 文件、运行测试 |
-| **Stop** | 会话结束前 | G4 离场检查：输出自检清单 |
-
-### 安装方式
-
-将以下配置添加到 `~/.claude/settings.json` 的 `hooks` 字段：
-
-```json
-"hooks": {
-  "PreToolUse": [
-    {
-      "matcher": "Write|Edit",
-      "hooks": [
-        {
-          "type": "command",
-          "command": "node \"<plugin-dir>/src/hooks/pre-tool-use.js\""
-        }
-      ]
-    }
-  ],
-  "PostToolUse": [
-    {
-      "matcher": "Write|Edit",
-      "hooks": [
-        {
-          "type": "command",
-          "command": "node \"<plugin-dir>/src/hooks/post-tool-use.js\""
-        }
-      ]
-    }
-  ],
-  "Stop": [
-    {
-      "hooks": [
-        {
-          "type": "command",
-          "command": "node \"<plugin-dir>/src/hooks/stop.js\""
-        }
-      ]
-    }
-  ]
-}
-```
-
-> **注意**：将 `<plugin-dir>` 替换为本仓库实际的克隆/安装路径，如 `<plugin-dir>`、`C:/Users/xxx/.claude/plugins/ai-coordination` 等。
-
-### 工作原理
-
-1. **PreToolUse Hook**：
-   - 检查项目是否有 `.ai/` 目录
-   - 检查目标文件是否在 `.ai/` 目录外（排除 .ai 文件本身的更新）
-   - 检查 `WORKSTATE.md` 是否有「正在进行」的任务登记
-   - **没有登记则阻止操作**，输出提示要求先登记
-   - **G2.5 验证提醒**：识别目标文件所属层级，若其底层依赖尚未验证，输出提醒（不阻止操作）
-
-2. **PostToolUse Hook**：
-   - 代码写入成功后输出提醒
-   - 列出必须执行的同步步骤（更新 WORKSTATE、追加 LOG、检查 STRUCTURE 等）
-   - **不阻止操作**（因为代码已写入），但强制提醒
-
-3. **Stop Hook**：
-   - 会话结束前输出离场检查清单
-   - 显示当前 .ai 状态（最后更新时间、最近操作记录、错误数量等）
-   - **不阻止会话结束**，但强制输出自检清单
-
-### 效果
-
-启用 Hook 后：
-
-- **写代码前不登记 → 操作被阻止**，必须先在 WORKSTATE.md 登记
-- **写代码后 → 自动输出提醒**，列出必须执行的同步步骤
-- **会话结束前 → 自动输出自检清单**，确保不遗漏任何同步任务
-
-这是「铁律」的真正落地：不是靠 Claude 自觉执行，而是靠 Hook 强制拦截。
-
-## 状态栏 agent 显示（可选）
-
-> **适用场景**：在状态栏实时看到「当前运行的 agent」——PM 此刻调度了哪个专家、当前会话本身是不是 PM。
-
-ai-coordination 提供三个 statusLine 脚本，覆盖 Claude Code 的两层 agent 显示：
-
-| 脚本 | 显示位置 | 显示内容 |
-|------|---------|---------|
-| **`subagent-statusline.js`** | 输入框下方的 agent 面板 | PM 此刻调度的每个专家 subagent（动态实时，核心价值） |
-| **`ccline-agent-wrapper.js`** | 主状态栏那一行 | 当前会话的 agent 身份（如「项目经理」），自动包裹现有 ccline（CCometixLine） |
-| **`hud-agent-wrapper.js`** | 主状态栏那一行 | 同上，但包裹的是 claude-hud 插件（保留 hud 的 Context 进度条、manual mode 等全部功能） |
-
-> 主状态栏两个 wrapper **二选一**：按你已装的 statusLine 引擎挑选。装了 CCometixLine 用 ccline 版；装了 claude-hud 插件用 hud 版；都没装则任选其一（wrapper 会降级为仅显示 agent 段）。
-
-### 安装方式
-
-将以下两段配置添加到 `~/.claude/settings.json`（与 `statusLine` / `hooks` 平级）：
-
-**运行中的 subagent 面板**（推荐，纯增量无风险）：
-
-```json
-"subagentStatusLine": {
-  "type": "command",
-  "command": "node \"<plugin-dir>/src/scripts/subagent-statusline.js\""
-}
-```
-
-**主状态栏会话 agent 段**（二选一，替换原 `statusLine.command`）：
-
-ccline 版（包裹 CCometixLine）：
-```json
-"statusLine": {
-  "type": "command",
-  "command": "node \"<plugin-dir>/src/scripts/ccline-agent-wrapper.js\"",
-  "padding": 0
-}
-```
-
-hud 版（包裹 claude-hud 插件）：
-```json
-"statusLine": {
-  "type": "command",
-  "command": "node \"<plugin-dir>/src/scripts/hud-agent-wrapper.js\"",
-  "padding": 0
-}
-```
-
-> **注意**：将 `<plugin-dir>` 替换为本仓库实际的克隆/安装路径。`statusLine.command` 是字面字符串，Claude Code 不解析其中的环境变量——**跨机器部署时每台机器都要把 `<plugin-dir>` 改成本机的实际路径**。两个 wrapper 内部都会自动定位引擎：
-> - ccline 版：自动找 `~/.claude/ccline/ccline`（Windows 为 `ccline.exe`），可用 `AI_COORDINATION_CCLINE` env 覆盖。
-> - hud 版：自动找 `${CLAUDE_CONFIG_DIR:-~/.claude}/plugins/cache/claude-hud/claude-hud/<最新版本>/dist/index.js`，可用 `AI_COORDINATION_HUD_PATH` env 覆盖。
-
-### 前提与降级
-
-- **会话 agent 段**：仅当用 `claude --agent pm` 启动、或在 `settings.json` 顶层设了 `"agent": "pm"` 时，主状态栏才会出现「项目经理」段；普通会话该字段缺省，退化为与裸 ccline/hud 完全一致。
-- **运行中 subagent 面板**：需较新版本 Claude Code 支持 `subagentStatusLine`；不支持则该配置静默无效，不报错。
-- **未识别的 agent**（非 ai-coordination 专家，如 `general-purpose`）：原样显示 slug，不报错。
-
-### 工作原理
-
-- 三个脚本共用 `src/scripts/lib/agent-names.js`（slug ↔ 中文显示名映射，静态保底 + 动态扫描 `~/.claude/agents/` 与项目 `.ai/agents/stash/`）。
-- `subagent-statusline.js` 从 stdin 读 `tasks[]`，按官方 `{id, content}` 协议逐行输出，渲染 `图标 · 中文名 · 状态 · token`，非法输入静默不报错。
-- `ccline-agent-wrapper.js` / `hud-agent-wrapper.js` 透传原始 stdin 给底层引擎，三层 fallback 保证状态栏永不挂（JSON 解析失败 / 引擎不可用 / 全失败 均有兜底）。两者结构对称，仅「调用哪种引擎」不同：ccline 版 spawn `ccline.exe`，hud 版 spawn `node dist/index.js`。
-
-## 检查脚本（节省 Token）
-
-> **适用场景**：Hook 调用脚本执行检查，避免 Claude 重复读取文件浪费 token。
-
-### 脚本说明
-
-| 脚本 | 位置 | 功能 | 输出格式 |
-|------|------|------|---------|
-| `g1-check.js` | `src/scripts/` | G1 开门三件事检查 | JSON |
-| `g2-check.js` | `src/scripts/` | G2 双门禁同步任务清单 | JSON |
-| `g3-error.js` | `src/scripts/` | G3 错误五步法提炼（生成 ERR 文件） | JSON |
-| `g4-check.js` | `src/scripts/` | G4 离场检查自检清单 | JSON |
-| `ai-init.js` | `src/scripts/` | 初始化对接层目录 | JSON |
-| `ai-status.js` | `src/scripts/` | 汇总输出项目状态 | JSON |
-| `ai-sync.js` | `src/scripts/` | 同步到云端 Git 仓库 | JSON |
-| `workstate-update.js` | `src/scripts/` | 更新 WORKSTATE.md（任务/进度/中断点） | JSON |
-| `changelog-append.js` | `src/scripts/` | 追加 changelog/LOG.md 操作记录 | JSON |
-
-### 工作原理
-
-Hook 脚本调用检查脚本，脚本执行以下操作：
-
-1. **读取文件**：扫描 `.ai/` 目录下的所有相关文件
-2. **分析状态**：提取关键信息（最后更新时间、记录数量、Git 状态等）
-3. **生成报告**：输出 JSON 格式的检查结果
-4. **Hook 解析**：Hook 脚本解析 JSON，输出简洁的提示信息
-
-### Token 节省效果
-
-| 场景 | 传统方式（Claude 读取） | 脚本方式 | 节省 |
-|------|----------------------|---------|------|
-| G1 检查 | 读取 WORKSTATE + meta-rules + Git 状态 | 脚本输出 JSON | ~80% |
-| G2 检查 | Claude 分析变更文件 | 脚本分析层级 | ~70% |
-| G4 检查 | 读取 5+ 个文件 | 脚本汇总输出 | ~90% |
-
-### 手动调用方式
-
-你也可以手动调用脚本获取状态报告：
-
-```bash
-# 初始化对接层
-node <plugin-dir>/src/scripts/ai-init.js [project-root] [remote-url]
-
-# 查看状态
-node <plugin-dir>/src/scripts/ai-status.js [project-root]
-
-# G1 开门检查
-node <plugin-dir>/src/scripts/g1-check.js [project-root]
-
-# G2 同步任务清单
-node <plugin-dir>/src/scripts/g2-check.js [project-root] [changed-files]
-
-# G3 错误记录
-node <plugin-dir>/src/scripts/g3-error.js [project-root] [error-type] [error-message] [affected-files]
-
-# G4 离场检查
-node <plugin-dir>/src/scripts/g4-check.js [project-root]
-
-# 同步到云端
-node <plugin-dir>/src/scripts/ai-sync.js [project-root] [remote-url]
-
-# 更新工作状态
-node <plugin-dir>/src/scripts/workstate-update.js [project-root] start "任务描述"
-node <plugin-dir>/src/scripts/workstate-update.js [project-root] progress 50
-node <plugin-dir>/src/scripts/workstate-update.js [project-root] interrupt "file.py:123" "正在修改" "继续完成"
-node <plugin-dir>/src/scripts/workstate-update.js [project-root] finish
-node <plugin-dir>/src/scripts/workstate-update.js [project-root] queue "新任务"
-node <plugin-dir>/src/scripts/workstate-update.js [project-root] dequeue
-
-# 追加操作日志
-node <plugin-dir>/src/scripts/changelog-append.js [project-root] "完成" "修改文件" "file1,file2"
-```
-
-输出均为 JSON 格式，便于 Claude 解析或人工查看。
-
-### AI 自动调用机制
-
-| 脚本 | 自动调用时机 | 调用方式 |
-|------|-------------|---------|
-| `g1-check.js` | PreToolUse Hook 触发时 | Hook 脚本调用 |
-| `g2-check.js` | PostToolUse Hook 触发时 | Hook 脚本调用 |
-| `g3-error.js` | 需手动调用或 Claude 主动调用 | `/ai:error` 命令或 Bash |
-| `g4-check.js` | Stop Hook 触发时 | Hook 脚本调用 |
-| `ai-init.js` | 用户执行 `/ai:init` 时 | 命令调用脚本 |
-| `ai-status.js` | 用户执行 `/ai:status` 时 | 命令调用脚本 |
-| `ai-sync.js` | 用户执行 `/ai:sync` 时 | 命令调用脚本 |
-| `workstate-update.js` | Claude 主动调用或手动调用 | Bash 命令 |
-| `changelog-append.js` | PostToolUse Hook 自动调用 | Hook 脚本调用 |
-
-**Hook 自动调用**：G1/G2/G4 检查脚本和 changelog-append 已集成到 Hook 中，Claude 无需主动调用，Hook 会自动执行并输出简洁提示。
-
-**命令调用脚本**：`/ai:init`、`/ai:status`、`/ai:sync` 命令现在调用脚本而非 Claude 直接读取文件，大幅节省 token。
-
-**自动追加 changelog**：每次 Write/Edit 操作后，Hook 自动调用 `changelog-append.js` 追加操作记录，无需 Claude 手动操作。
-
-## 使用命令
-
-| 命令 | 说明 |
-|------|------|
-| `/ai:pm <需求>` | **唯一对外入口** —— 任何需求/任务交给 PM 归类、写任务表、调度专家执行 |
-
-> 以下为 **PM 内部工具**（开发者通常无需直接使用，由 PM 自行调用）：
->
-> | 内部命令 | 用途 |
-> |---------|------|
-> | `/ai:init` | 初始化对接层（PM 首次启用） |
-> | `/ai:status` | 查看工作状态 |
-> | `/ai:agents` | 管理 agent registry |
-> | `/ai:fetch` | 按需拉取专家 |
-> | `/ai:dispatch` | 调度分析 |
-> | `/ai:error` | 手动补录错误 |
-> | `/ai:sync` | 同步对接层 |
-> | `/ai:uninstall` | 清理对接层 |
-
-### 典型工作流
+## 命令总表
+
+| 命令 | 类型 | 作用 |
+| --- | --- | --- |
+| `/pm` | 提示词 | G0 入口：需求分类路由 |
+| `/plan` | 扩展 | 计划模式（Ctrl+Alt+P / `--plan`）：只读探索 → Plan: → docs/plans 落盘 + todo 登记 |
+| `/todo` | 扩展 | 任务看板（coord_todo 工具供 LLM 维护 todo.md） |
+| `/issue` | 提示词 | `issues.js sync`：待办 ↔ git issues |
+| `/go` | 扩展 | 阶段调度：选阶段 → 确认 → 按序执行（写 session 关联） |
+| `/error` | 提示词 | G3 五步法 |
+| `/meta` | 提示词 | 经验提升全局池 `C:\.ai_global\meta` |
+| `/status` | 提示词 | 状态报告（`/coord-status` 为原生命令） |
+
+## 动态调度：pi-dynamic-workflows（固定前缀）
+
+多 agent 接入不同阶段时，**常驻 PM**（主会话，不派发自己）以固定前缀动态调度：
+
+- **命名空间**：`pi-dynamic-workflows`（注册表 `namespace` 字段，勿改）
+- **lane key**：`pi-dynamic-workflows:<stage>:<T-NNN>`（如 `pi-dynamic-workflows:s1:T-003`）
+- **常驻命名 agent**：`pi-dynamic-workflows-pm`；子角色 `pi-dynamic-workflows-<name>`
+- **拓扑**：阶段 = lane（无依赖阶段并行接入），任务 = lane 内串行 stage（writer → reviewer）
+- **动态性**：lane 完成即读结果，动态决定续派/复核/回写；结果仅认 `structuredOutput.verdict === "blocked"`
+- **模板**：`C:\.ai_global\agents\dynamic-dispatch.example.js`（注入 STAGE/TASKS 后作为 workflowScript）
+
+## 任务流水线
 
 ```
-/ai:init                          # 首次：初始化对接层
-/ai:status                        # 随时：查看当前状态
-/ai:error 异步函数未做错误处理     # 遇坑：记录并提炼规则
-/ai:sync https://github.com/...   # 下班：同步到云端
+需求 → /pm 路由 → /plan 只读计划 → 确认落盘 docs/plans/ + todo 登记
+     → /issue 同步 git issues → /go <stage> 阶段调度 → 逐项 coord_todo done
+     → issues.js close-done → G4 离场（git 提交 + STRUCTURE 校验 + META 归档）
 ```
 
-## .ai/ 目录结构
+todo.md 行格式（唯一规范）：
 
 ```
-.ai/
-  README.md                     # 目录说明 + 共享策略
-  WORKSTATE.md                  # 当前工作状态 + 未完成任务
-  STRUCTURE.md                  # 代码结构分类描述
-  changelog/
-    LOG.md                      # 操作履历（追加，可归档）
-  requirements/
-    REQ-001.md                  # 每条需求独立文件
-    REQ-002.md
-  errors/
-    raw/                        # 原始错误记录（五步法完整过程）
-      ERR-001.md                # 每条错误独立文件
-      ERR-002.md
-    distilled/                  # 提炼成果（可跨项目共享）
-      meta-rules.md             # META 规则汇总表
+- [ ] T-001 [stage:s1] 任务描述 (#12) @session:01a05cc8
+      │            │              │       └ /go 写入的 pi session 前 8 位
+      │            │              └ issues.js sync 回写
+      │            └ 阶段标签（对应「阶段定义」小节）
+      └ [ ] 待办 / [~] 进行中 / [x] 完成
 ```
 
-### 为什么这样分？
+## 兼容与迁移
 
-| 类型 | 更新方式 | 所在位置 | 理由 |
-|------|---------|---------|------|
-| 不增长的 | 覆盖更新 | .ai/ 根目录 | 体积可控，每次全量读取 |
-| 持续增长的 | 追加写入 | 独立文件夹 | 每条记录独立文件，按需读取不浪费上下文 |
-
-### errors/ 为什么分 raw 和 distilled？
-
-- **raw/** — 完整的五步法调试过程，属于项目内部资料，**不建议共享**
-- **distilled/** — 提炼后的 META 规则汇总，就是"错题本"，**强烈建议共享**
-
-团队共享时，只需同步 `distilled/meta-rules.md`，新项目读取即可获得跨项目防线，无需暴露原始调试细节。
-
-## 与同类工具的差异
-
-市面上已有多种 AI 编程记忆/工作流方案，ai-coordination 的独特壁垒是：
-
-**分治思想的双重落地** — 五步法（纵向递进）+ 七层架构（横向分层），竞品要么没有方法论，要么只有一个维度。
-
-| 维度 | ai-coordination | ECC (216K★) | karpathy-skills (176K★) | Planning-with-Files (23K★) | claude-mem (82K★) |
-|------|----------------|-------------|------------------------|---------------------------|-------------------|
-| 核心能力 | 分治双重落地：五步法 + 七层架构 | 全栈 Agent 操作系统 | 行为规范四原则 | 任务规划 + 进度追踪 | 记忆压缩 + 语义搜索 |
-| 错误分析方法论 | **五步法分治递进** | 无结构概率归纳 | 无 | 试错法(3-Strike) | 无 |
-| 代码架构约束 | **七层分治 + 单向依赖** | 无架构约束 | 无 | 无 | 无 |
-| 运行时依赖 | **零** | npm + Rust + SQLite | **零** | Shell 脚本 Hook | Node.js + Worker |
-| 可卸载性 | **删 .ai/ 即可** | 需专用卸载流程 | **删 CLAUDE.md 行** | 需清理 Hook 脚本 | 需卸载服务 |
-| 错误知识跨项目 | **有（distilled 错题本）** | 无 | 无 | 无 | 无 |
-
-> ECC 是"全功能赛车"，karpathy-skills 是"驾驶守则"，Planning-with-Files 是"导航仪"，claude-mem 是"行车记录仪"，ai-coordination 是"保险系统 + 免疫系统"——出了事故提炼规律，永远不再犯同类事故。
->
-> 详见 [竞争格局分析报告](COMPETITIVE_ANALYSIS.md)
-
-## 七层架构
-
-```
-                  coordination（对接层）
-                  开发状态持久化、上下文容灾
-                       ↓ 可读取所有层
-    ┌─────────────────┼─────────────────┐
-    ↓                 ↓                 ↓
-presentation      interface          core
-（展现层）        （接口层）          （核心层）
-用户交互/视图     对外接口/协议适配    业务逻辑/核心算法
-    ↓                 ↓                 ↓
-    └─────────────────┼─────────────────┘
-                      ↓ 均可依赖
-                  shared（共享层）
-                  常量、工具函数、通用类型、配置项
-                  不依赖任何其他层，被所有层依赖
-                      ↑ 被所有层依赖
-                      ↓ 可测试所有层
-                  testing（测试层）
-                  各层接口验证、集成测试、回归守护
-                  不被任何层依赖，可依赖所有被测层
-                      ↑ 被所有层依赖
-                  docs（文档层）
-                  人与项目交互接口：使用者指南、需求梳理、数据对比
-                  可读取所有层信息，禁止被任何代码层依赖
-```
-
-| 层级 | 职责 | 典型内容 |
-|------|------|---------|
-| **coordination** | 开发状态持久化、上下文容灾、业务需求对接 | 工作状态、操作日志、代码结构描述、需求变更、错误知识库 |
-| **presentation** | 用户交互、视图渲染、输入输出 | UI 组件、页面、交互逻辑、状态展示 |
-| **interface** | 对外接口封装、协议适配、类型契约 | API 调用、协议转换、接口类型定义、配置、**安全认证（鉴权/加密/限流）、外部服务对接、数据脱敏接口** |
-| **core** | 业务逻辑、算法实现、数据处理 | 领域模型、核心算法、处理流程、状态机 |
-| **shared** | 跨层通用基础能力，被所有层依赖，不依赖任何人 | 常量、工具函数、通用类型、配置项、**环境变量管理、日志规范、异常体系、审计日志、性能埋点** |
-| **testing** | 各层接口验证、集成回归守护，不被任何层依赖 | presentation 快照测试、interface 契约测试、core 单元测试、shared 工具测试、集成测试、E2E 测试 |
-| **docs** | 人与项目的数据交互接口，对接所有人类角色 | **使用者指南**（入门文档、使用说明）、**需求梳理**（产品经理对接、PRD 输出）、**数据对比**（竞品分析、性能对比、技术选型报告）、**项目介绍**（新成员架构解读） |
-
-## 仓库结构
-
-```
-ai-coordination/
-├── src/                          # 源代码
-│   ├── hooks/                    # Hook 强制执行脚本（自动调用脚本）
-│   │   ├── pre-tool-use.js       # PreToolUse Hook - 调用 g1-check.js
-│   │   ├── post-tool-use.js      # PostToolUse Hook - 调用 g2-check.js + changelog-append.js
-│   │   └── stop.js               # Stop Hook - 调用 g4-check.js
-│   └── scripts/                  # 检查脚本（节省 token，零依赖）
-│       ├── ai-init.js            # 初始化对接层（含 .ai/agents/）
-│       ├── ai-status.js          # 状态查看脚本
-│       ├── ai-sync.js            # 云端同步脚本
-│       ├── g1-check.js           # G1 开门三件事检查
-│       ├── g2-check.js           # G2 双门禁同步任务清单
-│       ├── g3-error.js           # G3 错误五步法提炼
-│       ├── g4-check.js           # G4 离场检查自检清单
-│       ├── workstate-update.js   # 自动更新 WORKSTATE.md
-│       ├── changelog-append.js   # 自动追加 changelog/LOG.md
-│       ├── tasks.js              # [v1.1] 任务表 CRUD（PM 维护，专家读取）
-│       ├── meta-index.js         # [v1.1] META 规则索引生成（md→json）
-│       ├── meta-retriever.js     # [v1.1] META 规则检索（关键词档，预留向量 RAG）
-│       ├── meta-classify.js      # [v1.1] META 规则分类建议（受控词表）
-│       ├── meta-persist.js       # [v1.2] PA 主武器：META 入库（drain/查重/编号到全局仓库）
-│       ├── pa-inbox.js           # [v1.2] PA 消息队列（生产/列表/ACK）
-│       ├── agent-registry.js     # [v1.1] Agent 注册表（三级存储 + 双生命周期）
-│       ├── agent-roster.js       # [v1.1] 项目结构 → 驻场专家提议
-│       ├── pm-dispatch.js        # [v1.1] PM 调度链建议（任务 → 专家 + META）
-│       ├── agent-fetch.js        # [v1.1] 从 agency-agents-zh 按需拉取专家
-│       ├── ccline-agent-wrapper.js  # [v1.1] statusLine 包装（ccline 引擎 + 会话 agent 段）
-│       ├── hud-agent-wrapper.js     # [v1.1] statusLine 包装（claude-hud 引擎 + 会话 agent 段）
-│       ├── subagent-statusline.js   # [v1.1] subagent 面板渲染（显示 PM 调度的专家）
-│       └── lib/                  # 共享模块
-│           ├── detect-layer.js   #     层级检测（DRY，4 处去重）
-│           ├── agent-format.js   #     agent 框架封装（slug 化 / 注入前导）
-│           ├── agent-names.js    #     slug ↔ 中文显示名映射（statusLine 渲染用）
-│           ├── meta-paths.js     #     META 全局仓库路径解析（C:\.ai_meta 重定向）
-│           └── project-validate.js  # [v1.2.3] projectRoot 校验（防 slug 误用，ERR-007）
-├── commands/                     # 命令定义（调用脚本）
-│   ├── pm.md                     # [v1.1] /ai:pm - 唯一对外入口（PM 归类 + 调度）
-│   ├── init.md                   # /ai:init - 初始化对接层
-│   ├── status.md                 # /ai:status - 查看状态
-│   ├── sync.md                   # /ai:sync - 同步云端
-│   ├── error.md                  # /ai:error - 记录错误
-│   ├── agents.md                 # [v1.1] /ai:agents - 管理 agent registry
-│   ├── fetch.md                  # [v1.1] /ai:fetch - 按需拉取专家 agent
-│   ├── dispatch.md               # [v1.1] /ai:dispatch - PM 调度分析
-│   └── uninstall.md              # /ai:uninstall - 清理对接层
-├── skills/coordination/          # 技能定义 + 模板
-│   ├── SKILL.md                  # 架构规范（含 G0 路由，需写入 CLAUDE.md）
-│   └── assets/                   # 初始化模板
-│       ├── README.md
-│       ├── WORKSTATE.md
-│       ├── STRUCTURE.md
-│       ├── changelog/LOG.md
-│       ├── requirements/REQ-000.md
-│       ├── errors/
-│       │   ├── raw/ERR-000.md
-│       │   └── distilled/meta-rules.md   # 分类 META（RAG-ready 格式）
-│       └── agents/               # 调度编排层种子资源
-│           ├── pm.md             #     项目经理（常驻，编排中枢，唯一对外入口）
-│           ├── project-assistant.md  # [v1.2] PA 项目助理（常驻，规则池管家）
-│           ├── embedded-firmware-engineer.md / pc-host-engineer.md
-│           ├── tester.md / security-engineer.md / code-reviewer.md / software-architect.md
-│           ├── registry.json     #     agent 注册表模板
-│           ├── ROSTER.md         #     驻场名单模板
-│           └── README.md         #     agents 目录说明
-├── .claude-plugin/               # [v1.2] Claude Code 插件市场配置
-│   ├── plugin.json               #     插件清单
-│   └── marketplace.json          #     marketplace 元数据
-├── COMPETITIVE_ANALYSIS.md       # 竞争格局分析报告
-├── SCI_GUIDE.md                  # 架构思想与原理详解
-└── INSTALL.md                    # 详细部署文档
-```
-
-## 文档
-
-- [竞争格局分析](COMPETITIVE_ANALYSIS.md) — 与同类工具的深度对比
-- [科普指南](SCI_GUIDE.md) — 架构思想和原理详解
-- [详细部署](INSTALL.md) — 完整安装和配置说明
-
-## License
-
-LGPL-3.0
-
-## CHANGELOG
-
-### v1.2.1（2026-07-25）
-- PM agent 合并版作为分发源（保留"眼里有活"+ 加入 PA 调度机制）
-- 6 专家 v1.2 pa-inbox 回流协议同步到分发源
-- 全局 agent-names.js 加 PA 中文名 + 图标，修 hud/ccline wrapper 图标硬编码 bug
-- pa-inbox.js 加 projectRoot 校验（防 slug 误用，ERR-007）
-- 18 个 CLI 脚本统一 projectRoot 校验（lib/project-validate.js）
-
-### v1.2.0（2026-07-25）
-- **PA agent + 消息队列 + 分类全局池**（ADR-001）
-- testing/tool 子层 + 递归分治 + 逻辑分层澄清（ADR-002）
-- marketplace.json + plugin.json v1.2.0（启用 `/plugin install` 分发）
-- 分支策略：master（稳定分发）/ dev（开发）
-
-### v1.1（2026-07-18）
-- 调度编排层：PM + 6 专家 agent + G0 路由
-- 分类 META（受控词表）+ meta-retriever 检索
-- statusLine agent 显示（subagent-statusline + ccline/hud wrapper）
-
-### v1.0（2026-07-13）
-- 七层分治架构 + G1-G4 铁律
-- 五步法错误提炼 + META 规则
-- .ai/ coordination 层目录结构
-
-## 分支策略
-
-| 分支 | 用途 |
-|------|------|
-| `master` | **稳定分发版**（用户 `/plugin install` 看到的，纯净无 dogfood 痕迹） |
-| `dev` | **开发版**（含 `.ai/` dogfood 状态、`.claude/agents/` 开发绕过机制） |
-
-**工作流**：dev 开发 → 稳定 merge master + 打 tag → push origin 两个分支
-
-**为什么这样分**：master 被 `/plugin install` 拉取时应该是干净的发布版；开发期的 dogfood 状态、实验性代码留在 dev，不污染分发。
-
-## 分发与可见性
-
-- 仓库：`https://github.com/Atul-8/ai-coordination`
-- 当前为 **私有 marketplace**（仅授权用户可 `/plugin install`）
-- 若要改为 public（全网可装），改 GitHub 仓库可见性即可，marketplace.json 无需改
+- 旧 `C:\.ai_meta` → 整体挪到 `C:\.ai_global\meta\`（`distilled/meta-rules.md` 格式不变）
+- 旧 `WORKSTATE.md`/`LOG.md` → 不再需要；历史价值信息可归档进 REQ/ERR 卡
+- 旧 `TASKS.md` → 任务搬进 todo.md（保留编号可映射 T-NNN）
+- 全局池建议 `git init` 关联远程，实现跨机同步

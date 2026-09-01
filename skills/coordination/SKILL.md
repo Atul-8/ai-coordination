@@ -1,429 +1,115 @@
 ---
 name: coordination
-description: >
-  CRITICAL ACTIVATION RULE: This skill is ACTIVE whenever the project contains
-  a `.ai/` directory — that means the user has CHOSEN to use ai-coordination,
-  and ALL discipline rules (G1-G4) are MANDATORY, not optional.
-
-  Auto-activate when:
-  - The project root contains `.ai/` directory (user has opted in)
-  - New conversation session starts in a project with `.ai/`
-  - User mentions: "初始化项目", "对接层", "工作状态", "错误记录",
-    "业务需求", "代码结构", "ai-init", "ai-status", "ai-error", "ai-sync"
-
-  Do NOT activate when:
-  - No `.ai/` directory exists (user has not opted in)
-  - User is chatting, researching, or doing non-development tasks
+description: pi-ai-coordination 七层分治纪律（G0-G4 铁律 + todo/plan/issue 流水线）。当项目根存在 .ai/ 目录、用户提到协调框架、任务调度、阶段计划、错误提炼、META 规则、/pm /plan /issue /go 流程时使用。
 ---
 
-# 七层分治架构 + 业务对接层
-
-## 强制纪律
-
-> **适用前提**：以下规则仅在项目包含 `.ai/` 目录时生效。`.ai/` 的存在 = 用户已选择启用 ai-coordination = 必须执行。
-> 没有 `.ai/` 的项目不受任何约束。
->
-> 以下规则是**铁律**，不是建议。违反任意一条即为失职。
-> 任何时候你觉得"这不重要可以跳过"，**你错了，必须执行。**
-
-### G0 — PM 路由前置（强制默认入口）
-
-PM 是任何开发会话的**唯一默认入口**。会话以 PM 的 system prompt 启动（`.claude/settings.json` 的 `"agent": "pm"`，或 `claude --agent pm`）。PM 在内部执行 G1-G4，本节其余铁律对 PM 同样强制生效。
-
-- **常驻语义**：PM 的"常驻"= 文件驻留 `.claude/agents/` + `memory: project` 跨会话沉淀知识，不是一直在线的进程（subagent 每次调用都是新实例）。
-- **调度用 Agent 工具**（不是 Task）。专家 subagent 继承 G1-G4。
-- **协作模式**：默认**顺序委派**（PM 串行调度，每次拿结果再决定下一步）；双向通信需启用 `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`。
-- **生命周期**：resident（文件在 `.claude/agents/`，自动可调度）/ on-demand（在 `.ai/agents/stash/`，PM 调度前 `agent-registry.js activate <name>` 上线，几秒热重载）。
-- **META 全局化**：所有 META 规则集中存于全局仓库（默认 `C:\.ai_meta`，env `AI_META_DIR` 可配；Unix `~/.ai_meta`），项目通过脚本读取重定向只读引用；PM 提炼的 META 直接写全局。**全局仓库本身是 git 仓库**，`git push/pull` 即跨设备同步。**remote 决定池子性质**：指向 `gitee.com/eai-code/ai-meta` = 投放到**社区公共池**；改成自己的私有仓库 = **工具私有池**。
-- **任务表驱动**：开发者通过 `/ai:pm` 提需求 → PM 归类写入任务表 → 专家按任务表各干各的、互不干扰。
-- **全新 `.claude/agents/` 目录需重启会话**才被扫描——PM 必须作为种子常驻，后续 on-demand agent 才能热上线。
-
-**对外接口**：开发者只需 `/ai:pm`（任何需求 / 任务对接 PM）。其余命令（`/ai:init` `/ai:status` `/ai:agents` `/ai:fetch` `/ai:dispatch` 等）为 **PM 内部工具**，不对开发者暴露。
-
-### G1 — 会话开门三件事（项目含 .ai/ 时，做任何编码之前）
-
-1. **判断当前会话类型**：是否为软件项目开发？
-   - **是开发会话**（写代码、修 bug、重构、需求分析等）：继续执行 G1
-   - **不是开发会话**（闲聊、搜索资料、写文章、数据分析等）：G1-G4 全部不适用，正常工作即可
-2. 检查项目根目录是否存在 `.ai/` 目录。**不存在则 G1-G4 全部不适用，正常工作即可。**
-3. 若 `.ai/` 存在：读取 `.ai/WORKSTATE.md`，报告上次中断点
-4. 读取 `.ai/errors/distilled/meta-rules.md`，确认 META 规则已加载
-5. **Git 一致性检查**（`.ai/` 已配置远程仓库时必须执行）：
-   - 执行 `cd .ai && git fetch origin`
-   - 比较本地与远程的差异：`git diff HEAD origin/main`（或对应分支）
-   - **本地落后于远程** → 先 `git pull` 拉取云端最新状态
-   - **本地超前于远程** → 先 `git push` 推送本地变更
-   - **本地与远程有冲突** → 按编号冲突解决机制处理（见下方），解决后再同步
-   - **同步完成后** → 重新读取 `meta-rules.md`，确保已加载最新规则
-6. 基于以上信息制定本次会话计划
-
-**项目有 .ai/ 且是开发会话，却不做这三件事，不允许开始写任何代码，且须遵守 G2.5 先验证后开发。**
-
-### G2 — 代码变更 ↔ .ai 同步（双门禁）
-
-**前提**：项目包含 `.ai/` 目录。没有则忽略。
-
-写代码和写 .ai 是**原子操作**，不可分割：
-
-- **写代码之前**：先在 `.ai/WORKSTATE.md` 登记「正在做什么」
-- **写代码之后**：必须立刻执行以下全部，顺序不可省略：
-  1. 更新 `WORKSTATE.md`（进度、中断点）
-  2. 追加 `changelog/LOG.md`（操作记录）
-  3. 检查是否触发以下条件，触发则执行：
-     - 新增/删除/重命名了文件 → 更新 `STRUCTURE.md`
-     - 新增/变更了业务需求 → 新建 `requirements/REQ-NNN.md`
-     - 修复了 bug 或遇到了错误 → **自动触发 G3**
-  4. **testing 层强制验证**：代码变更后必须运行对应层的测试，确认不引入回归。若项目暂无测试，则标注为待补充。
-     - 修改了 presentation 层代码 → 运行 UI 快照/交互测试
-     - 修改了 interface 层代码 → 运行契约/接口测试
-     - 修改了 core 层代码 → 运行单元测试
-     - 修改了 shared 层代码 → 运行工具函数测试
-     - 跨层修改 → 运行集成测试
-
-**写完代码不更新 .ai 或不运行测试，等同于代码没写完。代码写前按 G2.5 验证，代码写后按 G2 同步。**
-
-### G2.5 — 先验证后开发（写任何上层代码之前）
-
-**前提**：项目包含 `.ai/` 目录。没有则忽略。
-
-开发任何上层代码前，**必须先验证底层依赖是否可用、接口是否如预期**。层层依赖必须层层验证：
-
-- **写 shared 层代码** → 写完后必须验证可用（运行工具函数测试 / 手动调用验证）
-- **写 core 层代码** → 写完后必须验证对 shared 的依赖成立（运行单元测试 / 导入验证）
-- **写 interface 层代码** → 写完后必须验证对 core/shared 的依赖成立（运行契约测试 / 接口调用验证）
-- **写 presentation 层代码** → 写完后必须验证对 interface/shared 的依赖成立（运行交互测试 / 组件渲染验证）
-
-**验证不通过，不允许开发上层代码。** 你不能在一个不确定的地基上盖楼。
-
-验证方式（按优先级）：
-1. 运行对应层已有测试并确认通过
-2. 编写临时验证脚本并在终端运行，确认输出符合预期
-3. 在代码中编写 console.log 验证点并运行，确认中间状态正确
-4. 若项目无测试基础设施，在 WORKSTATE.md 标注"待补充测试"，但仍需手动验证核心逻辑
-
-**验证结果必须记录到 WORKSTATE.md**，格式：在「正在进行」任务描述中追加 `[验证: shared✓ core✓ interface✗ presentation✗]` 标记。
-
-**跳过验证的唯一条件**：该层代码没有上层依赖者（即该层是本次开发的最终目标层），但仍须在完成后运行 G2 的测试验证。
-
-### G3 — 错误自动捕获与五步法提炼
-
-**前提**：项目包含 `.ai/` 目录。没有则忽略。
-
-**核心理念**：错误记录对用户无感。用户不需要执行任何命令，Claude 遇到错误时**必须自动**完成五步法提炼。
-
-**自动触发时机**（任何一条成立即触发，无需用户操作）：
-- 代码运行出错（TypeError、ReferenceError、Exception 等）
-- 编译/构建失败
-- 测试不通过
-- 用户报告了 bug 或异常行为
-- 修复了一个已知问题
-- 代码审查中发现潜在错误
-
-**触发后自动执行**（不允许跳过任何步骤）：
-
-1. **静默执行五步法分析**（不中断开发流程，在后台完成）：
-   - 症状：记录表面现象
-   - 根因：连问 3 个为什么，找到深层原因
-   - 修复：记录修复方式
-   - 规律提炼：抽象通用规则
-   - 二次提炼接口：生成 META 规则
-
-2. **自动写入文件**：
-   - 新建 `errors/raw/ERR-NNN.md`（五步法完整记录）
-   - 若提炼出 META 规则 → 追加到 `errors/distilled/meta-rules.md`
-   - **编号分配前**：若 `.ai/` 有远程仓库，先 `git pull` 获取最新编号，基于远程最大编号 +1 分配，减少冲突
-
-3. **复现追踪**：若某条 ERR 复现次数 >1，**立即**回溯重新分析根因，补充规律提炼
-
-**不要告知用户"请运行 /ai:error"**。五步法是 Claude 的内部纪律，不是用户操作。用户只管开发，错误提炼全自动。
-
-### G4 — 离场检查（会话结束前）
-
-**前提**：项目包含 `.ai/` 目录。没有则忽略。
-
-每次会话结束前，自检以下项目，全部通过才允许结束：
-
-- [ ] WORKSTATE.md 的中断点是否指向当前最新状态？
-- [ ] changelog/LOG.md 是否记录了本次所有关键操作？
-- [ ] 本次涉及的架构变更是否已更新到 STRUCTURE.md？
-- [ ] 本次遇到的错误是否已按五步法记录？
-- [ ] 未完成队列是否已更新？
-- [ ] 本次代码变更是否已运行了对应层的测试？（若项目无测试则标注待补充）
-- [ ] 若 .ai/ 有远程仓库，本次新增的 ERR/META 编号是否与云端冲突？如有冲突是否已顺延解决？
-- [ ] 若 .ai/ 有远程仓库，是否已 git push 推送本次所有变更？
-
-**自检没过就结束会话 = 遗留问题给未来的自己。**
-
----
-
-## 架构模式
-
-> **分层是逻辑职责划分，不是物理目录模板**。下表的「目录」列仅为示例，实际可灵活组织：
-> - 全部放 `src/`：`src/presentation/`, `src/core/`, `src/shared/`
-> - 细分：`src/presentation/web/`, `src/presentation/cli/`
-> - 扁平：小项目一个 `src/` 包含所有层
-> - 工具：`testing/tool/<tool-name>/` 内部自治（见下方"工具独立分治"）
->
-> AI 与用户根据项目规模/语言/框架自行决定物理结构，只要保证：① 逻辑职责清晰 ② 依赖方向合规（shared 不依赖任何层）。
-
-```
-                  coordination（对接层）
-                  开发状态持久化、上下文容灾
-                       ↓ 可读取所有层
-    ┌─────────────────┼─────────────────┐
-    ↓                 ↓                 ↓
-presentation      interface          core
-（展现层）        （接口层）          （核心层）
-用户交互/视图     对外接口/协议适配    业务逻辑/核心算法
-    ↓                 ↓                 ↓
-    └─────────────────┼─────────────────┘
-                      ↓ 均可依赖
-                  shared（共享层）
-                  常量、工具函数、通用类型、配置项
-                  不依赖任何其他层，被所有层依赖
-                      ↑ 被所有层依赖
-                      ↓ 可测试所有层
-                  testing（测试层）
-                  各层接口验证、集成测试、回归守护
-                  不被任何层依赖，可依赖所有被测层
-                      ↑ 被所有层依赖
-                  docs（文档层）
-                  人与项目交互接口：使用者指南、需求梳理、数据对比
-                  可读取所有层信息，禁止被任何代码层依赖
-```
-
-| 层级               | 职责                   | 典型内容                        |
-| ---------------- | -------------------- | --------------------------- |
-| **coordination** | 开发状态持久化、上下文容灾、业务需求对接 | 工作状态、操作日志、代码结构描述、需求变更、错误知识库 |
-| **presentation** | 用户交互、视图渲染、输入输出       | UI 组件、页面、交互逻辑、状态展示          |
-| **interface**    | 对外接口封装、协议适配、类型契约     | API 调用、协议转换、接口类型定义、配置、**安全认证（鉴权/加密/限流）、外部服务对接、数据脱敏接口** |
-| **core**         | 业务逻辑、算法实现、数据处理       | 领域模型、核心算法、处理流程、状态机          |
-| **shared**       | 跨层通用基础能力，被所有层依赖，不依赖任何人       | 常量、工具函数、通用类型、配置项、**环境变量管理、日志规范、异常体系、审计日志、性能埋点** |
-| **testing**      | 各层接口验证、集成回归守护 + **独立测试工具**（tool 子层），不被任何层依赖       | unit/integration/e2e/契约/快照 + **testing/tool/\<tool-name\>/ 独立测试软件（HIL 测试台/协议模拟器/压测/fuzz）+ 第三方测试软件适配层** |
-| **docs** | 人与项目的数据交互接口，对接所有人类角色 | **使用者指南**（给用户的入门文档、使用说明）、**需求梳理**（对接产品经理的需求分析、PRD 输出）、**数据对比**（给开发者的竞品分析、性能对比、技术选型报告）、**项目介绍**（给新成员的项目概述、架构解读） |
-
-### 大型工具 / 子系统的递归分治（tool 子层自治）
-
-> **当 `testing/tool/<tool-name>/` 成长到多模块规模，本身应套一套完整七层分治**（自己的 shared/core/interface/testing），而非混成一团。主项目的 `testing/tool/<tool-name>/` 是物理载体，内部逻辑分层自理。
->
-> 同理适用于：依赖的第三方软件的适配层（wrapper/integration layer）、独立 CLI 子工具、模拟器/仿真器。
->
-> 判定标准：当代码量 / 模块数 / 复杂度足以支撑独立分层时，就拆；否则扁平化即可。不要过度设计，也不要把成长起来的工具继续混在一个目录里。
-
-## 严格单向依赖规则
-
-```
-                  coordination（对接层）
-                       ↓ 可读取所有层
-    ┌─────────────────┼─────────────────┐
-    ↓                 ↓                 ↓
-presentation      interface          core
-    ↓                 ↓                 ↓
-    └─────────────────┼─────────────────┘
-                      ↓ 均可依赖
-                  shared（共享层）
-              不依赖任何其他层，被所有层依赖
-                      ↑ 被所有层依赖
-                  testing（测试层）
-              依赖所有被测层，不被任何层依赖
-                      ↑ 被所有层依赖
-                  docs（文档层）
-              可读取所有层，禁止被任何代码层依赖
-```
-
-- **coordination** 可读取所有层信息用于状态记录，**禁止**被任何代码层运行时依赖
-- **presentation** 可依赖 interface、shared，**禁止**直接依赖 core
-- **interface** 可依赖 core、shared
-- **core** 仅依赖 shared，**禁止**依赖 interface 或 presentation
-- **shared** 不依赖任何其他层级
-- **testing** 可依赖所有被测层（presentation/interface/core/shared），**禁止**被任何业务层依赖
-- **docs** 可读取所有层信息用于文档生成，**禁止**被任何代码层运行时依赖
-
-> coordination 层和 docs 层都是元数据层，不参与运行时代码依赖。coordination 管开发过程，docs 管人机交互。
-
-## coordination 层目录结构
-
-项目根目录下创建 `.ai/` 目录：
-
-```
-<project_root>/.ai/
-  README.md                    # 目录说明 + 共享策略
-  WORKSTATE.md                 # 当前工作状态 + 未完成任务（最高优先读取）
-  STRUCTURE.md                 # 代码结构分类描述（架构地图）
-  changelog/
-    LOG.md                     # 操作履历（按时间线追加）
-  requirements/
-    REQ-001.md                 # 每条需求独立文件
-    REQ-002.md
-    ...
-  errors/
-    raw/                       # 原始错误记录（五步法完整过程）
-      ERR-001.md               # 每条错误独立文件
-      ERR-002.md
-      ...
-    distilled/                 # 提炼成果（可跨项目共享）
-      meta-rules.md            # META 规则汇总表
-```
-
-### 设计思路
-
-- **不增长的文件**（WORKSTATE、STRUCTURE、README）留在根目录，覆盖更新，体积可控
-- **持续增长的目录**（changelog、requirements、errors）拆分为独立文件夹，每条记录独立文件，按需读取
-- **errors 分 raw/distilled 两层**：raw 保留完整调试过程（内部资料），distilled 只存提炼后的 META 规则（共享错题本）
-
-## 文件规范
-
-### README.md — 目录说明
-
-描述 .ai/ 目录的结构、各文件/文件夹的用途和共享策略。新成员或新会话可快速理解目录用途。
-
-### WORKSTATE.md — 工作状态（每次新会话必先读取）
-
-```markdown
-# 当前工作状态
-
-## 正在进行
-- [任务描述] 进度: xx% | 上次更新: YYYY-MM-DD HH:MM
-
-## 未完成队列
-- [ ] 任务1 — 简要描述 + 当前进度
-
-## 上次中断点
-- 文件: xxx.py:行号
-- 操作: 正在执行 xxx
-- 待恢复: 下一步要做 xxx
-```
-
-### STRUCTURE.md — 代码结构地图
-
-维护分层映射表 + 关键模块表（模块、路径、职责、依赖），架构变更后同步更新。
-
-### changelog/LOG.md — 操作履历
-
-每次关键操作后实时追加，格式：
-`- HH:MM [完成|决策|修复] 描述 (涉及文件: a.py, b.py)`
-
-当 LOG.md 超过 50KB 或 30 天记录时，将旧记录移入 `changelog/ARCHIVE-YYYY-MM.md` 归档。
-
-### requirements/ — 需求记录
-
-每条需求独立文件，按 REQ-NNN 编号：
-
-```markdown
-### REQ-NNN: 需求标题
-
-- **状态**: [进行中 | 完成 | 取消]
-- **描述**: 需求内容
-- **影响范围**: 涉及的模块/文件
-- **变更记录**:
-  - YYYY-MM-DD: 初始记录
-  - YYYY-MM-DD: 变更说明（如有）
-```
-
-### errors/raw/ — 原始错误记录
-
-每条错误独立文件，遵循五步法：
-
-```markdown
-### ERR-NNN: 错误标题
-
-- **症状**: 现象描述
-- **根因**: 深层原因分析（非表面原因）
-- **修复**: 具体修复方式
-- **规律提炼**: 从此错误抽象出的通用规则
-- **二次提炼接口**: 可跨项目复用的检查项/编码规范
-- **首次出现**: YYYY-MM-DD
-- **复现次数**: N（若 >1 说明规律提炼不够透彻）
-```
-
-**自我升级机制**：若同一 ERR 复现次数 >1，说明规律提炼不够透彻，需回溯补充。
-
-### errors/distilled/ — META 规则汇总（跨项目共享）
-
-从 raw 中提炼的通用规则汇总表：
-
-```markdown
-### META-NNN-CATEGORY: 规则标题
-
-- **规则**: 通用规则描述
-- **适用场景**: 哪类代码/场景需要遵守
-- **源错误**: ERR-NNN（可跨项目引用）
-- **检查方式**: 如何在代码审查中验证
-- **类别(category)**: <受控词表之一>
-- **关联层(layer)**: core, interface
-- **关联专家(applies_to)**: <专家 slug>
-- **触发关键词(keywords)**: <检索关键词>
-
-> CATEGORY 受控词表：`ASYNC | SECURITY | CONCURRENCY | DEPENDENCY | LAYERING | API_CONTRACT | DATA_INTEGRITY | ERROR_HANDLING | TESTING | PERFORMANCE | BUILD | STATE_MGMT`
-> 类别 / 关联层 / 关联专家 / 触发关键词为必填（G3 提炼时缺一不可，供 `meta-retriever.js` 检索，为未来 RAG 预留 `embedding` 字段）。
-```
-
-**跨项目传播**：新项目只需复制 `distilled/meta-rules.md` 即可继承防线。
-
-### 编号冲突解决机制（本地 ↔ 云端同步时）
-
-当 `.ai/` 配置了 Git 远程仓库时，本地与云端可能因多设备并行开发导致编号冲突。**此机制确保编号全局唯一，绝不覆盖。**
-
-**冲突场景**：本地生成了 `ERR-007` / `META-007`，但云端已有同编号的记录。
-
-**解决流程**：
-
-1. **检测冲突**：`git pull` 后，比对本地与远程的编号是否重复
-2. **本地让步**：本地编号向后顺延至下一个可用编号
-   - 例：本地 `ERR-007` → 远程已有 `ERR-007` → 本地改为 `ERR-008`
-   - 例：本地 `META-007` → 远程已有 `META-007` → 本地改为 `META-008`
-   - 若 `008` 也被占用，继续顺延直到找到未被占用的编号
-3. **更新引用**：所有引用了旧编号的文件（如 `meta-rules.md` 中的 `源错误: ERR-007`）同步更新为新编号
-4. **提交同步**：编号修正完成后 `git add -A && git commit && git push`
-5. **确认一致**：再次 `git pull` 确认无冲突后，才允许开始新开发
-
-**顺延原则**：本地永远让步于云端，因为云端代表团队的共识状态。本地是单机状态，变更代价更低。
-
-**同步前先拉取**：新增 ERR/META 时，如果 `.ai/` 有远程仓库，应先 `git pull` 获取最新编号，再基于最新最大编号分配新编号，从源头减少冲突。
-
-## 共享策略
-
-| 内容                | 共享建议     | 理由                    |
-| ----------------- | -------- | --------------------- |
-| WORKSTATE.md      | 共享       | 多机续接需要                |
-| STRUCTURE.md      | 共享       | 架构共识                  |
-| changelog/        | 可选       | 操作历程，参考价值有限           |
-| requirements/     | 共享       | 需求追踪需要团队可见            |
-| errors/raw/       | **不建议**  | 调试细节，可能涉密             |
-| errors/distilled/ | **强烈建议** | 提炼后的通用规则，最适合跨项目/跨团队传播 |
-
-## 操作规程
-
-> 以下规程仅在项目包含 `.ai/` 目录时生效。用户执行 `/ai:init` 即表示选择启用，G1-G4 自动强制执行。
-> **所有操作对用户无感**——用户只管开发，Claude 在后台自动完成 .ai 同步、错误提炼、日志记录。
-
-1. **会话开始**：检查 `.ai/` 是否存在，存在则执行 G1 开门三件事（含 Git 一致性检查）
-2. **任务执行中**：实时更新 `WORKSTATE.md` 的进度和中断点
-3. **任务完成后**：自动执行 G2 双门禁 — 写代码后静默同步 .ai
-4. **架构变更后**：自动更新 `STRUCTURE.md`
-5. **需求变更时**：自动新建 `requirements/REQ-NNN.md` 并标注影响范围
-6. **异常中断恢复**：根据 `WORKSTATE.md` 的"上次中断点"直接续接
-7. **错误发生时**：自动执行 G3 — 静默完成五步法提炼，用户无感
-8. **编号冲突时**：本地让步顺延，更新引用后提交同步，确认一致再继续开发
-9. **新项目启动**：读取已有项目的 `errors/distilled/meta-rules.md` 作为预置防线
-10. **代码变更后**：自动运行对应层测试（G2 第 4 步），确保不引入回归
-11. **开发上层代码前**：按 G2.5 先验证底层依赖可用，层层验证自底向上
-12. **会话结束前**：自动执行 G4 离场检查
-
-## 思维检查清单（每次开发前）
-
-> 仅在项目包含 `.ai/` 目录时需要检查。
-
-- [ ] 项目是否有 `.ai/` 目录？没有则本清单不适用
-- [ ] 这个文件/函数属于哪一层？
-- [ ] 依赖方向是否合规？
-- [ ] 是否有跨层硬编码或隐式耦合？
-- [ ] 新增功能是否按层次拆分到对应位置？
-- [ ] 核心逻辑是否可独立于 UI 测试？
-- [ ] 测试是否按层分类（presentation/interface/core/shared）且不遗漏？
-- [ ] 本次代码变更是否已运行对应层测试？
-- [ ] 开发上层代码前，是否已验证底层依赖可用？（G2.5 先验证后开发）
-- [ ] 关键操作是否已记录到 coordination 层？
-- [ ] 中断点是否已更新到 WORKSTATE.md？
-- [ ] 文档类内容（使用说明、需求梳理、数据对比）是否归入 docs 层而非散落在代码层？
-- [ ] 若 .ai/ 有远程仓库，Git 一致性是否已确认（无冲突、本地与远程同步）？
+# coordination — 七层分治纪律（pi 原生版）
+
+本技能是 ai-coordination（Claude Code 版 v1.2.1）的 pi 重构。核心变化：
+- 会话状态由 pi 原生会话树承担（JSONL、/tree、/fork、PI_SESSION_FILE）——**已删除** WORKSTATE.md / LOG.md 及其脚本
+- 任务事实源收敛为项目根 `todo.md`，由 `coord_todo` 工具维护
+- 计划产出落盘 `docs/plans/`，任务同步 git issues（`.ai/scripts/issues.js`）
+- 调度统一走 `/go`（阶段确认 → 按序执行 → 逐项归档）
+
+激活：项目根存在 `.ai/`（`findCoordDir` 向上查找）。
+
+## G0 · 入口路由（/pm）
+
+任何需求先分类，不直接开写：
+
+| 类型 | 去向 |
+| --- | --- |
+| 小活（单文件、可一次对话完成） | 直接执行，但写后仍走 G2 同步 |
+| 大活（多文件/多阶段/有验收） | 创建 REQ 卡（.ai/requirements/）→ /plan 计划 → /issue → /go |
+| 错误/缺陷 | G3 五步法（/error） |
+| 经验教训 | /meta 提升全局池 |
+
+判断标准：需要 ≥2 次写操作、或需要跨会话继续、或用户要求计划 → 大活。
+
+## G1 · 开门（session_start 自动化 + 人工项）
+
+自动（status.ts 扩展完成）：恢复 todo 进度小部件、META 规则计数、session 提示。
+人工（模型在首轮对话时执行）：
+1. `/todo` 或读 todo.md 确认当前阶段与待办；有 `~` 进行中任务 → 优先续作
+2. 读 `.ai/errors/distilled/meta-rules.md`，让 META 规则参与本轮决策
+3. 若 `.ai/` 是独立 git 仓库 → `git -C .ai fetch && status` 校验一致性
+4. 任务关联：被调度任务已有 `@session:` 标记；需要历史细节时用 pi 会话树（/tree、/fork）回溯，**不要**凭空编造上次进度
+
+## G2 · 同步门控（每次写操作后）
+
+写代码/文档 → 立即三连（未完成不写下一处）：
+1. **跑层测试**：testing 层对应模块的单测（G2.5 保证其可运行）
+2. **更新结构**：新增/移动/删除了文件 → `.ai/STRUCTURE.md` 模块清单同步
+3. **更新状态**：任务推进用 coord_todo（start→doing / done），需求变更回写 REQ 卡
+
+依赖方向铁律：shared←core←interface←presentation；测试层可依赖全部。
+跨层引用 = 架构破坏，先在 STRUCTURE.md 标注再动手。
+
+## G2.5 · 先验证后开发
+
+新模块开发前，先证明测试体系能跑：
+1. 写一个必然失败的测试（红）
+2. 确认失败信息正确（不是环境错误）
+3. 写最小实现变绿
+禁止"先实现后补测试"。禁止跳过红→绿直接全量实现。
+
+## G3 · 五步错误提炼（/error）
+
+任何报错（构建/测试/运行时）当场提炼，五步缺一不可：
+
+1. **现象**：精确报错、复现步骤、期望 vs 实际 → `.ai/errors/raw/ERR-NNN.md`
+   （编号先 `ls .ai/errors/raw/` 查最大值再 +1；.ai 若为独立仓库先 pull）
+2. **根因**：定位过程 + 结论（不写"玄学"，不许"暂时好了"）
+3. **修复**：改了什么（文件/提交）
+4. **预防**：检查、约束、自动化手段
+5. **META 蒸馏**：按受控词表（构建 BUILD/环境 ENV/测试 TEST/数据 DATA/接口 API/架构 ARCH/流程 PROC/文档 DOC/安全 SEC/性能 PERF/依赖 DEP/协作 COLLAB）提炼一条规则 → `.ai/errors/distilled/meta-rules.md`（### META-NNN，编号连续）；确认普适后由 /meta 提升全局池
+
+连续 2 次同根因报错 → 强制停止，升级为 REQ 卡走 /plan。
+
+## G4 · 离场检查（每个工作单元结束）
+
+1. todo.md 全部归档：完成任务 `[x]`（coord_todo done），进行中清零或注明
+2. `.ai/scripts/issues.js close-done` 关闭已完成任务的 issue
+3. `.ai/STRUCTURE.md` 与实际目录一致（ls/find 抽查）
+4. git 提交 + 推送（.ai 若独立仓库单独提交）
+5. 新增 META 规则已写入；若普适 → 提示用户 /meta 升全局池
+
+## 大任务派发（全局智能体调配 · 动态调度）
+
+全局角色注册表：`AI_GLOBAL_DIR\agents\registry.json`（默认 `C:\.ai_global\agents\`），角色卡在 `cards\*.md`。
+
+- **命名空间（固定前缀，勿改）**：`pi-dynamic-workflows`
+  - 动态 lanes 的 workflow key：`pi-dynamic-workflows:<stage>:<T-NNN>`
+  - 常驻命名 agent：`pi-dynamic-workflows-pm`（子角色建议 `pi-dynamic-workflows-<name>`）
+- **pm（调度者）**：主会话常驻——G0 路由、动态调度各阶段 subagent、结果汇总，不派发自己
+- **writer / reviewer / tester / architect**：subagent 执行
+- **动态调度（多 agent 接入不同阶段）**：阶段 = lane（无依赖阶段并行接入），
+  任务 = lane 内串行 stage（writer → reviewer）；lane 完成即读结果动态续派；
+  结果仅认 `structuredOutput.verdict === "blocked"`
+- 派发 = 角色卡 + 任务卡（todo.md 任务描述 + REQ 文档 + 阶段计划）组合成 subagent task；
+  父会话保持调度权与验收权；模板：`templates/agents/dynamic-dispatch.example.js`
+- 注册表可编辑：增加角色只需加 JSON 条目 + 角色卡文件
+
+## 命令总表
+
+| 命令 | 类型 | 作用 |
+| --- | --- | --- |
+| /pm | 提示词 | G0 入口：需求分类与路由 |
+| /plan | 扩展 | 计划模式（Ctrl+Alt+P，--plan 旗标）→ docs/plans 落盘 + todo 登记 |
+| /todo | 扩展 | 任务看板 |
+| /issue | 提示词 | issues.js sync 同步 git issues |
+| /go | 扩展 | 阶段调度：选阶段 → 确认 → 按序执行 |
+| /error | 提示词 | G3 五步法记录 |
+| /meta | 提示词 | 经验提升全局池（AI_GLOBAL_DIR\meta，默认 C:\.ai_global） |
+| /status | 提示词 | 状态报告（/coord-status 为原生命令） |
+
+## pi 原生能力对照（旧 → 新）
+
+| 旧（Claude Code 版） | 新（pi 版） |
+| --- | --- |
+| WORKSTATE.md 手写续作上下文 | pi 会话树 /resume /tree /fork；todo 行内 @session 关联 |
+| LOG.md 事件流水 | pi 会话 JSONL 本身 + git log |
+| cat SKILL.md >> CLAUDE.md（全局追加） | init-project.js 部署项目级 AGENTS.md（幂等插桩） |
+| TASKS.md PM 任务表 + tasks.js | todo.md + coord_todo 工具 + /go 调度 |
+| g1-check/g2-check/g4-check 脚本 | G1 自动化进扩展 session_start；G2/G4 成为纪律卡片 |
+| pm-dispatch 双智能体消息队列 | pi-subagents subagent 编排 + 全局角色注册表（AI_GLOBAL_DIR\agents） |

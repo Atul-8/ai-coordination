@@ -1,0 +1,28 @@
+{
+  "name": "pi-ai-coordination",
+  "version": "0.1.0",
+  "description": "ai-coordination 七层分治框架的 pi 原生重构版：session 原生 + AGENTS.md 运行时部署 + todo.md→plan→issues 流水线 + /go 阶段性调度",
+  "type": "module",
+  "keywords": [
+    "pi-package",
+    "coordination",
+    "divide-and-conquer",
+    "todo",
+    "plan-mode",
+    "issues"
+  ],
+  "license": "LGPL-3.0",
+  "pi": {
+    "extensions": ["./extensions"],
+    "skills": ["./skills"],
+    "prompts": ["./prompts"]
+  },
+  "dependencies": {},
+  "peerDependencies": {
+    "typebox": "*",
+    "@earendil-works/pi-ai": "*",
+    "@earendil-works/pi-agent-core": "*",
+    "@earendil-works/pi-coding-agent": "*",
+    "@earendil-works/pi-tui": "*"
+  }
+}
