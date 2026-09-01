@@ -8,6 +8,28 @@ ai-coordination 七层分治框架（v1.2.3，Claude Code 插件）的 **pi 原�
 > 📋 项目计划与路线图见 **`masterV2`** 分支 ·
 > ✅ 以下安装/卸载/工具调用命令均已在 **pi 0.84.4** 端到端实测
 
+## ⚠️ 运行环境：全局 pi 插件组合（已实测）
+
+本框架**不是孤立工作的**：动态调度、计划模式旗标、无头行为都依赖与其他 pi 插件的共存与协作。以下正是开发者当前全局部署、且全部功能实测通过的完整组合（pi 0.84.4）——**照此环境部署可避免各类「用不了」的异常**：
+
+| 全局插件 | 版本 | 与本框架的关系 |
+| --- | --- | --- |
+| `pi-subagents` | 0.62.0 | 多 agent 子代理基础设施（动态调度的底层） |
+| `@quintinshaw/pi-dynamic-workflows` | 3.10.0 | **动态调度必需**：lane key 固定前缀 `pi-dynamic-workflows`、runs.lanes/runs.host API |
+| `@plannotator/pi-extension` | 0.27.10 | 占用 `--plan` 旗标 → 本框架已改名 `--coord-plan` 避让；两者共存无冲突 |
+| `@narumitw/pi-goal` | 0.54.4 | 无头 `-p` 下有已知的 sendUserMessage 生命周期限制（见下），TUI 正常 |
+| `@narumitw/pi-btw` | 0.56.0 | 与本框架无交互，环境事实列出 |
+| `pi-web-access` | 0.27.0 | 与本框架无交互，环境事实列出 |
+| **`ai-coordination`（本框架）** | 0.1.0 | `pi install git:github.com/Atul-8/ai-coordination@pi-ai-coordination` |
+
+**缺失影响对照**：
+
+- 缺 `pi-dynamic-workflows` / `pi-subagents` → 单会话流程（`/pm` `/plan` `/todo` `/issue` `/go` `/error` `/meta` `/status`）**不受影响**，仅多 agent 动态调度不可用
+- 缺 `@plannotator/pi-extension` → `--coord-plan` 旗标照常工作，只是没有 plannotator 功能
+- `@narumitw/pi-goal` 的无头限制同样影响本框架 `/eai pm|error|meta|report`（组内转发）；无头请用 `/eai-pm` 等原生模板别名（TUI 两者都正常）
+
+> 安装缺失插件：`pi install npm:<包名>`；查看当前全局组合：`pi list`。
+
 ## 安装与初始化
 
 ### 第 1 步：安装包
