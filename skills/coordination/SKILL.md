@@ -103,6 +103,8 @@ description: pi-ai-coordination 七层分治纪律（G0-G4 铁律 + todo/plan/is
 
 ## 命令总表
 
+所有命令均有 `eai` 前缀别名（映射同一实现）：/eai-pm /eai-plan /eai-todo /eai-issue /eai-go /eai-error /eai-meta /eai-status /eai-init；另有组命令 `/eai <子命令> [-flags]`（如 `/eai issue sync -s s1 -n`）。
+
 | 命令 | 类型 | 作用 |
 | --- | --- | --- |
 | /pm | 提示词 | G0 入口：需求分类与路由 |

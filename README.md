@@ -85,17 +85,42 @@ C:\.ai_global\           # 全局池（AI_GLOBAL_DIR 可覆盖；类 Unix ~/.ai_
 
 ## 命令总表
 
-| 命令 | 类型 | 作用 |
-| --- | --- | --- |
-| `/coord-init`（`/aic-init-project`） | 扩展 | 初始化项目 coordination 层（运行包内 init-project.js，幂等） |
-| `/pm` | 提示词 | G0 入口：需求分类路由 |
-| `/plan` | 扩展 | 计划模式（Ctrl+Alt+P / `--coord-plan`）：只读探索 → Plan: → docs/plans 落盘 + todo 登记 |
-| `/todo` | 扩展 | 任务看板（`coord_todo` 工具供 LLM 维护 todo.md，单写者纪律） |
-| `/issue` | 提示词 | `issues.js sync`：待办 ↔ git issues（gh CLI / GITEE_TOKEN） |
-| `/go` | 扩展 | 阶段调度：选阶段 → 确认 → 按序执行（写 `@session:` 关联） |
-| `/error` | 提示词 | G3 五步错误提炼 |
-| `/meta` | 提示词 | 经验提升全局池 `C:\.ai_global\meta` |
-| `/status` | 提示词 | 状态报告（`/coord-status` 为原生命令） |
+原生命令全部保留；同时统一提供 **`eai` 前缀形态**（映射同一实现）：
+
+| 原生命令 | eai 别名 | 类型 | 作用 |
+| --- | --- | --- | --- |
+| `/coord-init`（`/aic-init-project`） | `/eai-init` | 扩展 | 初始化项目 coordination 层（运行包内 init-project.js，幂等） |
+| `/pm` | `/eai-pm` | 提示词 | G0 入口：需求分类路由 |
+| `/plan` | `/eai-plan` | 扩展 | 计划模式（Ctrl+Alt+P / `--coord-plan`）：只读探索 → Plan: → docs/plans 落盘 + todo 登记 |
+| `/todo` | `/eai-todo` | 扩展 | 任务看板（`coord_todo` 工具供 LLM 维护 todo.md，单写者纪律） |
+| `/issue` | `/eai-issue` | 提示词 | `issues.js sync`：待办 ↔ git issues（gh CLI / GITEE_TOKEN） |
+| `/go` | `/eai-go` | 扩展 | 阶段调度：选阶段 → 确认 → 按序执行（写 `@session:` 关联） |
+| `/error` | `/eai-error` | 提示词 | G3 五步错误提炼 |
+| `/meta` | `/eai-meta` | 提示词 | 经验提升全局池 `C:\.ai_global\meta` |
+| `/status` | `/eai-status` | 提示词 | 状态报告（`/coord-status` 为原生命令） |
+
+### /eai 组命令（gcc 风格参数叠加）
+
+`/eai <子命令> [参数] [-flags]`，一个入口路由全部能力：
+
+```
+/eai init              # 初始化（= /coord-init）
+/eai plan              # 切换计划模式
+/eai todo              # 任务看板
+/eai go s1             # 阶段调度（= /go s1）
+/eai status            # 快速状态（= /coord-status）
+/eai report            # AI 状态报告（= /status）
+/eai issue sync -s s1 --dry-run   # issues.js 直执：gcc 风格旗标叠加
+/eai issue list        # 查看 issue 关联（-s 过滤阶段）
+/eai pm <需求描述>     # 转发 /pm（TUI）
+```
+
+旗标：`-s <stage>`/`--stage`、`-n`/`--dry-run`/`-d`、`--key=value`、布尔叠加 `-abc`。
+
+> ℹ️ 无头 `-p` 模式限制：`/eai pm|error|meta|report`（sendUserMessage 转发）受 pi
+> 会话生命周期限制不可用（同款限制也影响 pi-goal 等扩展的无头用法）；
+> 无头请用原生模板别名 `/eai-pm` `/eai-error` `/eai-meta` `/eai-status` 或原生命令。
+> eai 模板别名由 `scripts/sync-eai-prompts.mjs` 从源模板自动同步（改提示词后跑一次）。
 
 ## 任务流水线
 

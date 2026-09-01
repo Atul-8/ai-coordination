@@ -7,7 +7,7 @@
  */
 
 import { existsSync } from "node:fs";
-import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
+import type { ExtensionAPI, ExtensionCommandContext } from "@earendil-works/pi-coding-agent";
 import {
 	countGlobalMetaRules,
 	countMetaRules,
@@ -56,26 +56,29 @@ export function registerStatus(pi: ExtensionAPI): void {
 
 	pi.registerCommand("coord-status", {
 		description: "coordination 全量状态（todo / plans / meta / session）",
-		handler: async (_args, ctx) => {
-			const paths = findCoordDir(ctx.cwd);
-			if (!paths) {
-				ctx.ui.notify("coordination 未激活：项目根缺少 .ai/ 目录", "warning");
-				return;
-			}
-			const file = parseTodo(paths.todoPath);
-			const metaCount = countMetaRules(paths.metaRulesPath);
-			const structureOk = existsSync(paths.structurePath);
-			const issuesScriptOk = existsSync(paths.issuesScript);
-
-			const roles = readAgentRegistry();
-			const sections = [
-				`会话  ${ctx.sessionManager.getSessionId()}（${ctx.sessionManager.getSessionFile() ?? "?"}）`,
-				`任务  ${renderList(file)}`,
-				`META  项目规则 ${metaCount} 条（${paths.metaRulesPath}）\n      全局池 ${countGlobalMetaRules()} 条（AI_GLOBAL_DIR）`,
-				`智能体  ${roles.length > 0 ? roles.map((r) => `${r.name}=${r.title}`).join(" / ") : "（未配置：全局池 agents/registry.json）"}`,
-				`结构  STRUCTURE.md ${structureOk ? "✓" : "✗ 缺失"} · issues.js ${issuesScriptOk ? "✓" : "✗ 未部署"}`,
-			];
-			ctx.ui.notify(sections.join("\n\n"), "info");
-		},
+		handler: (args, ctx) => runStatus(args, ctx),
 	});
+}
+
+/** 全量状态看板（/coord-status、/eai status、/eai 组共用） */
+export async function runStatus(_args: string, ctx: ExtensionCommandContext): Promise<void> {
+	const paths = findCoordDir(ctx.cwd);
+	if (!paths) {
+		ctx.ui.notify("coordination 未激活：项目根缺少 .ai/ 目录", "warning");
+		return;
+	}
+	const file = parseTodo(paths.todoPath);
+	const metaCount = countMetaRules(paths.metaRulesPath);
+	const structureOk = existsSync(paths.structurePath);
+	const issuesScriptOk = existsSync(paths.issuesScript);
+
+	const roles = readAgentRegistry();
+	const sections = [
+		`会话  ${ctx.sessionManager.getSessionId()}（${ctx.sessionManager.getSessionFile() ?? "?"}）`,
+		`任务  ${renderList(file)}`,
+		`META  项目规则 ${metaCount} 条（${paths.metaRulesPath}）\n      全局池 ${countGlobalMetaRules()} 条（AI_GLOBAL_DIR）`,
+		`智能体  ${roles.length > 0 ? roles.map((r) => `${r.name}=${r.title}`).join(" / ") : "（未配置：全局池 agents/registry.json）"}`,
+		`结构  STRUCTURE.md ${structureOk ? "✓" : "✗ 缺失"} · issues.js ${issuesScriptOk ? "✓" : "✗ 未部署"}`,
+	];
+	ctx.ui.notify(sections.join("\n\n"), "info");
 }

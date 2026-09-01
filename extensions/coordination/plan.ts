@@ -52,6 +52,13 @@ function getTextContent(message: AssistantMessage): string {
 		.join("\n");
 }
 
+/** eai 复用：registerPlan 安装真实切换实现（计划模式状态在闭包内） */
+const planModeHook: { toggle?: (ctx: ExtensionContext) => void } = {};
+export function togglePlanModeForEai(ctx: ExtensionContext): void {
+	if (!planModeHook.toggle) throw new Error("计划模式未初始化（registerPlan 未运行）");
+	planModeHook.toggle(ctx);
+}
+
 export function registerPlan(pi: ExtensionAPI): void {
 	let planModeEnabled = false;
 	let executionMode = false;
@@ -137,6 +144,7 @@ export function registerPlan(pi: ExtensionAPI): void {
 		updateStatus(ctx);
 		persistState();
 	}
+	planModeHook.toggle = togglePlanMode;
 
 	pi.registerCommand("plan", {
 		description: "切换计划模式（只读探索 → docs/plans 落盘 → todo 登记）",

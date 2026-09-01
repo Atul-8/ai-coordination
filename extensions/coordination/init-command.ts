@@ -29,7 +29,7 @@ function manualHint(root: string): string {
 	].join("\n");
 }
 
-async function runInit(args: string, ctx: ExtensionCommandContext): Promise<void> {
+export async function runInit(args: string, ctx: ExtensionCommandContext): Promise<void> {
 	const root = args.trim() || ctx.cwd;
 	if (!existsSync(initScript)) {
 		ctx.ui.notify(`未找到包内 init-project.js：${initScript}（安装可能不完整，请 pi update --extensions 或重装）`, "error");

@@ -6,7 +6,7 @@
  * 状态存于 todo.md 文件本身（不存 session details）——项目级持久，天然跨会话。
  */
 
-import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
+import type { ExtensionAPI, ExtensionCommandContext } from "@earendil-works/pi-coding-agent";
 import { Type } from "typebox";
 import {
 	findCoordDir,
@@ -35,6 +35,16 @@ const TodoParams = Type.Object({
 	id: Type.Optional(Type.String({ description: "start/done/link/set_issue：任务编号 T-NNN" })),
 	issue: Type.Optional(Type.Number({ description: "set_issue：issue 编号" })),
 });
+
+/** 看板渲染（/todo、/eai-todo、/eai todo 共用） */
+export async function runTodo(_args: string, ctx: ExtensionCommandContext): Promise<void> {
+	const paths = findCoordDir(ctx.cwd);
+	if (!paths) {
+		ctx.ui.notify("coordination 未激活：项目根缺少 .ai/ 目录", "warning");
+		return;
+	}
+	ctx.ui.notify(renderList(parseTodo(paths.todoPath)), "info");
+}
 
 export function registerTodo(pi: ExtensionAPI): void {
 	pi.registerTool({
@@ -141,14 +151,7 @@ export function registerTodo(pi: ExtensionAPI): void {
 
 	pi.registerCommand("todo", {
 		description: "查看 todo.md 任务看板（阶段进度）",
-		handler: async (_args, ctx) => {
-			const paths = findCoordDir(ctx.cwd);
-			if (!paths) {
-				ctx.ui.notify("coordination 未激活：项目根缺少 .ai/ 目录", "warning");
-				return;
-			}
-			ctx.ui.notify(renderList(parseTodo(paths.todoPath)), "info");
-		},
+		handler: (args, ctx) => runTodo(args, ctx),
 	});
 }
 
