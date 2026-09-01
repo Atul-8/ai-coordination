@@ -34,15 +34,32 @@ G0–G4 铁律精简后保留在 `skills/coordination/SKILL.md`（G1 自动化�
 
 ## 安装与初始化
 
+### 全局安装（推荐）
+
 ```bash
-# 安装包（任选其一）
-pi install git:github.com/Atul-8/ai-coordination@pi-ai-coordination   # GitHub 分支分发（推荐）
-pi install /path/to/pi-ai-coordination                                # 本地路径
+pi install git:github.com/Atul-8/ai-coordination@pi-ai-coordination   # GitHub 分支分发
+pi install /path/to/pi-ai-coordination                                # 或本地路径
 
 # 项目初始化（幂等；同时确保全局池 C:\.ai_global）
 node "%USERPROFILE%\.pi\agent\git\github.com\Atul-8\ai-coordination\scripts\init-project.js" <项目根>
 # 或 unix：
 # node ~/.pi/agent/git/github.com/Atul-8/ai-coordination/scripts/init-project.js <项目根>
+```
+
+### 项目级安装（仅指定项目生效）与卸载
+
+```bash
+pi install -l git:github.com/Atul-8/ai-coordination@pi-ai-coordination
+
+# 包克隆在 <项目>/.pi/git/ 下，初始化：
+node .pi/git/github.com/Atul-8/ai-coordination/scripts/init-project.js <项目根>
+
+# 项目级文件需信任（TUI 会提示；无头模式加 -a / --approve）
+pi -a
+
+# 卸载
+pi remove git:github.com/Atul-8/ai-coordination@pi-ai-coordination        # 全局
+pi remove -l -a git:github.com/Atul-8/ai-coordination@pi-ai-coordination  # 项目级
 ```
 
 初始化产物：
