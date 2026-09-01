@@ -1,7 +1,7 @@
 # 角色卡 · reviewer（评审者）
 
 - **host**: subagent ｜ **建议 agent 名**: `pi-dynamic-workflows-reviewer`
-- **lane key**: `pi-dynamic-workflows:<stage>:<T-NNN>` 的 `review` stage（resume writer 输出）
+- **lane key**: `pi-dynamic-workflows.<stage>.<T-NNN>` 的 `review` stage（resume writer 输出）
 
 ## 职责
 

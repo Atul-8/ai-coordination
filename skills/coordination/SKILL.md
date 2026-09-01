@@ -90,14 +90,23 @@ description: pi-ai-coordination 七层分治纪律（G0-G4 铁律 + todo/plan/is
 全局角色注册表：`AI_GLOBAL_DIR\agents\registry.json`（默认 `C:\.ai_global\agents\`），角色卡在 `cards\*.md`。
 
 - **命名空间（固定前缀，勿改）**：`pi-dynamic-workflows`
-  - 动态 lanes 的 workflow key：`pi-dynamic-workflows:<stage>:<T-NNN>`
+  - 动态 lanes 的 workflow key：`pi-dynamic-workflows.<stage>.<T-NNN>`
   - 常驻命名 agent：`pi-dynamic-workflows-pm`（子角色建议 `pi-dynamic-workflows-<name>`）
 - **pm（调度者）**：主会话常驻——G0 路由、动态调度各阶段 subagent、结果汇总，不派发自己
+- **PM 行为闭环（眼里有活，禁止空转等催）**：
+  1. 分支/计划/任务就绪后必须立即：盘点进度（todo/PLAN）→ 产出派发矩阵（阶段×并行×文件域防冲突）→
+     组装任务卡（角色卡+任务卡）→ 一次顶层 workflowScript 派发 → 向用户汇报矩阵后 PM 空闲待命；
+  2. 不允许出现「分支已建、任务已登记、却无派发就停轮」的状态；
+  3. 子代理完成唤醒后 PM 收口：验证（vitest/tsc/build）→ 分任务提交 → coord_todo done → STRUCTURE/README 同步 → push。
 - **writer / reviewer / tester / architect**：subagent 执行
 - **动态调度（多 agent 接入不同阶段）**：阶段 = lane（无依赖阶段并行接入），
   任务 = lane 内串行 stage（writer → reviewer）；lane 完成即读结果动态续派；
   结果仅认 `structuredOutput.verdict === "blocked"`
 - 派发 = 角色卡 + 任务卡（todo.md 任务描述 + REQ 文档 + 阶段计划）组合成 subagent task；
+- **workflowScript 沙箱契约（subagent 工具，违反即运行时崩溃）**：
+  可用 `runs.run / runs.all / runs.lanes / runs.host / runs.steer / runs.status / runs.ref / emit / console / return`；
+  不可用 `workflow` 工具的 log()/phase()/agent()/parallel()/pipeline()；
+  key 校验 `^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$` —— 禁用冒号，分隔符用点号
   父会话保持调度权与验收权；模板：`templates/agents/dynamic-dispatch.example.js`
 - 注册表可编辑：增加角色只需加 JSON 条目 + 角色卡文件
 

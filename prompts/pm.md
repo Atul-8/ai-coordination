@@ -18,6 +18,8 @@ $ARGUMENTS
 3. **多 agent 动态调度**（大活跨阶段、需要并行时）：
    - 读全局角色注册表（`AI_GLOBAL_DIR\agents\registry.json`，默认 `C:\.ai_global\agents\`）
    - 常驻 PM 保持主会话调度权；按角色卡（writer/reviewer/tester/architect）派发 subagent
-   - workflow key 固定前缀：`pi-dynamic-workflows:<stage>:<T-NNN>`；阶段=lane、任务=lane 内 writer→reviewer 串行
+   - workflow key 固定前缀：`pi-dynamic-workflows.<stage>.<T-NNN>`（运行时 key 校验禁用冒号，分隔符用点号）；阶段=lane、任务=lane 内 writer→reviewer 串行
+   - **PM 行为闭环（眼里有活，禁止空转等催）**：分支/计划/任务就绪后立即盘点进度 → 产出派发矩阵（阶段×并行×文件域防冲突）→ 组装任务卡 → 一次顶层 workflowScript 派发 → 汇报矩阵后 PM 空闲待命；子代理完成唤醒后收口：验证 → 分任务提交 → coord_todo done → 同步文档 → push；
+   - workflowScript 沙箱契约：可用 runs.run/runs.all/runs.lanes/runs.host/runs.steer/runs.status/runs.ref/emit/console/return；不可用 workflow 工具的 log()/phase()/agent()/parallel()/pipeline()
    - 模板：`AI_GLOBAL_DIR\agents\dynamic-dispatch.example.js`
 4. **输出路由结论**：类型 / 编号（REQ-NNN）/ 建议的下一步命令（/plan、/go、/error…）。

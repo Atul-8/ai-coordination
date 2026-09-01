@@ -1,7 +1,7 @@
 # 角色卡 · tester（测试员）
 
 - **host**: subagent ｜ **建议 agent 名**: `pi-dynamic-workflows-tester`
-- **lane key**: `pi-dynamic-workflows:<stage>:<T-NNN>` 的 `test` stage（可选，复杂任务时插入）
+- **lane key**: `pi-dynamic-workflows.<stage>.<T-NNN>` 的 `test` stage（可选，复杂任务时插入）
 
 ## 职责
 

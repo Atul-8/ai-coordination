@@ -3,7 +3,7 @@
   "namespace": "pi-dynamic-workflows",
   "naming": {
     "residentAgent": "pi-dynamic-workflows-pm",
-    "laneKey": "pi-dynamic-workflows:<stage>:<T-NNN>",
+    "laneKey": "pi-dynamic-workflows.<stage>.<T-NNN>",
     "note": "多 agent 接入不同阶段时，常驻 PM 以 namespace 为固定前缀动态调度；命名 agent 一律以 pi-dynamic-workflows- 开头"
   },
   "roles": [

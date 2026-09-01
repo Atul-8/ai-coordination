@@ -167,7 +167,7 @@ todo.md 行格式（唯一规范，仅经 `coord_todo` 工具编辑）：
 多 agent 接入不同阶段时，**常驻 PM**（主会话，不派发自己）以固定前缀动态调度：
 
 - **命名空间**：`pi-dynamic-workflows`（注册表 `namespace` 字段，勿改）
-- **lane key**：`pi-dynamic-workflows:<stage>:<T-NNN>`（如 `pi-dynamic-workflows:s1:T-003`）
+- **lane key**：`pi-dynamic-workflows.<stage>.<T-NNN>`（如 `pi-dynamic-workflows.s1.T-003`）
 - **常驻命名 agent**：`pi-dynamic-workflows-pm`；子角色 `pi-dynamic-workflows-<name>`
 - **拓扑**：阶段 = lane（无依赖阶段并行接入），任务 = lane 内串行 stage（writer → reviewer）
 - **动态性**：lane 完成即读结果，动态决定续派/复核/回写；结果仅认 `structuredOutput.verdict === "blocked"`

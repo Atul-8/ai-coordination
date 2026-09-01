@@ -149,7 +149,7 @@ function main() {
 				next: [
 					"编辑 todo.md 登记阶段定义与任务",
 					"pi 启动项目 → /pm 需求入口 · /plan 计划模式 · /issue 同步 · /go 调度",
-					"多 agent 接入各阶段：常驻 PM 以 pi-dynamic-workflows:<stage>:<T-NNN> 动态派发 lanes",
+					"多 agent 接入各阶段：常驻 PM 以 pi-dynamic-workflows.<stage>.<T-NNN> 动态派发 lanes",
 				],
 			},
 			null,

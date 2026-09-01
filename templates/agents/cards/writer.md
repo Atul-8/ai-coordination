@@ -1,7 +1,7 @@
 # 角色卡 · writer（实现者）
 
 - **host**: subagent ｜ **建议 agent 名**: `pi-dynamic-workflows-writer`
-- **lane key**: `pi-dynamic-workflows:<stage>:<T-NNN>` 的 `write` stage
+- **lane key**: `pi-dynamic-workflows.<stage>.<T-NNN>` 的 `write` stage
 
 ## 职责
 

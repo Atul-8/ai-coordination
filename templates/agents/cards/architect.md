@@ -1,7 +1,7 @@
 # 角色卡 · architect（架构师）
 
 - **host**: subagent ｜ **建议 agent 名**: `pi-dynamic-workflows-architect`
-- **lane key**: `pi-dynamic-workflows:<stage>:<T-NNN>` 的 `design` stage（跨层/新模块时插入）
+- **lane key**: `pi-dynamic-workflows.<stage>.<T-NNN>` 的 `design` stage（跨层/新模块时插入）
 
 ## 职责
 
