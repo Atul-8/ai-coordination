@@ -1,7 +1,20 @@
 # ai-coordination V2 — 项目计划（pi-ai-coordination）
 
 > **状态**：v1.x（Claude Code 插件形态，v1.2.3）已冻结 → V2 以 **pi 原生包** 形态重构。
-> 本分支（`masterV2`）仅承载项目计划与分发说明；框架本体在 **`pi-ai-coordination`** 分支。
+> 本分支（`masterV2`）仅承载项目计划与分发说明；框架本体在 **`pi-ai-coordination`** 分支（命令总表详见其 README）。
+> *最后更新：2025-06 · 全部安装/卸载命令已在 pi 0.84.4 实测*
+
+## ✅ 实测验证记录（pi 0.84.4）
+
+| 验证项 | 结果 |
+|---|---|
+| 全局安装 → `pi list` 注册 → init 部署 → 无头加载 | ✅ |
+| 项目级安装（`-l`）→ 信任机制（`-a`）→ init → 无头加载 → 卸载 | ✅ |
+| `coord_todo` 工具端到端（两种通道均真实调用并渲染任务清单） | ✅ |
+| coordination 技能注入系统提示 | ✅ |
+| `issues.js` Gitee remote 解析 + `sync --dry-run` | ✅（真同步待 `GITEE_TOKEN`） |
+| 幂等性（重复 init 不重复插桩 AGENTS.md） | ✅ |
+| 发现并修复：`--plan` 标志与 plannotator 冲突 → 改名 `--coord-plan` | ✅ `5ad9fe7` |
 
 ## 📦 一键安装（分发部署）
 
@@ -97,7 +110,8 @@ pi-ai-coordination/            # pi 包（= pi-ai-coordination 分支根）
 ## 路线图
 
 - [x] **0.1.0** — pi 原生重构完成；试点项目 dogfooding（物理实验模拟平台）
-- [ ] **0.2** — 分发打磨：npm 发布（`pi install npm:pi-ai-coordination`）、安装器边界用例、Gitee/GitHub issue 同步实测补全
+- [x] **0.1.1** — 双通道（全局/项目级）安装卸载全流程实测打通；`--coord-plan` 标志冲突修复
+- [ ] **0.2** — 分发打磨：npm 发布（`pi install npm:pi-ai-coordination`）、Gitee/GitHub issue 真同步实测
 - [ ] **0.3** — 动态调度强化：lane 级重试/汇总卡片、结构化验收（structuredOutput.verdict）
 - [ ] **1.0** — 稳定 API 契约 + 文档站
 - [ ] **V2.0-claude** — Claude Code plugin 形态映射（skills/prompts 结构直接复用）
