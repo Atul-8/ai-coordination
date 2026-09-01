@@ -5,8 +5,10 @@
 
 ## 📦 一键安装（分发部署）
 
+### 全局安装（推荐：框架 = 全局插件，所有项目共享）
+
 ```bash
-# 1) 安装 pi 包（全局；装进 ~/.pi/agent/，所有项目共享）
+# 1) 安装（装进 ~/.pi/agent/）
 pi install git:github.com/Atul-8/ai-coordination@pi-ai-coordination
 
 # 2) 项目初始化（幂等；部署 AGENTS.md / todo.md / .ai/，并确保全局经验池）
@@ -17,6 +19,29 @@ node ~/.pi/agent/git/github.com/Atul-8/ai-coordination/scripts/init-project.js <
 
 # 3) 启动 pi，四条命令跑通流水线：
 #    /pm 需求入口 → /plan 计划模式 → /issue 同步 issues → /go <stage> 阶段调度
+```
+
+### 项目级安装（仅指定项目生效；`.pi/settings.json` + `<项目>/.pi/git/`，可随项目共享给团队）
+
+```bash
+pi install -l git:github.com/Atul-8/ai-coordination@pi-ai-coordination
+
+# 初始化（包在项目内 .pi/git/ 下）
+node .pi/git/github.com/Atul-8/ai-coordination/scripts/init-project.js <项目根>
+
+# 使用：项目级文件需一次性信任（交互 TUI 会提示；无头模式加 -a）
+pi -a   # 或 pi --approve
+
+# 卸载（同样需要 -a 信任项目本地配置修改）
+pi remove -l -a git:github.com/Atul-8/ai-coordination@pi-ai-coordination
+```
+
+### 卸载与清理
+
+```bash
+pi remove git:github.com/Atul-8/ai-coordination@pi-ai-coordination   # 全局 → 项目不再受影响
+pi remove -l -a git:github.com/Atul-8/ai-coordination@pi-ai-coordination  # 项目级
+# 卸载后清理项目内数据（可选）：AGENTS.md / todo.md / .ai/ / docs/plans/
 ```
 
 > 试装不落盘：`pi -e git:github.com/Atul-8/ai-coordination@pi-ai-coordination`（临时目录，仅本次运行生效）。
