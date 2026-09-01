@@ -2,7 +2,7 @@
 
 ai-coordination 七层分治框架（v1.2.3，Claude Code 插件）的 **pi 原生重构版**。
 
-七层架构不变：coordination（协调）→ presentation（表示）→ interface（接口）→ core（核心）��� shared（共享）+ testing（测试）+ docs（文档）。
+七层架构不变：coordination（协调）→ presentation（表示）→ interface（接口）→ core（核心）→ shared（共享）+ testing（测试）+ docs（文档）。
 变的是承载方式——全面拥抱 pi 原生能力（会话树、AGENTS.md、扩展、prompt 模板、包机制）。
 
 > 📋 项目计划与路线图见 **`masterV2`** 分支 ·
