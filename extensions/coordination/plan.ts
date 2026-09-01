@@ -58,7 +58,7 @@ export function registerPlan(pi: ExtensionAPI): void {
 	let steps: PlanStep[] = [];
 	let toolsBeforePlanMode: string[] | undefined;
 
-	pi.registerFlag("plan", {
+	pi.registerFlag("coord-plan", {
 		description: "以计划模式启动（只读探索）",
 		type: "boolean",
 		default: false,
@@ -331,7 +331,7 @@ ${list}
 
 	// 会话恢复
 	pi.on("session_start", async (_event, ctx) => {
-		if (pi.getFlag("plan") === true) {
+		if (pi.getFlag("coord-plan") === true) {
 			planModeEnabled = true;
 		}
 

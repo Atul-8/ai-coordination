@@ -69,7 +69,7 @@ C:\.ai_global\           # 全局池（AI_GLOBAL_DIR 可覆盖；类 Unix ~/.ai_
 | 命令 | 类型 | 作用 |
 | --- | --- | --- |
 | `/pm` | 提示词 | G0 入口：需求分类路由 |
-| `/plan` | 扩展 | 计划模式（Ctrl+Alt+P / `--plan`）：只读探索 → Plan: → docs/plans 落盘 + todo 登记 |
+| `/plan` | 扩展 | 计划模式（Ctrl+Alt+P / `--coord-plan`）：只读探索 → Plan: → docs/plans 落盘 + todo 登记 |
 | `/todo` | 扩展 | 任务看板（coord_todo 工具供 LLM 维护 todo.md） |
 | `/issue` | 提示词 | `issues.js sync`：待办 ↔ git issues |
 | `/go` | 扩展 | 阶段调度：选阶段 → 确认 → 按序执行（写 session 关联） |

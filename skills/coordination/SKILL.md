@@ -95,7 +95,7 @@ description: pi-ai-coordination 七层分治纪律（G0-G4 铁律 + todo/plan/is
 | 命令 | 类型 | 作用 |
 | --- | --- | --- |
 | /pm | 提示词 | G0 入口：需求分类与路由 |
-| /plan | 扩展 | 计划模式（Ctrl+Alt+P，--plan 旗标）→ docs/plans 落盘 + todo 登记 |
+| /plan | 扩展 | 计划模式（Ctrl+Alt+P，--coord-plan 旗标）→ docs/plans 落盘 + todo 登记 |
 | /todo | 扩展 | 任务看板 |
 | /issue | 提示词 | issues.js sync 同步 git issues |
 | /go | 扩展 | 阶段调度：选阶段 → 确认 → 按序执行 |
