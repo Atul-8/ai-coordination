@@ -1,6 +1,6 @@
 ---
 name: coordination
-description: pi-ai-coordination 七层分治纪律（G0-G4 铁律 + todo/plan/issue 流水线）。当项目根存在 .ai/ 目录、用户提到协调框架、任务调度、阶段计划、错误提炼、META 规则、/pm /plan /issue /go 流程时使用。
+description: pi-ai-coordination 七层分治纪律（G0-G4 铁律 + todo/plan/issue 流水线）。当项目根存在 .ai/ 目录、用户提到协调框架、项目初始化、任务调度、阶段计划、错误提炼、META 规则、/pm /plan /issue /go /coord-init 流程时使用。
 ---
 
 # coordination — 七层分治纪律（pi 原生版）
@@ -12,6 +12,17 @@ description: pi-ai-coordination 七层分治纪律（G0-G4 铁律 + todo/plan/is
 - 调度统一走 `/go`（阶段确认 → 按序执行 → 逐项归档）
 
 激活：项目根存在 `.ai/`（`findCoordDir` 向上查找）。
+
+## 项目初始化（/coord-init）
+
+当用户要求「用 pi-ai-coordination 初始化本项目 / 重构为协调框架」或执行 /coord-init（别名 /aic-init-project）时：
+
+1. **确定包根**：本技能位于 `<包根>/skills/coordination/`，因此初始化脚本为 `<包根>/scripts/init-project.js`（向上两级）。
+2. **执行**：`node <包根>/scripts/init-project.js <项目根>`（不传参数则默认当前工作目录；脚本幂等，重复执行安全）。
+3. **汇报**：读取 stdout JSON 的 `project.created / project.skipped / global.created`，向用户说明新建与跳过项。
+4. **引导**：初始化后提示流水线入口 —— /pm 需求入口 → /plan 计划 → /issue 同步 → /go <stage> 调度；提醒 task 行仅经 coord_todo 维护。
+
+> 项目根已存在 `.ai/` 时（项目已初始化），直接报告状态并转入 G0/G1 流程，不要重复初始化。
 
 ## G0 · 入口路由（/pm）
 

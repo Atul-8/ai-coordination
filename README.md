@@ -10,41 +10,58 @@ ai-coordination 七层分治框架（v1.2.3，Claude Code 插件）的 **pi 原�
 
 ## 安装与初始化
 
-### 全局安装（推荐：框架 = 全局插件，所有项目共享）
+### 第 1 步：安装包
 
 ```bash
-# 1) 安装（装进 ~/.pi/agent/git/…，pi list 可见）
-pi install git:github.com/Atul-8/ai-coordination@pi-ai-coordination
+pi install git:github.com/Atul-8/ai-coordination@pi-ai-coordination   # GitHub 分支分发
 pi install /path/to/pi-ai-coordination                                # 或本地路径
-
-# 2) 项目初始化（幂等；部署 AGENTS.md / todo.md / .ai/，并确保全局池）
-#    Windows：
-node "%USERPROFILE%\.pi\agent\git\github.com\Atul-8\ai-coordination\scripts\init-project.js" <项目根>
-#    Linux / macOS：
-node ~/.pi/agent/git/github.com/Atul-8/ai-coordination/scripts/init-project.js <项目根>
+pi install -l git:github.com/Atul-8/ai-coordination@pi-ai-coordination   # 项目级（仅该项目生效）
 ```
 
-### 项目级安装（仅指定项目生效）
+### 第 2 步：初始化项目
+
+**方式 A（推荐）：在 pi 会话内一键执行**
+
+安装后启动 pi，直接输入：
+
+```
+/coord-init            # 别名：/aic-init-project
+```
+
+扩展会自动运行包内 init-project.js（默认当前项目根，幂等可重复）。
+也可以直接对 AI 说：**「用 pi-ai-coordination 初始化本项目」**——技能会引导它完成同样的事。
+
+**方式 B：终端手动执行**
+
+⚠️ 注意 shell 差异：`%USERPROFILE%` 仅在 **CMD** 生效；**PowerShell 必须用 `$env:USERPROFILE`**（否则字面量传入导致 MODULE_NOT_FOUND）。末尾参数为目标项目（`.` = 当前目录；省略时默认当前目录）：
+
+```powershell
+# PowerShell（Windows 默认 shell）
+node "$env:USERPROFILE\.pi\agent\git\github.com\Atul-8\ai-coordination\scripts\init-project.js" .
+```
+
+```cmd
+:: CMD
+node "%USERPROFILE%\.pi\agent\git\github.com\Atul-8\ai-coordination\scripts\init-project.js" .
+```
 
 ```bash
-# 安装（写入 <项目>/.pi/settings.json，包克隆在 <项目>/.pi/git/…，可随项目共享给团队）
-pi install -l git:github.com/Atul-8/ai-coordination@pi-ai-coordination
-
-# 初始化（包在项目内）：
-node .pi/git/github.com/Atul-8/ai-coordination/scripts/init-project.js <项目根>
-
-# 项目级文件需信任：TUI 首次启动会提示；无头模式加 -a / --approve
-pi -a
+# Git Bash / Linux / macOS
+node ~/.pi/agent/git/github.com/Atul-8/ai-coordination/scripts/init-project.js .
 ```
 
-### 卸载
+### 项目级安装的信任与卸载
 
 ```bash
-pi remove git:github.com/Atul-8/ai-coordination@pi-ai-coordination        # 全局（连带清除克隆）
-pi remove -l -a git:github.com/Atul-8/ai-coordination@pi-ai-coordination  # 项目级（-a 必需）
-# 可选：清理项目内数据 AGENTS.md / todo.md / .ai/ / docs/plans/
+pi -a   # 项目级文件需信任：TUI 首次启动会提示；无头模式加 -a / --approve
+pi remove git:github.com/Atul-8/ai-coordination@pi-ai-coordination        # 卸载全局
+pi remove -l -a git:github.com/Atul-8/ai-coordination@pi-ai-coordination  # 卸载项目级（-a 必需）
 ```
 
+> ℹ️ `pi remove` 仅移除 settings 注册，**不会删除克隆目录**；彻底清理可手动删除：
+> 全局 `~/.pi/agent/git/github.com/Atul-8/ai-coordination`，项目级 `<项目>/.pi/git/github.com/Atul-8/ai-coordination`，
+> 以及项目内数据（可选）：AGENTS.md / todo.md / .ai/ / docs/plans/
+>
 > 试装不落盘：`pi -e git:github.com/Atul-8/ai-coordination@pi-ai-coordination`（临时目录，仅本次运行）。
 
 ### 初始化产物
@@ -70,6 +87,7 @@ C:\.ai_global\           # 全局池（AI_GLOBAL_DIR 可覆盖；类 Unix ~/.ai_
 
 | 命令 | 类型 | 作用 |
 | --- | --- | --- |
+| `/coord-init`（`/aic-init-project`） | 扩展 | 初始化项目 coordination 层（运行包内 init-project.js，幂等） |
 | `/pm` | 提示词 | G0 入口：需求分类路由 |
 | `/plan` | 扩展 | 计划模式（Ctrl+Alt+P / `--coord-plan`）：只读探索 → Plan: → docs/plans 落盘 + todo 登记 |
 | `/todo` | 扩展 | 任务看板（`coord_todo` 工具供 LLM 维护 todo.md，单写者纪律） |
