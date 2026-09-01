@@ -137,7 +137,7 @@ function parseMessage(fp) {
 
 // 查重：基于 retriever + 文本相似
 function findDuplicate(msg, threshold) {
-  threshold = threshold || 5;
+  threshold = threshold || (process.env.META_DUP_THRESHOLD ? parseInt(process.env.META_DUP_THRESHOLD, 10) : 5);
   const query = (msg.rule_draft + ' ' + msg.keywords.join(' ')).slice(0, 200);
   const r = retrieve(query, 3);
   if (!r.hits || !r.hits.length) return null;
