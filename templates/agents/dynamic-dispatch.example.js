@@ -25,6 +25,13 @@ const NAMESPACE = "pi-dynamic-workflows"; // 固定前缀，勿改
 const STAGE = "__STAGE__"; // 例: "s1"
 const TASKS = [
 	// 例: { id: "T-001", desc: "搭建仓库骨架", issue: 12, plan: "docs/plans/PLAN-001-xxx.md" },
+	//
+	// META 预注入字段（RAG 池派发，spec: AI_GLOBAL_DIR/agents/docs/design/rag-pool-redesign.md §7.5）：
+	//   { id: "T-002", desc: "…", meta_injection: "full" }
+	//   full    = PM 已按任务关键词捞全全局 META 池 + 本地 .ai/errors 相关条目附摘要 → 子 agent 跳过重读
+	//   partial = 已注入主干 → 子 agent 补扫自己 domains 相关条目
+	//   none    = 子 agent 干活前先读全局 + 本地 META（保底纪律）
+	// t.meta_injection 存在时可在 write stage task 中追加一行：`META 预注入: ${t.meta_injection}`
 ];
 
 // ---- 动态调度：阶段=lane（可并行），任务=lane 内串行 stage（writer→reviewer）----

@@ -25,7 +25,6 @@ pi-ai-coordination 框架数据目录。只放协调/状态/知识资产，不�
 | --- | --- |
 | `meta/distilled/meta-rules.md` | 全局 META 经验池（项目内规则确认普适后由 `/meta` 提升） |
 | `meta/raw/` | 跨项目错误原始现场（可选） |
-| `agents/registry.json` | 智能体角色注册表（pm=主会话；writer/reviewer/tester/architect=subagent） |
-| `agents/cards/*.md` | 角色卡，派发时与任务卡组合成 subagent task |
+| `agents/pool/*.md` | 角色卡单池（RAG pool v2）：pm=主会话；writer/reviewer/tester/architect=subagent；派发前 query.mjs 检索三档 |
 
 项目级规则先落在 `errors/distilled/meta-rules.md`，确认普适后再提升到全局池。

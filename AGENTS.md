@@ -59,7 +59,7 @@
 
 ## 大任务派发（全局智能体调配 · 动态调度）
 
-角色注册表与角色卡在全局池：`AI_GLOBAL_DIR\agents\registry.json` + `cards\*.md`（默认 `C:\.ai_global\agents\`）。
+角色卡单池（RAG pool v2）在全局池：`AI_GLOBAL_DIR\agents\pool\*.md`（schema v2）+ `taxonomy.yml` + `scripts\`（检索三档），默认 `C:\.ai_global\agents\`。
 
 - **命名空间（固定前缀，勿改）**：`pi-dynamic-workflows`；动态 lanes 的 workflow key 一律
   `pi-dynamic-workflows.<stage>.<T-NNN>`；常驻命名 agent 固定名 `pi-dynamic-workflows-pm`
@@ -78,3 +78,9 @@
   可用 `runs.run / runs.all / runs.lanes / runs.host / runs.steer / runs.status / runs.ref / emit / console / return`；
   不可用 `workflow` 工具的 log()/phase()/agent()/parallel()/pipeline()；
   key 校验 `^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$` —— 禁用冒号，分隔符用点号
+- **RAG 池派发（自演化卡池，spec：`AI_GLOBAL_DIR\agents\docs\design\rag-pool-redesign.md`）**：
+  派发前检索三档（`node AI_GLOBAL_DIR\agents\scripts\query.mjs "<任务>"`）：强命中→组合派发｜
+  弱命中→派发+标注「边界试探」｜未命中→建卡协议（新卡必写 scope、禁万金油卡、first_mission: pending，
+  首任务后复核转 done）；子 agent scope 自查不符可拒单（out-of-scope + suggest_keywords）→
+  任务携反馈入队尾，FIFO 逐个出队重组再派，再退单再入队尾（反馈累加），累计 ≥2 次（两次即触发）PM 拆解自办或上报用户；
+  任务卡头 `meta_injection: full|partial|none` 控制 META 预注入，避免子 agent 重复读

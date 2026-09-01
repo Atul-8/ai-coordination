@@ -87,7 +87,7 @@ description: pi-ai-coordination 七层分治纪律（G0-G4 铁律 + todo/plan/is
 
 ## 大任务派发（全局智能体调配 · 动态调度）
 
-全局角色注册表：`AI_GLOBAL_DIR\agents\registry.json`（默认 `C:\.ai_global\agents\`），角色卡在 `cards\*.md`。
+全局角色卡单池（RAG pool v2）：`AI_GLOBAL_DIR\agents\pool\*.md` + `taxonomy.yml` + `scripts\`（检索三档 query.mjs，派发前必跑）。
 
 - **命名空间（固定前缀，勿改）**：`pi-dynamic-workflows`
   - 动态 lanes 的 workflow key：`pi-dynamic-workflows.<stage>.<T-NNN>`
@@ -109,6 +109,12 @@ description: pi-ai-coordination 七层分治纪律（G0-G4 铁律 + todo/plan/is
   key 校验 `^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$` —— 禁用冒号，分隔符用点号
   父会话保持调度权与验收权；模板：`templates/agents/dynamic-dispatch.example.js`
 - 注册表可编辑：增加角色只需加 JSON 条目 + 角色卡文件
+- **RAG 池派发（自演化卡池，spec：`C:\.ai_global\agents\docs\design\rag-pool-redesign.md`）**：
+  派发前检索三档（`node AI_GLOBAL_DIR\agents\scripts\query.mjs "<任务>"`）：强命中→组合派发｜
+  弱命中→派发+标注「边界试探」｜未命中→建卡协议（新卡必写 scope、禁万金油卡、first_mission: pending，
+  首任务后复核转 done）；子 agent scope 自查不符可拒单（out-of-scope + suggest_keywords）→
+  任务携反馈入队尾，FIFO 逐个出队重组再派，再退单再入队尾（反馈累加），累计 ≥2 次（两次即触发）PM 拆解自办或上报用户；
+  任务卡头 `meta_injection: full|partial|none` 控制 META 预注入，避免子 agent 重复读
 
 ## 命令总表
 

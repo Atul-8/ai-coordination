@@ -15,18 +15,16 @@
  *       └── errors/{raw/ERR-000.md, distilled/meta-rules.md}
  *
  * 二、确保全局池（AI_GLOBAL_DIR，默认 C:\.ai_global / ~/.ai_global）：
- *   <global>/
- *   ├── README.md
- *   ├── meta/{raw/, distilled/meta-rules.md}      ← 全局 META 经验池
- *   └── agents/                                   ← 全局智能体调配
- *       ├── registry.json                         ← namespace 固定 pi-dynamic-workflows
- *       ├── cards/{pm,writer,reviewer,tester,architect}.md
- *       └── dynamic-dispatch.example.js           ← 常驻 PM 动态调度模板
+ *   缺失时自动触发 scripts/init-global.mjs（幂等 bootstrap：建架构 + 克隆双云库
+ *   meta/ ← eai-code/ai-meta、agents/ ← eai-code/eai-agent 含 pool/ 卡池）；
+ *   已存在则不动（更新请手动跑 init-global.mjs）。
+ *   设计规格：agents 仓 docs/design/rag-pool-redesign.md §11
  *
  * 用法： node init-project.js [项目根目录=当前目录]
  */
 
 import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { execFileSync } from "node:child_process";
 import { homedir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -36,8 +34,6 @@ const TPL = join(PKG, "templates");
 
 const AGENTS_MARKER_BEGIN = "<!-- pi-ai-coordination:agents:v1 BEGIN -->";
 const AGENTS_MARKER_END = "<!-- pi-ai-coordination:agents:v1 END -->";
-
-const AGENT_CARDS = ["pm", "writer", "reviewer", "tester", "architect"];
 
 function globalPoolDir() {
 	return process.env.AI_GLOBAL_DIR ?? (process.platform === "win32" ? "C:\\.ai_global" : join(homedir(), ".ai_global"));
@@ -70,34 +66,21 @@ function main() {
 
 	if (!existsSync(root)) mkdirSync(root, { recursive: true });
 
-	// ============ 一、全局池（先就绪，项目派发依赖它） ============
+	// ============ 一、全局池（缺失时触发 bootstrap，幂等；详见 scripts/init-global.mjs） ============
 	const g = globalPoolDir();
 	const gCreated = [];
 	const gSkipped = [];
-	{
-		const gDir = (p) => {
-			if (!existsSync(p)) {
-				mkdirSync(p, { recursive: true });
-				gCreated.push(rel(p, g) + "/");
-			}
-		};
-		const gFile = (dest, tplRel) => {
-			if (existsSync(dest)) {
-				gSkipped.push(rel(dest, g));
-				return;
-			}
-			copyFileSync(join(TPL, tplRel), dest);
-			gCreated.push(rel(dest, g));
-		};
-		gDir(g);
-		gFile(join(g, "README.md"), join("global", "README.md"));
-		gDir(join(g, "meta", "raw"));
-		gDir(join(g, "meta", "distilled"));
-		gFile(join(g, "meta", "distilled", "meta-rules.md"), join("global", "meta-rules.md"));
-		gDir(join(g, "agents", "cards"));
-		gFile(join(g, "agents", "registry.json"), join("agents", "registry.json"));
-		for (const c of AGENT_CARDS) gFile(join(g, "agents", "cards", `${c}.md`), join("agents", "cards", `${c}.md`));
-		gFile(join(g, "agents", "dynamic-dispatch.example.js"), join("agents", "dynamic-dispatch.example.js"));
+	let gBootstrapped = false;
+	if (!existsSync(g)) {
+		try {
+			execFileSync(process.execPath, [join(PKG, "scripts", "init-global.mjs")], { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
+			gBootstrapped = true;
+			gCreated.push("全局池 bootstrap（init-global.mjs：建架构 + 克隆 meta/agents 双云库）");
+		} catch (e) {
+			gSkipped.push(`全局池 bootstrap 失败（${String(e.message).split("\n")[0].trim()}），稍后可手动运行 node scripts/init-global.mjs`);
+		}
+	} else {
+		gSkipped.push("全局池已存在（更新请运行 node <包>/scripts/init-global.mjs，幂等 pull）");
 	}
 
 	// ============ 二、项目部署 ============
@@ -144,12 +127,12 @@ function main() {
 			{
 				ok: true,
 				root,
-				global: { dir: g, created: gCreated, skipped: gSkipped, note: "namespace=pi-dynamic-workflows（常驻 PM 动态调度固定前缀）" },
+				global: { dir: g, bootstrapped: gBootstrapped, created: gCreated, skipped: gSkipped, note: "namespace=pi-dynamic-workflows；角色卡单池在 AI_GLOBAL_DIR/agents/pool/（派发前 query.mjs 检索三档）" },
 				project: { created, skipped },
 				next: [
 					"编辑 todo.md 登记阶段定义与任务",
 					"pi 启动项目 → /pm 需求入口 · /plan 计划模式 · /issue 同步 · /go 调度",
-					"多 agent 接入各阶段：常驻 PM 以 pi-dynamic-workflows.<stage>.<T-NNN> 动态派发 lanes",
+					"多 agent 接入各阶段：常驻 PM 以 pi-dynamic-workflows.<stage>.<T-NNN> 动态派发 lanes（派发前 RAG 池检索三档/建卡协议/退单队列，spec: AI_GLOBAL_DIR/agents/docs/design/rag-pool-redesign.md）",
 				],
 			},
 			null,

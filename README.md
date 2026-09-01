@@ -99,10 +99,10 @@ C:\.ai_global\           # 全局池（AI_GLOBAL_DIR 可覆盖；类 Unix ~/.ai_
 ├── meta/                # 全局 META 经验池（原 C:\.ai_meta 迁移于此）
 │   ├── raw/
 │   └── distilled/meta-rules.md   # ### META-NNNN（全局四位编号）
-└── agents/              # 全局智能体调配
-    ├── registry.json    # namespace 固定 pi-dynamic-workflows
-    ├── cards/{pm,writer,reviewer,tester,architect}.md
-    └── dynamic-dispatch.example.js
+└── agents/              # 全局卡池（独立 git 仓 eai-code/eai-agent）
+    ├── pool/*.md        # 角色卡单池（RAG pool v2，schema v2）
+    ├── taxonomy.yml     # 受控标签 DAG
+    └── scripts/         # query.mjs 检索三档 / build-index.mjs
 ```
 
 ## 命令总表
