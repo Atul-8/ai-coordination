@@ -1,27 +1,12 @@
-# Claude Code plugin cache
-.claude-plugin/cache/
-
-# OS files
+node_modules/
+*.log
 .DS_Store
 Thumbs.db
-desktop.ini
-
-# Editor files
 .vscode/
 .idea/
-*.swp
-*.swo
-*~
-
-# Environment and secrets
 .env
 .env.*
 !.env.example
-*.pem
-*.key
-
-# Claude Code local state
 .claude/
-
-# ai-coordination layer
 .ai/
+add/
