@@ -1,0 +1,23 @@
+{
+	"name": "ai-coordination",
+	"version": 1,
+	"description": "ai-coordination 插件市场：七层分治协调框架的 ZCode 插件",
+	"owner": {
+		"name": "划水佬",
+		"url": "https://github.com/Atul-8/ai-coordination"
+	},
+	"plugins": [
+		{
+			"name": "ai-coordination",
+			"source": "./",
+			"description": "Seven-layer coordination framework for ZCode: todo.md pipeline, coord_todo MCP tool, G0-G4 gates, RAG role pool dispatch.",
+			"description_i18n": {
+				"zh-CN": "七层分治协调框架（ai-coordination）ZCode 插件版"
+			},
+			"version": "0.1.0",
+			"author": { "name": "划水佬" },
+			"category": "developer-tools",
+			"keywords": ["coordination", "todo", "plan", "issues", "workflow", "multi-agent"]
+		}
+	]
+}

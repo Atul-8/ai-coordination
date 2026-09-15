@@ -1,0 +1,17 @@
+{
+	"hooks": {
+		"SessionStart": [
+			{
+				"hooks": [
+					{
+						"type": "process",
+						"command": "node",
+						"args": ["${CLAUDE_PLUGIN_ROOT}/hooks/scripts/session-start.mjs"],
+						"timeoutMs": 10000,
+						"statusMessage": "ai-coordination G1 开门检查"
+					}
+				]
+			}
+		]
+	}
+}

@@ -1,0 +1,13 @@
+{
+	"mcpServers": {
+		"coord-todo": {
+			"command": "node",
+			"args": ["${CLAUDE_PLUGIN_ROOT}/mcp/coord-todo-server.mjs"],
+			"cwd": "${CLAUDE_PROJECT_DIR}",
+			"env": {
+				"COORD_PROJECT_DIR": "${CLAUDE_PROJECT_DIR}",
+				"COORD_SESSION_ID": "${CLAUDE_SESSION_ID}"
+			}
+		}
+	}
+}

@@ -1,9 +1,10 @@
 ---
 description: 把 todo.md 待办任务同步为 git issues（gh CLI / Gitee API）
 argument-hint: [阶段 sN，可选]
+skills: coordination
 ---
 
-把 todo.md 中尚无 issue 编号的待办任务同步到 git issues。
+把 todo.md 中尚无 issue 编号的待办任务同步到 git issues。参数：`$ARGUMENTS`
 
 1. 先跑 dry-run 预览（不要创建）：`node .ai/scripts/issues.js sync --dry-run`；
    若用户指定了阶段（如 `s1`），加上 `--stage s1`。

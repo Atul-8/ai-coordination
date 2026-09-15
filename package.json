@@ -1,28 +1,25 @@
 {
-  "name": "pi-ai-coordination",
-  "version": "0.1.0",
-  "description": "ai-coordination 七层分治框架的 pi 原生重构版：session 原生 + AGENTS.md 运行时部署 + todo.md→plan→issues 流水线 + /go 阶段性调度",
-  "type": "module",
-  "keywords": [
-    "pi-package",
-    "coordination",
-    "divide-and-conquer",
-    "todo",
-    "plan-mode",
-    "issues"
-  ],
-  "license": "LGPL-3.0",
-  "pi": {
-    "extensions": ["./extensions"],
-    "skills": ["./skills"],
-    "prompts": ["./prompts"]
-  },
-  "dependencies": {},
-  "peerDependencies": {
-    "typebox": "*",
-    "@earendil-works/pi-ai": "*",
-    "@earendil-works/pi-agent-core": "*",
-    "@earendil-works/pi-coding-agent": "*",
-    "@earendil-works/pi-tui": "*"
-  }
+	"name": "ai-coordination",
+	"version": "0.1.0",
+	"description": "ai-coordination 七层分治框架的 ZCode 插件版：todo.md 单一任务事实源 + coord_todo MCP 工具 + /pm /plan /go /issue /error /meta 流水线 + G0-G4 铁律 + 全局 RAG 角色卡池派发",
+	"type": "module",
+	"keywords": [
+		"zcode-plugin",
+		"coordination",
+		"divide-and-conquer",
+		"todo",
+		"plan-mode",
+		"issues",
+		"multi-agent"
+	],
+	"license": "LGPL-3.0",
+	"engines": {
+		"node": ">=18.17"
+	},
+	"scripts": {
+		"test": "node --test \"tests/*.test.mjs\"",
+		"init:project": "node scripts/init-project.js",
+		"init:global": "node scripts/init-global.mjs"
+	},
+	"dependencies": {}
 }

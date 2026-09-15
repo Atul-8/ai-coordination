@@ -1,207 +1,115 @@
-# pi-ai-coordination
+# ai-coordination（ZCode 插件版）
 
-ai-coordination 七层分治框架（v1.2.3，Claude Code 插件）的 **pi 原生重构版**。
+ai-coordination 七层分治框架的 **ZCode 插件版**（继承自 `pi-ai-coordination` 分支，pi 版见该分支）。
 
 七层架构不变：coordination（协调）→ presentation（表示）→ interface（接口）→ core（核心）→ shared（共享）+ testing（测试）+ docs（文档）。
-变的是承载方式——全面拥抱 pi 原生能力（会话树、AGENTS.md、扩展、prompt 模板、包机制）。
+变的是承载方式——全面拥抱 ZCode 原生插件体系（skills / commands / hooks / agents / MCP server）。
 
 > 📋 项目计划与路线图见 **`masterV2`** 分支 ·
-> ✅ 以下安装/卸载/工具调用命令均已在 **pi 0.84.4** 端到端实测
+> ✅ 插件核心链路（MCP 工具 / G1 hook / 脚本）由 `node --test` 覆盖（`npm test`，15 例）
 
-## ⚠️ 运行环境：全局 pi 插件组合（已实测）
-
-本框架**不是孤立工作的**：动态调度、计划模式旗标、无头行为都依赖与其他 pi 插件的共存与协作。以下正是开发者当前全局部署、且全部功能实测通过的完整组合（pi 0.84.4）——**照此环境部署可避免各类「用不了」的异常**：
-
-| 全局插件 | 版本 | 与本框架的关系 |
-| --- | --- | --- |
-| `pi-subagents` | 0.62.0 | 多 agent 子代理基础设施（动态调度的底层） |
-| `@quintinshaw/pi-dynamic-workflows` | 3.10.0 | **动态调度必需**：lane key 固定前缀 `pi-dynamic-workflows`、runs.lanes/runs.host API |
-| `@plannotator/pi-extension` | 0.27.10 | 占用 `--plan` 旗标 → 本框架已改名 `--coord-plan` 避让；两者共存无冲突 |
-| `@narumitw/pi-goal` | 0.54.4 | 无头 `-p` 下有已知的 sendUserMessage 生命周期限制（见下），TUI 正常 |
-| `@narumitw/pi-btw` | 0.56.0 | 与本框架无交互，环境事实列出 |
-| `pi-web-access` | 0.27.0 | 与本框架无交互，环境事实列出 |
-| **`ai-coordination`（本框架）** | 0.1.0 | `pi install git:github.com/Atul-8/ai-coordination@pi-ai-coordination` |
-
-**缺失影响对照**：
-
-- 缺 `pi-dynamic-workflows` / `pi-subagents` → 单会话流程（`/pm` `/plan` `/todo` `/issue` `/go` `/error` `/meta` `/status`）**不受影响**，仅多 agent 动态调度不可用
-- 缺 `@plannotator/pi-extension` → `--coord-plan` 旗标照常工作，只是没有 plannotator 功能
-- `@narumitw/pi-goal` 的无头限制同样影响本框架 `/eai pm|error|meta|report`（组内转发）；无头请用 `/eai-pm` 等原生模板别名（TUI 两者都正常）
-
-> 安装缺失插件：`pi install npm:<包名>`；查看当前全局组合：`pi list`。
-
-## 安装与初始化
-
-### 第 1 步：安装包
-
-```bash
-pi install git:github.com/Atul-8/ai-coordination@pi-ai-coordination   # GitHub 分支分发
-pi install /path/to/pi-ai-coordination                                # 或本地路径
-pi install -l git:github.com/Atul-8/ai-coordination@pi-ai-coordination   # 项目级（仅该项目生效）
-```
-
-### 第 2 步：初始化项目
-
-**方式 A（推荐）：在 pi 会话内一键执行**
-
-安装后启动 pi，直接输入：
+## 插件组成
 
 ```
-/coord-init            # 别名：/aic-init-project
+├── .zcode-plugin/plugin.json    # 插件 manifest（+ marketplace.json 供市场分发）
+├── .mcp.json                    # coord_todo MCP server 注册（zcode 自动信任连接）
+├── mcp/                         # coord_todo 工具（零依赖 Node，todo.md 数据模型 + JSON-RPC stdio）
+├── hooks/                       # SessionStart hook：G1 开门上下文注入（todo 进度 / META 计数 / 续作建议）
+├── commands/                    # 斜杠命令：/pm /plan /go /issue /error /meta /coord-status /coord-init
+├── agents/                      # 子代理角色卡：writer / reviewer / tester / architect
+├── skills/coordination/         # G0-G4 铁律 + 流水线 + 派发协议（纪律全文）
+├── scripts/                     # init-project.js（项目初始化）/ init-global.mjs（全局池）/ issues.js（todo↔issues）
+└── templates/                   # 项目模板（todo/STRUCTURE/REQ/ERR/META）+ 派发模板（zcode-dispatch）
 ```
 
-扩展会自动运行包内 init-project.js（默认当前项目根，幂等可重复）。
-也可以直接对 AI 说：**「用 pi-ai-coordination 初始化本项目」**——技能会引导它完成同样的事。
+**设计原则不变**：框架 = 全局插件（一次安装处处可用）；项目 = 纯数据（`init-project.js` 部署 `AGENTS.md + todo.md + docs/plans/ + .ai/`，激活开关 = 项目根存在 `.ai/`）。全局池 `AI_GLOBAL_DIR`（默认 `C:\.ai_global` / `~/.ai_global`）：META 经验池 + RAG 角色卡单池，跨 agent 共享。
 
-**方式 B：终端手动执行**
+## 安装
 
-⚠️ 注意 shell 差异：`%USERPROFILE%` 仅在 **CMD** 生效；**PowerShell 必须用 `$env:USERPROFILE`**（否则字面量传入导致 MODULE_NOT_FOUND）。末尾参数为目标项目（`.` = 当前目录；省略时默认当前目录）：
+### 方式 A：本地目录（开发/试用）
 
-```powershell
-# PowerShell（Windows 默认 shell）
-node "$env:USERPROFILE\.pi\agent\git\github.com\Atul-8\ai-coordination\scripts\init-project.js" .
-```
+ZCode 客户端 → Settings → Plugin Management → Discover 页 **`+`** → 添加本地目录（本仓库检出路径）→ 启用 `ai-coordination`。
 
-```cmd
-:: CMD
-node "%USERPROFILE%\.pi\agent\git\github.com\Atul-8\ai-coordination\scripts\init-project.js" .
-```
+### 方式 B：Git 仓库（分发）
 
-```bash
-# Git Bash / Linux / macOS
-node ~/.pi/agent/git/github.com/Atul-8/ai-coordination/scripts/init-project.js .
-```
+Discover 页 **`+`** → 输入 `https://github.com/Atul-8/ai-coordination`（分支 `zcode-ai-coordination`）——仓库自带 `.zcode-plugin/marketplace.json`，按市场添加后启用插件。
 
-### 项目级安装的信任与卸载
+### 初始化项目（每个项目一次）
 
-```bash
-pi -a   # 项目级文件需信任：TUI 首次启动会提示；无头模式加 -a / --approve
-pi remove git:github.com/Atul-8/ai-coordination@pi-ai-coordination        # 卸载全局
-pi remove -l -a git:github.com/Atul-8/ai-coordination@pi-ai-coordination  # 卸载项目级（-a 必需）
-```
-
-> ℹ️ `pi remove` 仅移除 settings 注册，**不会删除克隆目录**；彻底清理可手动删除：
-> 全局 `~/.pi/agent/git/github.com/Atul-8/ai-coordination`，项目级 `<项目>/.pi/git/github.com/Atul-8/ai-coordination`，
-> 以及项目内数据（可选）：AGENTS.md / todo.md / .ai/ / docs/plans/
->
-> 试装不落盘：`pi -e git:github.com/Atul-8/ai-coordination@pi-ai-coordination`（临时目录，仅本次运行）。
-
-### 初始化产物
+在 ZCode 会话内输入：
 
 ```
-<项目>/
-├── AGENTS.md            # 运行时规范（pi 自动加载）
-├── todo.md              # 任务事实源
-├── docs/plans/          # /plan 产出
-└── .ai/                 # coordination 层（STRUCTURE/REQ/ERR/issues.js）
-
-C:\.ai_global\           # 全局池（AI_GLOBAL_DIR 可覆盖；类 Unix ~/.ai_global）
-├── meta/                # 全局 META 经验池（原 C:\.ai_meta 迁移于此）
-│   ├── raw/
-│   └── distilled/meta-rules.md   # ### META-NNNN（全局四位编号）
-└── agents/              # 全局卡池（独立 git 仓 eai-code/eai-agent）
-    ├── pool/*.md        # 角色卡单池（RAG pool v2，schema v2）
-    ├── taxonomy.yml     # 受控标签 DAG
-    └── scripts/         # query.mjs 检索三档 / build-index.mjs
+/coord-init
 ```
 
-## 命令总表
+（幂等可重复；缺全局池时自动 bootstrap。也可以直接对 AI 说「用 ai-coordination 初始化本项目」。）
 
-原生命令全部保留；同时统一提供 **`eai` 前缀形态**（映射同一实现）：
-
-| 原生命令 | eai 别名 | 类型 | 作用 |
-| --- | --- | --- | --- |
-| `/coord-init`（`/aic-init-project`） | `/eai-init` | 扩展 | 初始化项目 coordination 层（运行包内 init-project.js，幂等） |
-| `/pm` | `/eai-pm` | 提示词 | G0 入口：需求分类路由 |
-| `/plan` | `/eai-plan` | 扩展 | 计划模式（Ctrl+Alt+P / `--coord-plan`）：只读探索 → Plan: → docs/plans 落盘 + todo 登记 |
-| `/todo` | `/eai-todo` | 扩展 | 任务看板（`coord_todo` 工具供 LLM 维护 todo.md，单写者纪律） |
-| `/issue` | `/eai-issue` | 提示词 | `issues.js sync`：待办 ↔ git issues（gh CLI / GITEE_TOKEN） |
-| `/go` | `/eai-go` | 扩展 | 阶段调度：选阶段 → 确认 → 按序执行（写 `@session:` 关联） |
-| `/error` | `/eai-error` | 提示词 | G3 五步错误提炼 |
-| `/meta` | `/eai-meta` | 提示词 | 经验提升全局池 `C:\.ai_global\meta` |
-| `/status` | `/eai-status` | 提示词 | 状态报告（`/coord-status` 为原生命令） |
-
-### /eai 组命令（gcc 风格参数叠加）
-
-`/eai <子命令> [参数] [-flags]`，一个入口路由全部能力：
+## 任务流水线（todo → plan → issue → go）
 
 ```
-/eai init              # 初始化（= /coord-init）
-/eai plan              # 切换计划模式
-/eai todo              # 任务看板
-/eai go s1             # 阶段调度（= /go s1）
-/eai status            # 快速状态（= /coord-status）
-/eai report            # AI 状态报告（= /status）
-/eai issue sync -s s1 --dry-run   # issues.js 直执：gcc 风格旗标叠加
-/eai issue list        # 查看 issue 关联（-s 过滤阶段）
-/eai pm <需求描述>     # 转发 /pm（TUI）
+/pm      需求入口（G0 路由：小活直接干，大活走流水线，错误走 G3）
+/plan    计划模式：只读探索 → Plan: 步骤 → 用户确认 → 落盘 docs/plans/PLAN-NNN-*.md → 步骤自动登记为任务
+/issue   node .ai/scripts/issues.js sync：待办任务 ↔ git issues（gh / GITEE_TOKEN）
+/go      阶段性调度：交互确认 → 大活并行派发子代理 → 每完成一项 coord_todo done
+/coord-status  全量状态报告      /error  G3 五步法      /meta  经验提升全局池
 ```
 
-旗标：`-s <stage>`/`--stage`、`-n`/`--dry-run`/`-d`、`--key=value`、布尔叠加 `-abc`。
-
-> ℹ️ 无头 `-p` 模式限制：`/eai pm|error|meta|report`（sendUserMessage 转发）受 pi
-> 会话生命周期限制不可用（同款限制也影响 pi-goal 等扩展的无头用法）；
-> 无头请用原生模板别名 `/eai-pm` `/eai-error` `/eai-meta` `/eai-status` 或原生命令。
-> eai 模板别名由 `scripts/sync-eai-prompts.mjs` 从源模板自动同步（改提示词后跑一次）。
-
-## 任务流水线
-
-```
-需求 → /pm 路由 → /plan 只读计划 → 确认落盘 docs/plans/ + todo 登记
-     → /issue 同步 git issues → /go <stage> 阶段调度 → 逐项 coord_todo done
-     → issues.js close-done → G4 离场（git 提交 + STRUCTURE 校验 + META 归档）
-```
-
-todo.md 行格式（唯一规范，仅经 `coord_todo` 工具编辑）：
+**todo.md 是唯一任务事实源**，行格式：
 
 ```
 - [ ] T-001 [stage:s1] 任务描述 (#12) @session:01a05cc8
-      │            │              │       └ /go 写入的 pi session 前 8 位
-      │            │              └ issues.js sync 回写
+      │            │              │       └ /go 调度时自动写入的 zcode session 前 8 位
+      │            │              └ issues.js sync 回写的 issue 编号
       │            └ 阶段标签（对应「阶段定义」小节）
       └ [ ] 待办 / [~] 进行中 / [x] 完成
 ```
 
-## 动态调度：pi-dynamic-workflows（固定前缀）
+任务行只能用 **coord_todo MCP 工具**维护（`list/add/start/done/link/set_issue`），禁用 edit/write 直改任务行；阶段定义可手工编辑。
 
-多 agent 接入不同阶段时，**常驻 PM**（主会话，不派发自己）以固定前缀动态调度：
+## G0-G4 铁律（详见技能 coordination）
 
-- **命名空间**：`pi-dynamic-workflows`（注册表 `namespace` 字段，勿改）
-- **lane key**：`pi-dynamic-workflows.<stage>.<T-NNN>`（如 `pi-dynamic-workflows.s1.T-003`）
-- **常驻命名 agent**：`pi-dynamic-workflows-pm`；子角色 `pi-dynamic-workflows-<name>`
-- **拓扑**：阶段 = lane（无依赖阶段并行接入），任务 = lane 内串行 stage（writer → reviewer）
-- **动态性**：lane 完成即读结果，动态决定续派/复核/回写；结果仅认 `structuredOutput.verdict === "blocked"`
-- **模板**：`C:\.ai_global\agents\dynamic-dispatch.example.js`（注入 STAGE/TASKS 后作为 workflowScript）
-
-## 设计原则：全局插件，项目数据
-
-经过 Claude Code 时期的实践，本框架**不适合 MCP 形式**（工具粒度粗、上下文开销大、无法参与 UI/命令生命周期），也不应该回到侵入式全局 CLAUDE.md。V2.0 定位：**框架 = 全局插件；项目 = 纯数据**。
-
-| 层 | 位置 | 说明 |
+| 门 | 何时 | 动作 |
 | --- | --- | --- |
-| 框架代码（扩展/技能/提示词/脚本） | `~/.pi/agent/`（git 安装：`git/github.com/Atul-8/ai-coordination`；npm 安装：`npm/node_modules/`） | 全局唯一，所有项目共享；升级 = `pi update` |
-| 项目数据（.ai/、todo.md、AGENTS.md、docs/plans/） | 各项目根 | `init-project.js` 实例化，随项目 git 走 |
-| 全局池（META 经验 + 智能体调配） | `C:\.ai_global`（AI_GLOBAL_DIR 可覆盖） | 跨项目资产，可选 git 同步 |
+| G0 | 需求进来 | 路由：小活直接做；大活 → REQ + /plan 流水线；错误 → G3 |
+| G1 | 开门 / resume | SessionStart hook 自动注入 todo 进度 + META 计数；人工确认后续作 |
+| G2 | 写操作后 | 跑层测试 → 更新 .ai/STRUCTURE.md / REQ / todo → 再写下一处 |
+| G2.5 | 新开发前 | 先证明测试体系能跑（红→绿） |
+| G3 | 出错时 | 五步法：现象→根因→修复→预防→META |
+| G4 | 离场前 | coord_todo 归档 + close-done + git 提交推送 + STRUCTURE 校验 |
 
-项目内唯一被复制的代码是 `.ai/scripts/issues.js`（为提示词提供稳定路径，init 时自动刷新为包内最新版；源头在包内）。
+## 大任务派发（ZCode 子代理 · RAG 角色卡池）
 
-> **Claude Code V2.0 对应目标**：后续整合回 Claude Code 时，也应做成 **plugin**（全局安装、项目级数据），而不是旧版 `cat SKILL.md >> CLAUDE.md` 的侵入式全局追加。届时本包的 skills/prompts 结构可直接映射。
+- **PM 行为闭环**：分支/计划/任务就绪后立即盘点 → 产出派发矩阵（阶段×并行×**文件域防冲突**）→ 组装任务卡（角色卡+任务卡）→ **一条消息内多个 Agent 调用并行派发** → 汇报矩阵后待命；子代理完成后收口：验证 → 分任务提交 → coord_todo done → 同步 → push
+- **角色**：插件自带 `ai-coordination:writer / reviewer / tester / architect` 子代理；也可 general-purpose + 全局池角色卡注入
+- **RAG 池协议**（`AI_GLOBAL_DIR\agents\`）：派发前检索三档 `query.mjs`（强命中组合派发｜弱命中标注边界试探｜未命中建卡）；子代理 scope 不符可拒单（out-of-scope），任务携反馈入队尾 FIFO 重组再派，累计 ≥2 次 PM 拆解自办或上报用户；任务卡头 `meta_injection: full|partial|none` 控制 META 预注入
+- 派发模板：`templates/agents/zcode-dispatch.example.md`；追踪标识 `zcode.<stage>.<T-NNN>`（仅汇报用，无 key 沙箱）
 
-## 旧 → 新映射（四个重构点）
+## 从 pi 版迁移（pi 版 ↔ zcode 版映射）
 
-| # | 旧（Claude Code 版） | 新（pi 版） |
-| --- | --- | --- |
-| 1 | `WORKSTATE.md` + `LOG.md` 手写续作 | **删除**。pi 原生会话树承担：`/resume` `/tree` `/fork`、JSONL、`$PI_SESSION_FILE`；任务↔会话用 todo.md 行内 `@session:xxxxxxxx` 关联 |
-| 2 | `cat SKILL.md >> CLAUDE.md`（全局追加） | `init-project.js` 运行时把 **`AGENTS.md`** 部署到项目根（幂等插桩），按项目生效 |
-| 3 | `TASKS.md` + tasks.js（PM 任务表） | **todo.md 单一事实源**：`/plan` 产出 `docs/plans/PLAN-NNN-*.md` → 步骤自动登记 → `/issue` 同步 git issues |
-| 4 | 手工指派 + pm-dispatch 消息队列 | **`/go`** 阶段性调度：交互确认 → 按序执行 → 逐项归档；多 agent 接入时常驻 PM 动态派发（见上） |
+| pi 版（`pi-ai-coordination` 分支） | ZCode 版（本分支） |
+| --- | --- |
+| pi 扩展 registerTool（coord_todo） | MCP server `mcp/coord-todo-server.mjs`（.mcp.json 注册） |
+| 扩展 session_start 状态条/部件 | SessionStart hook additionalContext 注入（G1） |
+| prompts/ 提示词模板 | commands/ 斜杠命令 |
+| `--coord-plan` 旗标 + 工具门控 | zcode 原生 plan mode + /plan 命令流水线 |
+| pi-subagents workflowScript（runs.*，key 禁冒号） | Agent 工具并行调用（无 key 沙箱） |
+| pi 会话树 /tree /fork + `$PI_SESSION_FILE` | zcode 原生会话；`@session:` 由 coord_todo link 写入（`COORD_SESSION_ID` 注入） |
+| eai 组命令 + 平面别名 | 插件命令天然命名空间，无需别名 |
 
-G0–G4 铁律精简后保留在 `skills/coordination/SKILL.md`（G1 自动化进扩展 session_start；G2/G2.5/G3/G4 成为纪律卡片；G3 五步错误提炼 + META 池原样保留）。
+迁移注意：pi 版部署过的项目带 `pi-ai-coordination:agents:v1` 插桩标记；zcode 版 init-project.js 使用新标记
+`ai-coordination:agents:v1`，对老项目执行 init 会在顶部再插桩 zcode 版规范（pi 版段落如不再用可手工删除）。
 
-## 兼容与迁移
+## 卸载
 
-- 旧 `C:\.ai_meta` → 整体挪到 `C:\.ai_global\meta\`（`distilled/meta-rules.md` 格式不变）
-- 旧 `WORKSTATE.md`/`LOG.md` → 不再需要；历史价值信息可归档进 REQ/ERR 卡
-- 旧 `TASKS.md` → 任务搬进 todo.md（保留编号可映射 T-NNN）
-- 全局池建议 `git init` 关联远程，实现跨机同步
-- ⚠️ `--plan` CLI 标志已更名为 **`--coord-plan`**（避免与 plannotator 扩展冲突）
+- 停用插件：Settings → Plugin Management → 关闭 `ai-coordination`（或移除本地市场）
+- 项目数据（`.ai/`、todo.md、docs/plans/、AGENTS.md 插桩）为纯数据，卸载插件不影响已归档内容，删除即可彻底清理
+
+## 开发
+
+```bash
+npm test                 # node --test，15 例（todo-store / MCP JSON-RPC / G1 hook 子进程）
+node scripts/init-project.js <项目根>   # 手动初始化
+node scripts/init-global.mjs            # 手动 bootstrap 全局池
+```
+
+零运行时依赖（Node ≥18.17），不需要 npm install。

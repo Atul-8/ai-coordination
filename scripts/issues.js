@@ -125,7 +125,7 @@ async function createIssue(root, item) {
 	const title = `[${item.id}] ${item.desc}`;
 	const stageTitle = parseTodo(root).stages.get(item.stage) ?? "";
 	const body = [
-		`来自 pi-ai-coordination todo.md 的任务项。`,
+		`来自 ai-coordination todo.md 的任务项。`,
 		"",
 		`- 任务编号: ${item.id}`,
 		`- 阶段: ${item.stage}（${stageTitle}）`,

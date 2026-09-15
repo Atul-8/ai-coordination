@@ -32,8 +32,8 @@ import { fileURLToPath } from "node:url";
 const PKG = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const TPL = join(PKG, "templates");
 
-const AGENTS_MARKER_BEGIN = "<!-- pi-ai-coordination:agents:v1 BEGIN -->";
-const AGENTS_MARKER_END = "<!-- pi-ai-coordination:agents:v1 END -->";
+const AGENTS_MARKER_BEGIN = "<!-- ai-coordination:agents:v1 BEGIN -->";
+const AGENTS_MARKER_END = "<!-- ai-coordination:agents:v1 END -->";
 
 function globalPoolDir() {
 	return process.env.AI_GLOBAL_DIR ?? (process.platform === "win32" ? "C:\\.ai_global" : join(homedir(), ".ai_global"));
@@ -127,12 +127,12 @@ function main() {
 			{
 				ok: true,
 				root,
-				global: { dir: g, bootstrapped: gBootstrapped, created: gCreated, skipped: gSkipped, note: "namespace=pi-dynamic-workflows；角色卡单池在 AI_GLOBAL_DIR/agents/pool/（派发前 query.mjs 检索三档）" },
+				global: { dir: g, bootstrapped: gBootstrapped, created: gCreated, skipped: gSkipped, note: "角色卡单池在 AI_GLOBAL_DIR/agents/pool/（派发前 query.mjs 检索三档）" },
 				project: { created, skipped },
 				next: [
 					"编辑 todo.md 登记阶段定义与任务",
-					"pi 启动项目 → /pm 需求入口 · /plan 计划模式 · /issue 同步 · /go 调度",
-					"多 agent 接入各阶段：常驻 PM 以 pi-dynamic-workflows.<stage>.<T-NNN> 动态派发 lanes（派发前 RAG 池检索三档/建卡协议/退单队列，spec: AI_GLOBAL_DIR/agents/docs/design/rag-pool-redesign.md）",
+					"zcode 启动项目 → /pm 需求入口 · /plan 计划模式 · /issue 同步 · /go 调度（任务行仅经 coord_todo MCP 工具维护）",
+					"多 agent 接入各阶段：常驻 PM 一条消息内多个 Agent 调用并行派发 lanes（派发前 RAG 池检索三档/建卡协议/退单队列，spec: AI_GLOBAL_DIR/agents/docs/design/rag-pool-redesign.md）",
 				],
 			},
 			null,

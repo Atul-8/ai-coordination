@@ -1,4 +1,4 @@
-# Node / pi package
+# Node / package
 node_modules/
 *.log
 
@@ -27,6 +27,9 @@ desktop.ini
 
 # ai-coordination layer (project-local data, never in package repo)
 .ai/
+
+# ZCode client local state
+.zcode/
 
 # local scratch
 add/

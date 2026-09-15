@@ -1,6 +1,6 @@
 # .ai/ — coordination 层
 
-pi-ai-coordination 框架数据目录。只放协调/状态/知识资产，不放业务代码。
+ai-coordination 框架数据目录。只放协调/状态/知识资产，不放业务代码。
 
 | 路径 | 作用 | 维护者 |
 | --- | --- | --- |
@@ -13,8 +13,8 @@ pi-ai-coordination 框架数据目录。只放协调/状态/知识资产，不�
 ## 会话与状态（重要）
 
 本目录**不再**维护 WORKSTATE.md / LOG.md：
-- 会话上下文 → pi 原生会话树（`/resume` `/tree` `/fork`，JSONL 存于 pi 会话目录）
-- 任务状态 → 项目根 `todo.md`（行内 `@session:xxxxxxxx` 关联 pi 会话）
+- 会话上下文 → zcode 原生会话（恢复/分支由客户端管理）
+- 任务状态 → 项目根 `todo.md`（行内 `@session:xxxxxxxx` 关联 zcode 会话，coord_todo link 写入）
 - 提交历史 → git log
 
 ## 全局池（C:\.ai_global）
