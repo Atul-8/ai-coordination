@@ -96,8 +96,10 @@ Discover 页 **`+`** → 输入 `https://github.com/Atul-8/ai-coordination`（�
 | pi 会话树 /tree /fork + `$PI_SESSION_FILE` | zcode 原生会话；`@session:` 由 coord_todo link 写入（`COORD_SESSION_ID` 注入） |
 | eai 组命令 + 平面别名 | 插件命令天然命名空间，无需别名 |
 
-迁移注意：pi 版部署过的项目带 `pi-ai-coordination:agents:v1` 插桩标记；zcode 版 init-project.js 使用新标记
-`ai-coordination:agents:v1`，对老项目执行 init 会在顶部再插桩 zcode 版规范（pi 版段落如不再用可手工删除）。
+迁移注意：跨工具数据无缝衔接——`.ai/` 目录、todo.md 行格式、docs/plans 编号、issues.js、全局池在
+pi 版与本版完全同构，同一项目可互换使用两个宿主。唯一差异是 AGENTS.md 插桩标记（pi 版
+`pi-ai-coordination:agents:v1`）：本版 init-project.js 检测到旧标记会**原位升级**为新标记块，
+块外用户自有规范原样保留，不会叠层（有测试覆盖）。
 
 ## 卸载
 

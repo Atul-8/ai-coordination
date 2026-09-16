@@ -34,6 +34,9 @@ const TPL = join(PKG, "templates");
 
 const AGENTS_MARKER_BEGIN = "<!-- ai-coordination:agents:v1 BEGIN -->";
 const AGENTS_MARKER_END = "<!-- ai-coordination:agents:v1 END -->";
+// 旧宿主（pi 版）插桩标记：检测到时原位升级为新标记块，保证跨工具项目数据无缝衔接
+const LEGACY_MARKER_BEGIN = "<!-- pi-ai-coordination:agents:v1 BEGIN -->";
+const LEGACY_MARKER_END = "<!-- pi-ai-coordination:agents:v1 END -->";
 
 function globalPoolDir() {
 	return process.env.AI_GLOBAL_DIR ?? (process.platform === "win32" ? "C:\\.ai_global" : join(homedir(), ".ai_global"));
@@ -85,18 +88,32 @@ function main() {
 
 	// ============ 二、项目部署 ============
 
-	// 1. AGENTS.md —— 运行时规范部署（已有文件则带标记插桩，幂等）
+	// 1. AGENTS.md —— 运行时规范部署（已有文件则带标记插桩，幂等；pi 版旧标记原位升级）
 	const agentsPath = join(root, "AGENTS.md");
 	const template = readFileSync(join(PKG, "AGENTS.md"), "utf-8");
+	const wrapped = `${AGENTS_MARKER_BEGIN}\n${template}\n${AGENTS_MARKER_END}\n`;
 	if (!existsSync(agentsPath)) {
-		writeFileSync(agentsPath, template, "utf-8");
+		// 全新部署即带标记：后续重复 init 依标记判定幂等跳过
+		writeFileSync(agentsPath, wrapped, "utf-8");
 		created.push("AGENTS.md");
-	} else if (readFileSync(agentsPath, "utf-8").includes(AGENTS_MARKER_BEGIN)) {
-		skipped.push("AGENTS.md（已含 coordination 插桩）");
 	} else {
 		const existing = readFileSync(agentsPath, "utf-8");
-		writeFileSync(agentsPath, `${AGENTS_MARKER_BEGIN}\n${template}\n${AGENTS_MARKER_END}\n\n${existing}`, "utf-8");
-		created.push("AGENTS.md（插桩合并到现有文件顶部）");
+		if (existing.includes(AGENTS_MARKER_BEGIN)) {
+			skipped.push("AGENTS.md（已含 coordination 插桩）");
+		} else if (existing.includes(LEGACY_MARKER_BEGIN)) {
+			// pi 版项目迁移：替换旧插桩块为新规范，块外内容（用户自有规范）原样保留
+			const beginIdx = existing.indexOf(LEGACY_MARKER_BEGIN);
+			const endIdx = existing.indexOf(LEGACY_MARKER_END);
+			const upgraded =
+				existing.slice(0, beginIdx) +
+				wrapped +
+				existing.slice(endIdx + LEGACY_MARKER_END.length).replace(/^\r?\n\r?\n/, "\n");
+			writeFileSync(agentsPath, upgraded, "utf-8");
+			created.push("AGENTS.md（pi 版插桩原位升级为 ai-coordination，块外内容保留）");
+		} else {
+			writeFileSync(agentsPath, `${wrapped}\n${existing}`, "utf-8");
+			created.push("AGENTS.md（插桩合并到现有文件顶部）");
+		}
 	}
 
 	// 2. todo.md
