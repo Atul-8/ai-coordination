@@ -5,6 +5,8 @@ argument-hint: [阶段 sN，可选]
 
 把 todo.md 中尚无 issue 编号的待办任务同步到 git issues。
 
+用户指定阶段参数：${@:-（未指定，默认全量同步）}
+
 1. 先跑 dry-run 预览（不要创建）：`node .ai/scripts/issues.js sync --dry-run`；
    若用户指定了阶段（如 `s1`），加上 `--stage s1`。
 2. 向用户展示将要创建的 issue 清单（编号/标题/阶段），确认后去掉 `--dry-run` 真正执行。
