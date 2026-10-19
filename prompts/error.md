@@ -5,7 +5,7 @@ argument-hint: [错误简述]
 
 对以下错误执行 G3 五步法（缺一不可）：
 
-$ARGUMENTS
+${@:-【⚠️ 未捕获到错误简述，参数为空。不要执行五步法、不要读文件。直接回复用户一句话：请携带错误简述重新调用，例如 /error ESP-IDF扩展识别失败】}
 
 1. **现象**：精确报错信息、复现步骤、期望 vs 实际 → 写入 `.ai/errors/raw/ERR-NNN.md`
    （先 `ls .ai/errors/raw/` 查最大编号再 +1；模板 ERR-000；记录当前 pi session 前 8 位与关联任务 T-NNN）
