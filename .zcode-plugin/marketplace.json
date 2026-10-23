@@ -1,6 +1,6 @@
 {
 	"name": "ai-coordination",
-	"version": 1,
+	"version": "0.2.0",
 	"description": "ai-coordination 插件市场：七层分治协调框架的 ZCode 插件",
 	"owner": {
 		"name": "划水佬",
@@ -15,9 +15,18 @@
 				"zh-CN": "七层分治协调框架（ai-coordination）ZCode 插件版"
 			},
 			"version": "0.1.0",
-			"author": { "name": "划水佬" },
+			"author": {
+				"name": "划水佬"
+			},
 			"category": "developer-tools",
-			"keywords": ["coordination", "todo", "plan", "issues", "workflow", "multi-agent"]
+			"keywords": [
+				"coordination",
+				"todo",
+				"plan",
+				"issues",
+				"workflow",
+				"multi-agent"
+			]
 		}
 	]
 }

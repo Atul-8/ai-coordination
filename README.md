@@ -18,11 +18,14 @@ ai-coordination 七层分治框架的 **ZCode 插件版**（继承自 `pi-ai-coo
 ├── commands/                    # 斜杠命令：/pm /plan /go /issue /error /meta /coord-status /coord-init
 ├── agents/                      # 子代理角色卡：writer / reviewer / tester / architect
 ├── skills/coordination/         # G0-G4 铁律 + 流水线 + 派发协议（纪律全文）
-├── scripts/                     # init-project.js（项目初始化）/ init-global.mjs（全局池）/ issues.js（todo↔issues）
+├── scripts/                     # init-project.js（项目初始化）/ init-global.mjs（全局池 + 全局指令）/ issues.js（todo↔issues）
+├── templates/global/agents-zcode.md  # 全局思维架构模板（部署到 ~/.zcode/AGENTS.md）
 └── templates/                   # 项目模板（todo/STRUCTURE/REQ/ERR/META）+ 派发模板（zcode-dispatch）
 ```
 
 **设计原则不变**：框架 = 全局插件（一次安装处处可用）；项目 = 纯数据（`init-project.js` 部署 `AGENTS.md + todo.md + docs/plans/ + .ai/`，激活开关 = 项目根存在 `.ai/`）。全局池 `AI_GLOBAL_DIR`（默认 `C:\.ai_global` / `~/.ai_global`）：META 经验池 + RAG 角色卡单池，跨 agent 共享。
+
+**全局思维架构（宿主级纪律）**：`init-global.mjs` 会把「全局思维架构」幂等部署到 ZCode 全局指令位 **`~/.zcode/AGENTS.md`**（ZCode 原生先注入该文件、后注入项目 AGENTS.md，因此对所有项目生效）——这是 pi 版 `~/.pi/agent/AGENTS.md` 全局纪律的同构移植：云端脱敏、token 纪律、T0/T1/T2 目录权限分级、模型纪律（禁自动换模型）、汇报真实性（禁幻觉反馈）、链路优先与最小验证、META 错误沉淀三步法。部署走标记插桩（`ai-coordination:global-agents:v1`），块外用户自有全局规则永不覆盖。
 
 ## 安装
 
@@ -95,6 +98,7 @@ Discover 页 **`+`** → 输入 `https://github.com/Atul-8/ai-coordination`（�
 | pi-subagents workflowScript（runs.*，key 禁冒号） | Agent 工具并行调用（无 key 沙箱） |
 | pi 会话树 /tree /fork + `$PI_SESSION_FILE` | zcode 原生会话；`@session:` 由 coord_todo link 写入（`COORD_SESSION_ID` 注入） |
 | eai 组命令 + 平面别名 | 插件命令天然命名空间，无需别名 |
+| pi 全局指令 `~/.pi/agent/AGENTS.md`（全局思维架构） | `~/.zcode/AGENTS.md`（init-global.mjs 幂等部署，9 节纪律同构移植） |
 
 迁移注意：跨工具数据无缝衔接——`.ai/` 目录、todo.md 行格式、docs/plans 编号、issues.js、全局池在
 pi 版与本版完全同构，同一项目可互换使用两个宿主。唯一差异是 AGENTS.md 插桩标记（pi 版

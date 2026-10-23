@@ -15,6 +15,8 @@
  *   3. 凭据：personal_token.yml（顶层 gitee:/github: 键）静默读取，仅用于本次命令行；
  *      clone 后立即 git remote set-url origin 干净 URL，token 绝不持久化到 .git/config。
  *      token 缺失 → 优雅降级：尝试匿名 clone；失败则保留目录结构并告警（不中断，exit 0）。
+ *   4. 宿主全局指令：把「全局思维架构」部署到 ~/.zcode/AGENTS.md（ZCode 全局纪律，
+ *      pi 版 ~/.pi/agent/AGENTS.md 的同构移植；幂等插桩，scripts/global-agents.mjs）。
  *
  * 用法： node scripts/init-global.mjs [--dir <全局池根目录>]
  */
@@ -24,6 +26,7 @@ import { copyFileSync, existsSync, mkdirSync, readFileSync, rmdirSync } from "no
 import { homedir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { deployGlobalAgents } from "./global-agents.mjs";
 
 const PKG = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const TPL = join(PKG, "templates");
@@ -136,6 +139,17 @@ function syncRepo({ dir: name, url, branch }) {
 ensureSkeleton();
 for (const r of REPOS) syncRepo(r);
 ensureFallbackDirs();
+
+// ============ 四、宿主全局指令（~/.zcode/AGENTS.md，全局思维架构） ============
+try {
+	const result = deployGlobalAgents({
+		templateContent: readFileSync(join(TPL, "global", "agents-zcode.md"), "utf-8"),
+	});
+	const verb = { created: "部署", updated: "原位更新（标记块内）", current: "已是最新（跳过）", wrapped: "前置合并（块外用户内容保留）" }[result.action];
+	actions.push(`宿主全局指令 ${verb}：${result.path}`);
+} catch (e) {
+	warnings.push(`宿主全局指令部署失败（${String(e.message).split("\n")[0].trim()}）——可手动复制 templates/global/agents-zcode.md 到 ~/.zcode/AGENTS.md`);
+}
 
 console.log(JSON.stringify({ ok: true, dir, actions, warnings }, null, 2));
 if (warnings.length > 0) {

@@ -4,7 +4,9 @@ argument-hint: [规则关键词或 META 编号，可选]
 skills: coordination
 ---
 
-把项目级 META 规则提升到全局池（`AI_GLOBAL_DIR`，默认 `C:\.ai_global`，类 Unix `~/.ai_global`）。参数：`$ARGUMENTS`
+把项目级 META 规则提升到全局池（`AI_GLOBAL_DIR`，默认 `C:\.ai_global`，类 Unix `~/.ai_global`）。
+
+用户指定关键词/编号：$ARGUMENTS（未指定 → 处理全部规则，不要求用户补充，不要空跑终止）。
 
 1. 读 `.ai/errors/distilled/meta-rules.md` 全部项目规则；若用户给了关键词/编号则只筛这些。
 2. 与用户逐条确认是否"跨项目普适"（不是本仓库特有的路径/命令/约定）。

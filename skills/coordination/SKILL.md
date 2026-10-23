@@ -21,8 +21,9 @@ description: ai-coordination 七层分治纪律（G0-G4 铁律 + todo/plan/issue
 
 1. **定位脚本**：`$ZCODE_PLUGIN_ROOT/scripts/init-project.js`；找不到则
    `ls ~/.zcode/cli/plugins/cache/*/ai-coordination/*/scripts/init-project.js`。
-2. **执行**：`node <init-project.js> <项目根>`（幂等；缺全局池时自动 bootstrap）。
-3. **汇报**：stdout JSON 的 `project.created / project.skipped / global.bootstrapped`。
+2. **执行**：`node <init-project.js> <项目根>`（幂等；缺全局池时自动 bootstrap init-global.mjs——
+   同时把**全局思维架构**部署到 `~/.zcode/AGENTS.md`，宿主级纪律对所有项目生效）。
+3. **汇报**：stdout JSON 的 `project.created / project.skipped / global.bootstrapped / global.actions`。
 4. **引导**：/pm 需求入口 → /plan 计划 → /issue 同步 → /go <stage> 调度；任务行仅经 coord_todo 维护。
 
 > 项目根已有 `.ai/` 时直接报告状态并转入 G0/G1，不要重复初始化。
@@ -139,4 +140,5 @@ description: ai-coordination 七层分治纪律（G0-G4 铁律 + todo/plan/issue
 | pi-subagents workflowScript（runs.*，key 禁冒号） | Agent 工具并行调用（一条消息多 lane，无 key 沙箱） |
 | pi 会话树 /tree /fork /resume + PI_SESSION_FILE | zcode 原生会话；@session: 短 id 由 coord_todo link 写入（COORD_SESSION_ID 注入） |
 | eai 组命令 + 平面别名 | 插件命令天然命名空间（ai-coordination:pm），无需别名 |
+| pi 全局指令 `~/.pi/agent/AGENTS.md`（全局思维架构） | `~/.zcode/AGENTS.md`（init-global.mjs 幂等部署，9 节纪律同构移植） |
 | dispatch 模板 dynamic-dispatch.example.js | templates/agents/zcode-dispatch.example.md |

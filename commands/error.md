@@ -4,9 +4,12 @@ argument-hint: [错误简述]
 skills: coordination
 ---
 
-对以下错误执行 G3 五步法（缺一不可）：
+对以下错误执行 G3 五步法（缺一不可）。
 
-$ARGUMENTS
+错误简述：$ARGUMENTS
+
+**空参守卫（最高优先）**：若上方「错误简述」为空（未捕获到参数），不要执行五步法、不要读文件，
+直接回复用户一句话：请携带错误简述重新调用，例如 `/error ESP-IDF扩展识别失败`，然后停止。
 
 1. **现象**：精确报错信息、复现步骤、期望 vs 实际 → 写入 `.ai/errors/raw/ERR-NNN.md`
    （先 `ls .ai/errors/raw/` 查最大编号再 +1；模板 ERR-000；记录当前 zcode session 前 8 位——
