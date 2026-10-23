@@ -43,11 +43,13 @@ description: ai-coordination 七层分治纪律（G0-G4 铁律 + todo/plan/issue
 
 ## G1 · 开门（SessionStart hook 自动化 + 人工项）
 
-自动（本插件 hooks/scripts/session-start.mjs）：激活项目会话开启时注入 G1 上下文——阶段进度、进行中任务、META 计数、session 短 id、续作建议。
+自动（本插件 hooks/scripts/session-start.mjs）：激活项目会话开启时注入 G1 上下文——阶段进度、进行中任务、META 计数、session 短 id、**未消化交接卡检测**（`.ai/HANDOFF.md` 状态 open → 提示先读卡接力）、续作建议。
 人工（模型在首轮对话时执行）：
 1. 读 todo.md 确认当前阶段与待办；有 `~` 进行中任务 → 优先续作
 2. 读 `.ai/errors/distilled/meta-rules.md`，让 META 规则参与本轮决策
-3. 任务关联：被调度任务已有 `@session:` 标记（zcode session 前 8 位）；历史细节查 git log 与会话自身上下文，**不要**凭空编造上次进度
+3. **跨宿主接力检查**：`.ai/HANDOFF.md` 存在且状态=open → 必读；跑卡上「验证」命令证明接上，按「下一步」续作，完成后 `/handoff done` 消化（状态改 resumed + coord_todo link 重绑本方会话）
+4. 任务关联：被调度任务已有 `@session:` 标记（zcode session 前 8 位）；历史细节查 git log 与会话自身上下文，**不要**凭空编造上次进度
+5. **交出纪律**：开发到一半要换宿主（ZCode ↔ pi）→ 先 `/handoff` 写卡再走（`@session:` 对另一宿主不可读，交接卡是唯一跨宿主现场记录）
 
 ## G2 · 同步门控（每次写操作后）
 
@@ -127,6 +129,7 @@ description: ai-coordination 七层分治纪律（G0-G4 铁律 + todo/plan/issue
 | /meta | 命令 | 经验提升全局池（AI_GLOBAL_DIR\meta） |
 | /coord-status | 命令 | 全量状态报告 |
 | /coord-init | 命令 | 项目初始化（init-project.js） |
+| /handoff | 命令 | 跨宿主交接卡：/handoff 写卡交出 · /handoff done 消化接手（ZCode ↔ pi 接力） |
 | coord_todo | MCP 工具 | list/add/start/done/link/set_issue 维护 todo.md |
 
 ## pi 版 → ZCode 版对照
@@ -141,4 +144,5 @@ description: ai-coordination 七层分治纪律（G0-G4 铁律 + todo/plan/issue
 | pi 会话树 /tree /fork /resume + PI_SESSION_FILE | zcode 原生会话；@session: 短 id 由 coord_todo link 写入（COORD_SESSION_ID 注入） |
 | eai 组命令 + 平面别名 | 插件命令天然命名空间（ai-coordination:pm），无需别名 |
 | pi 全局指令 `~/.pi/agent/AGENTS.md`（全局思维架构） | `~/.zcode/AGENTS.md`（init-global.mjs 幂等部署，9 节纪律同构移植） |
+| 跨宿主接力：pi 会话树上下文不可跨读 | `.ai/HANDOFF.md` 交接卡（两侧 G1 均检测，`/handoff` 生命周期管理，git 同步） |
 | dispatch 模板 dynamic-dispatch.example.js | templates/agents/zcode-dispatch.example.md |

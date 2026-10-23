@@ -105,6 +105,17 @@ pi 版与本版完全同构，同一项目可互换使用两个宿主。唯一�
 `pi-ai-coordination:agents:v1`）：本版 init-project.js 检测到旧标记会**原位升级**为新标记块，
 块外用户自有规范原样保留，不会叠层（有测试覆盖）。
 
+## 跨宿主协同（开发到一半无缝接力 · ZCode ↔ pi）
+
+不只是单向迁移——同一项目可以在两个宿主之间随时接力开发：
+
+- **数据层（天然无缝）**：todo.md 行格式、`.ai/` 目录、docs/plans 编号、issues.js、全局池在两版完全同构，零转换
+- **规范层（双向升级）**：两侧 init-project.js 互相识别对方插桩标记，`/coord-init`（或 pi 侧 init）时**原位升级**为本宿主规范，块外用户自有规范保留，永不叠层
+- **会话层（交接卡）**：会话上下文不可跨宿主读 → 交接卡 `.ai/HANDOFF.md` 是唯一跨宿主现场记录：
+  - 交出：开发到一半运行 `/handoff` —— 汇总 todo `[~]` 任务、未提交变更、最近提交、卡点死路、下一步、验证命令 → 写卡 → git 提交（跨机器 push/pull 同步）
+  - 接手：任意宿主打开项目，G1 自动检测 open 卡并提示（zcode SessionStart hook / pi AGENTS.md 纪律）→ 读卡 → 跑「验证」命令证明接上 → 按「下一步」续作 → `/handoff done` 消化（状态改 resumed + coord_todo link 重绑本方会话）
+  - 卡片整卡重写、open/resumed 生命周期、历史在 git log——纯数据文件，两侧工具链原生可读，无任何专有格式
+
 ## 卸载
 
 - 停用插件：Settings → Plugin Management → 关闭 `ai-coordination`（或移除本地市场）

@@ -1,6 +1,6 @@
 {
 	"name": "ai-coordination",
-	"version": "0.2.0",
+	"version": "0.3.0",
 	"description": "Seven-layer divide-and-conquer coordination framework for ZCode: todo.md single source of truth, coord_todo MCP tool, /pm /plan /go /issue /error /meta pipeline, G0-G4 discipline gates, global RAG agent role pool dispatch.",
 	"description_i18n": {
 		"zh-CN": "七层分治协调框架（ai-coordination）ZCode 插件版：todo.md 单一任务事实源 + coord_todo MCP 工具 + /pm /plan /go /issue /error /meta 流水线 + G0-G4 铁律 + 全局 RAG 角色卡池派发"

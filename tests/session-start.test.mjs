@@ -86,3 +86,42 @@ test("无 CLAUDE_SESSION_ID 时回退 stdin session_id", () => {
 		rmSync(root, { recursive: true, force: true });
 	}
 });
+
+const HANDOFF_CARD = (status, from) => `# HANDOFF — 跨宿主交接卡
+
+- 状态: ${status}
+- 交出方: ${from}
+- 任务: T-001 [stage:s1] 实现核心
+- 已完成: 骨架已提交（abc1234）
+- 进行中: src/core/order.ts 半成品
+- 卡点/死路: 无
+- 下一步: 补齐 order.ts 校验逻辑
+- 验证: npm test → 5 passed
+`;
+
+test("交接卡 open → G1 注入接力提示（读卡→验证→续作→done 消化）", () => {
+	const root = makeProject(SAMPLE);
+	try {
+		mkdirSync(join(root, ".ai"), { recursive: true });
+		writeFileSync(join(root, ".ai", "HANDOFF.md"), HANDOFF_CARD("open", "zcode session abcd1234 · 2026-10-24"), "utf-8");
+		const parsed = JSON.parse(runHook(root, "01a05cc8-9abc-4def-9012"));
+		assert.match(parsed.additionalContext, /未消化交接卡/);
+		assert.match(parsed.additionalContext, /来自 zcode session abcd1234/);
+		assert.match(parsed.additionalContext, /T-001 \[stage:s1\]/);
+		assert.match(parsed.additionalContext, /\/handoff done/);
+	} finally {
+		rmSync(root, { recursive: true, force: true });
+	}
+});
+
+test("交接卡 resumed（已消化）→ 不提示", () => {
+	const root = makeProject(SAMPLE);
+	try {
+		mkdirSync(join(root, ".ai"), { recursive: true });
+		writeFileSync(join(root, ".ai", "HANDOFF.md"), HANDOFF_CARD("resumed", "pi session 1234abcd · 2026-10-25"), "utf-8");
+		const parsed = JSON.parse(runHook(root, "01a05cc8-9abc-4def-9012"));
+		assert.ok(!parsed.additionalContext.includes("交接卡"), "resumed 卡不应注入接力提示");
+	} finally {
+		rmSync(root, { recursive: true, force: true });
+	}
+});
