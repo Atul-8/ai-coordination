@@ -20,6 +20,7 @@
 /status  项目状态报告（/coord-status 为扩展原生命令）
 /error   G3 五步法错误提炼
 /meta    经验提升到全局 META 池
+/handoff 跨宿主交接卡（/handoff 写卡交出 · /handoff done 消化接手；pi ↔ ZCode 开发到一半无缝接力）
 ```
 
 **todo.md 是唯一任务事实源**，行格式：
@@ -38,6 +39,9 @@
 ## 会话与状态（session 原生）
 
 - **不维护** WORKSTATE.md / LOG.md：会话上下文由 pi 原生承担（`/resume`、`/tree`、`/fork`；bash 内可用 `$PI_SESSION_FILE` / `$PI_SESSION_ID`）。
+- **跨宿主接力**：pi 会话树对另一宿主（ZCode）不可读——开发到一半换宿主必须写交接卡
+  `.ai/HANDOFF.md`（`/handoff` 写卡，整卡重写走 git 提交同步；接手方 G1 提示读卡，
+  按「验证→下一步」续作后 `/handoff done` 消化并用 coord_todo link 重绑本方会话）。
 - 任务 ↔ 会话关联记录在 todo.md 行内 `@session:` 标记；详细过程在 pi 会话树里，按需 `/tree` 回溯。
 
 ## 铁律卡片
@@ -45,7 +49,7 @@
 | 门 | 何时 | 动作 |
 | --- | --- | --- |
 | G0 | 任何需求进来 | 路由：小活直接做；大活 → REQ 卡 + /plan 流水线；错误 → G3 |
-| G1 | 开门 / resume | 确认 todo.md 进度 + META 规则加载（session_start 自动提示；状态：/coord-status） |
+| G1 | 开门 / resume | 确认 todo.md 进度 + META 规则加载（session_start 自动提示）+ 读 `.ai/HANDOFF.md`（open 卡必读，验证→下一步续作；状态：/coord-status） |
 | G2 | 任何写操作后 | 跑层测试 → 更新 .ai/STRUCTURE.md / REQ / todo 状态 → 再写下一处 |
 | G2.5 | 任何新开发前 | 先证明测试体系能跑（红→绿），再写实现 |
 | G3 | 出错时 | 五步法：现象→根因→修复→预防→META（`.ai/errors/raw/ERR-NNN.md`，编号先查最大值） |

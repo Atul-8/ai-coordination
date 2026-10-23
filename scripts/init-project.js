@@ -34,6 +34,9 @@ const TPL = join(PKG, "templates");
 
 const AGENTS_MARKER_BEGIN = "<!-- pi-ai-coordination:agents:v1 BEGIN -->";
 const AGENTS_MARKER_END = "<!-- pi-ai-coordination:agents:v1 END -->";
+// 跨宿主协同：zcode 版插桩标记——检测到时原位升级为本版规范（不叠层，块外用户内容保留）
+const ZCODE_MARKER_BEGIN = "<!-- ai-coordination:agents:v1 BEGIN -->";
+const ZCODE_MARKER_END = "<!-- ai-coordination:agents:v1 END -->";
 
 function globalPoolDir() {
 	return process.env.AI_GLOBAL_DIR ?? (process.platform === "win32" ? "C:\\.ai_global" : join(homedir(), ".ai_global"));
@@ -85,18 +88,32 @@ function main() {
 
 	// ============ 二、项目部署 ============
 
-	// 1. AGENTS.md —— 运行时规范部署（已有文件则带标记插桩，幂等）
+	// 1. AGENTS.md —— 运行时规范部署（已有文件则带标记插桩，幂等；zcode 版插桩原位升级，跨宿主接力不叠层）
 	const agentsPath = join(root, "AGENTS.md");
 	const template = readFileSync(join(PKG, "AGENTS.md"), "utf-8");
+	const wrapped = `${AGENTS_MARKER_BEGIN}\n${template}\n${AGENTS_MARKER_END}\n`;
 	if (!existsSync(agentsPath)) {
-		writeFileSync(agentsPath, template, "utf-8");
+		// 全新部署即带标记（幂等 + 跨宿主互认的必要条件：对方 init 靠标记原位升级而非叠层）
+		writeFileSync(agentsPath, wrapped, "utf-8");
 		created.push("AGENTS.md");
-	} else if (readFileSync(agentsPath, "utf-8").includes(AGENTS_MARKER_BEGIN)) {
-		skipped.push("AGENTS.md（已含 coordination 插桩）");
 	} else {
 		const existing = readFileSync(agentsPath, "utf-8");
-		writeFileSync(agentsPath, `${AGENTS_MARKER_BEGIN}\n${template}\n${AGENTS_MARKER_END}\n\n${existing}`, "utf-8");
-		created.push("AGENTS.md（插桩合并到现有文件顶部）");
+		if (existing.includes(AGENTS_MARKER_BEGIN)) {
+			skipped.push("AGENTS.md（已含 coordination 插桩）");
+		} else if (existing.includes(ZCODE_MARKER_BEGIN)) {
+			// zcode 项目接力：原位替换 zcode 规范块为本版规范，块外内容（用户自有规范）保留
+			const beginIdx = existing.indexOf(ZCODE_MARKER_BEGIN);
+			const endIdx = existing.indexOf(ZCODE_MARKER_END);
+			writeFileSync(
+				agentsPath,
+				existing.slice(0, beginIdx) + wrapped + existing.slice(endIdx + ZCODE_MARKER_END.length).replace(/^\r?\n\r?\n/, "\n"),
+				"utf-8",
+			);
+			created.push("AGENTS.md（zcode 版插桩原位升级为 pi 版，跨宿主接力，块外内容保留）");
+		} else {
+			writeFileSync(agentsPath, `${wrapped}\n${existing}`, "utf-8");
+			created.push("AGENTS.md（插桩合并到现有文件顶部）");
+		}
 	}
 
 	// 2. todo.md

@@ -43,8 +43,10 @@ description: pi-ai-coordination 七层分治纪律（G0-G4 铁律 + todo/plan/is
 人工（模型在首轮对话时执行）：
 1. `/todo` 或读 todo.md 确认当前阶段与待办；有 `~` 进行中任务 → 优先续作
 2. 读 `.ai/errors/distilled/meta-rules.md`，让 META 规则参与本轮决策
-3. 若 `.ai/` 是独立 git 仓库 → `git -C .ai fetch && status` 校验一致性
-4. 任务关联：被调度任务已有 `@session:` 标记；需要历史细节时用 pi 会话树（/tree、/fork）回溯，**不要**凭空编造上次进度
+3. **跨宿主接力检查**：`.ai/HANDOFF.md` 存在且状态=open → 必读；跑卡上「验证」命令证明接上，按「下一步」续作，完成后 `/handoff done` 消化（状态改 resumed + coord_todo link 重绑本方会话）
+4. 若 `.ai/` 是独立 git 仓库 → `git -C .ai fetch && status` 校验一致性
+5. 任务关联：被调度任务已有 `@session:` 标记；需要历史细节时用 pi 会话树（/tree、/fork）回溯，**不要**凭空编造上次进度
+6. **交出纪律**：开发到一半要换宿主（pi ↔ ZCode）→ 先 `/handoff` 写卡再走（pi 会话树对另一宿主不可读，交接卡是唯一跨宿主现场记录）
 
 ## G2 · 同步门控（每次写操作后）
 
