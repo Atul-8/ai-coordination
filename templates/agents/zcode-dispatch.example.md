@@ -25,14 +25,16 @@ meta_injection: full          ← full|partial|none（RAG 池派发协议）
 计划: docs/plans/PLAN-001-xxx.md（相关小节摘录）
 需求: .ai/requirements/REQ-002-xxx.md（相关验收条目）
 文件域（只许改这些）: src/core/order/**, testing/core/order/**
-纪律: G2 写后同步（STRUCTURE/REQ/todo 只用 coord_todo）；G2.5 红绿；完成按固定格式回 verdict
+确定性门: <编译/测试命令>      ← v0.4.0 新增：子代理必须实跑并报告 exit_code
+修复轮上限: 2                 ← v0.4.0 新增：G6 连续 2 轮未过自动升 blocked
+纪律: G2 写后同步（STRUCTURE/REQ/todo 只用 coord_todo）；G2.5 红绿；G5 确定性验证（exit code 必报）；完成按固定格式回 verdict
 ```
 
 子代理返回（见插件 agents/*.md 的固定格式）：
 
 ```
 verdict: approved | blocked | out-of-scope
-task / changed / tests / notes（或 out-of-scope 的 suggest_keywords）
+task / changed / tests / exit_code / notes（或 out-of-scope 的 suggest_keywords）
 ```
 
 ## 3. 派发示例（一条消息内多个 Agent 调用）

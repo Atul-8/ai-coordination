@@ -17,7 +17,7 @@
  *   - [ ] T-001 [stage:s1] 描述 (#12) @session:01a05cc8
  */
 
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { execFileSync } from "node:child_process";
 import { join, resolve } from "node:path";
 

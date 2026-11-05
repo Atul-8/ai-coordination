@@ -25,3 +25,22 @@ issues: [<必须整改的点，逐条可执行>]
 ```
 
 blocked 的 issues 必须具体到文件/行为，让 writer 可以直接照单整改。复核不通过不要替 writer 重写业务代码（测试补齐除外）。
+
+## v0.4.0 确定性复核
+
+**复核必须跑命令**——禁止纯读码下结论：
+
+1. **验证命令实跑**：对 writer 声称通过的测试/编译，亲自重跑一遍拿 exit code
+2. **报告格式追加 `verified_commands:` 字段**：
+   ```
+   verdict: approved | blocked
+   task: <T-NNN>
+   checks: {scope, deps, g2, tests, meta}
+   verified_commands: [<实际跑了的命令+退出码>]    ← 新增
+   issues: [...]
+   ```
+3. **常见坑检查**（实测踩过的高频问题）：
+   - Windows 编码：源码/bat 文件是否纯 ASCII（中文注释 UTF-8 在 cmd GBK 下乱码成命令）
+   - ESP-IDF 编译宏：QEMU 变体双宏（`-DEXP_SIM=1 -DEXP_QEMU_UART=1`）缺一即挂
+   - 路径引用：相对路径是否与实际目录层级一致（重组后深度+1 是高频坑）
+   - Bash 写源码：是否绕过 Write/Edit 工具用 Bash 重定向写（安全钩子会拦）

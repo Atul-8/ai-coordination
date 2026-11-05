@@ -146,3 +146,44 @@ description: ai-coordination 七层分治纪律（G0-G4 铁律 + todo/plan/issue
 | pi 全局指令 `~/.pi/agent/AGENTS.md`（全局思维架构） | `~/.zcode/AGENTS.md`（init-global.mjs 幂等部署，9 节纪律同构移植） |
 | 跨宿主接力：pi 会话树上下文不可跨读 | `.ai/HANDOFF.md` 交接卡（两侧 G1 均检测，`/handoff` 生命周期管理，git 同步） |
 | dispatch 模板 dynamic-dispatch.example.js | templates/agents/zcode-dispatch.example.md |
+
+## G5 · 确定性验证（v0.4.0 新增 · ZCode 专属）
+
+G2 的硬升级——每次写操作后**必须跑实际命令拿 exit code**：
+
+1. 跑编译/测试/运行命令（`idf.py build` / `gcc -Wall ... && ./test` / `python -m pytest` / `node --test`）
+2. **退出码 0 = 通过**；非零 = 未完成（禁止提交、禁止口头声称「通过」）
+3. 子代理完成回报**必须**含 `exit_code:` 字段
+
+> v0.4.0 来源：CreateWorkflow 实证 16 个工作流中三次「agent 声称编译过了但 exit code 实际非零」的假失败全靠此纪律抓出。
+
+## G6 · 修复循环（v0.4.0 新增 · ZCode 专属）
+
+G5 失败 → 自动触发一轮修复：读错误输出 → 定位根因 → 最小修复 → 重跑 G5。
+连续 **2 轮**未过 → 停止，升 `verdict: blocked` 报 PM（含已试手段与卡点），禁止继续盲试。
+
+对应全局架构 §8 止损纪律的自动化。
+
+## G7 · 心跳自动驾驶（v0.4.0 新增 · ZCode 专属）
+
+用户指定长跑任务（「跑一晚上」「挂机推进」）→ `/heartbeat` 建 CronCreate：
+- 每 N 分钟勘察：有活不打断 + 顺手阶段提交；空闲按 todo.md 计划开下一波
+- 铁律：禁建新调度、禁打断进行中 agent、同文件域防冲突
+
+## G8 · 云端推送前脱敏终扫（v0.4.0 新增 · ZCode 专属）
+
+推任何 PUBLIC 仓前，八模式扫描零命中才推：
+路径前缀 / 用户名 / 内部代号 / token 模式（`github_pat_` / `ghp_` / `sk-` / `eyJ` / `AKIA` / `xox`）。
+`/scan-push [仓路径]` 执行。
+
+## v0.4.0 新增命令
+
+| 命令 | 作用 |
+| --- | --- |
+| /heartbeat [间隔] [描述] | G7 心跳自动驾驶（CronCreate） |
+| /scan-push [仓路径] | G8 脱敏终扫 |
+| ai-coordination:fixer | G6 修复子代理（agents/fixer.md） |
+
+## v0.4.0 新增角色卡字段（agents/ 全部追加）
+
+所有角色卡在原有职责后追加**确定性纪律段**——写后必跑命令拿 exit code，报告格式必须含 `exit_code:` 或 `verified_commands:`。详见各角色卡「v0.4.0 确定性纪律」节。
