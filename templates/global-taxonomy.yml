@@ -1,0 +1,22 @@
+# 受控标签词表（taxonomy DAG，starter）
+# 规则：节点 id kebab-case（不含点号）；卡引用路径用点号连接（process.implement）；
+# 多父允许；路径必须存在且节点 status=active；演化四动作：诞生/繁荣/剔除/合并。
+version: 1
+nodes:
+  - id: process
+    aliases: ["流程", "阶段"]
+  - id: orchestration
+    parents: [process]
+    aliases: ["调度", "编排", "派发"]
+  - id: design
+    parents: [process]
+    aliases: ["设计", "架构", "接口设计"]
+  - id: implement
+    parents: [process]
+    aliases: ["实现", "编码", "开发"]
+  - id: review
+    parents: [process]
+    aliases: ["复核", "审查", "评审"]
+  - id: lane-testing
+    parents: [process]
+    aliases: ["测试", "补测", "回归"]

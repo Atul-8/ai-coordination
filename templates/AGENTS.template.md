@@ -13,6 +13,8 @@
 
 ```
 需求入口（G0 路由：小活直接干，大活走流水线，错误走 G3）
+  → 外部方案检索（开源仓库 / 官方文档 / 已验证做法；不闭门造车）
+  → 问题分解（n 个可独立验收的小问题，每个带验收测试）
   → 计划模式（只读探索 → exit_plan_mode 审批）
   → coord_plan_save 落盘 docs/plans/PLAN-NNN-*.md + 步骤登记 todo.md
   → coord_issue sync 同步 git issues
@@ -51,8 +53,12 @@ todo.md 是**唯一任务事实源**，行格式：
 | `coord_error` | G3 五步法 + META 蒸馏 |
 | `coord_meta` | 项目 META 提升全局池 |
 | `coord_handoff` | 跨宿主交接卡 write/read/consume |
+| `coord_agent` | RAG 角色卡池：检索 / 建卡 / 自升级 / 记忆沉淀 |
+| `coord_dispatch` | 派发矩阵 + 任务卡（落盘 `.ai/dispatch/`） |
+| `coord_recall` | 旧经验检索（ERR / META / 角色记忆） |
+| `coord_arch` | 七层单向依赖检查 |
 
-命令：`/coord status|todo|init|go <sN\|T-NNN>|issues|meta|handoff`；扁平别名 `/coord-status` `/coord-go` 等。
+命令：`/coord status|todo|init|go <sN\|T-NNN>|issues|meta|handoff|agents|dispatch|growth|recall|arch`；扁平别名 `/coord-status` `/coord-go` 等。
 
 > 其他宿主：pi / ZCode 使用 `/pm` `/plan` `/issue` `/go` `/error` `/meta` `/status`；工具名相同（`coord_todo`）。
 
@@ -62,9 +68,9 @@ todo.md 是**唯一任务事实源**，行格式：
 | --- | --- | --- |
 | G0 | 任何需求进来 | 路由：小活直接做；大活 → REQ 卡 + 计划模式；错误 → G3 |
 | G1 | 开门 / resume | 确认 todo.md 进度 + META 规则 + 读 `.ai/HANDOFF.md`（open 卡必读） |
-| G2 | 任何写操作后 | 跑层测试 → 更新 `.ai/STRUCTURE.md` / REQ / todo 状态 → 再写下一处 |
+| G2 | 任何写操作后 | 跑层测试 → `coord_arch` 查单向依赖 → 更新 `.ai/STRUCTURE.md` / REQ / todo 状态 → 再写下一处 |
 | G2.5 | 任何新开发前 | 先证明测试体系能跑（红→绿），再写实现 |
-| G3 | 出错时 | 五步法：现象→根因→修复→预防→META（`.ai/errors/raw/ERR-NNN.md`） |
+| G3 | 出错时 | 五步法：现象→根因→修复→预防→META；先 `coord_recall` 对照旧经验（`.ai/errors/raw/ERR-NNN.md`） |
 | G4 | 离场前 | 归档 todo + close-done 关 issue + git 提交推送 + STRUCTURE 校验 |
 
 ## 编号规则
@@ -73,10 +79,26 @@ todo.md 是**唯一任务事实源**，行格式：
 - 需求 REQ-NNN、错误 ERR-NNN（.ai/ 内，**先查现有最大编号再递增**）
 - META 规则：项目池 META-NNN（`.ai/errors/distilled/meta-rules.md`）；全局池 META-NNNN（`AI_GLOBAL_DIR`，默认 `C:\.ai_global`）
 
+## 研究与分解（G0/G2 纪律）
+
+1. **不闭门造车**：非平凡实现前先检索（`web_search` / `web_fetch`：官方文档、开源仓库、已验证方案）。优先复用；在计划 notes 或 REQ 卡记录来源链接与取舍。查无方案才自研，并写明原因。
+2. **问题分解**：把需求拆成 n 个可独立验收的小问题，每个小问题配一条验收测试/命令；`coord_plan_save` 用 `acceptance` 一一对应。
+3. **逐步验收再整合**：每个小问题先红→绿，全部通过后才做集成；集成单独列一步，不跳步。
+4. **旧经验先用**：开工或报错先 `coord_recall <关键词>`；`coord_error` 会自动召回相关 ERR/META/记忆，避免重复踩坑。
+
 ## 大任务派发（DSH 原生）
 
-- 单任务委派：`subagent`（独立上下文）或 `subagent_fork`（继承会话上下文）。
-- 多阶段 fan-out：`workflow` 工具写编排脚本（`pipeline`/`parallel`/`agent`），阶段 = 一组 lane，任务 = 阶段内串行；不要用 workflow 的 `log/phase` 之外未声明的 API。
-- 共享任务板：`team_task_create / team_task_list / team_task_update`（需要共享任务 DAG 时用）。
-- PM 纪律：计划与任务就绪后立即产出派发矩阵（阶段 × 并行 × 文件域防冲突）并派发，不允许「已登记却无派发就停轮」；子代理完成后验证（测试/类型检查/构建）→ 分任务提交 → `coord_todo done` → 同步文档。
-- 可选 RAG 角色卡池：`AI_GLOBAL_DIR\agents\pool\*.md`，派发前检索；未命中先建卡（必写 scope，禁万金油卡）。
+- 检索角色卡：`coord_agent {action:'query', task}`（强命中组合派发｜弱命中标注边界试探｜缺口建卡）。
+- 生成矩阵：`coord_dispatch {stage}` → 阶段 × 任务 × 角色卡 × 缺口，落盘 `.ai/dispatch/`。
+- 执行：`subagent`（独立上下文）/ `subagent_fork`（继承会话）/ `workflow`（`pipeline` 阶段内串行、阶段间无屏障）/ `team_task_*`（共享任务 DAG）。
+- **PM 不阻塞**：用 `subagent`（启动即返回）或 `workflow` 后台模式派发；派发后向用户汇报矩阵并待命，不轮询子代理。子代理完成通知到达后再收口（验证 → 提交 → `coord_todo done`）。
+- 派发纪律：阶段 = lane，任务 = lane 内 writer→reviewer 串行；同文件域不并行；每个任务卡必须含任务 ID、目标、验收命令、写入范围、角色 scope、`meta_injection`。
+- 退单：子 agent scope 自查不符 → `{verdict:"out-of-scope", reason, suggest_keywords}`；PM 收退单入队尾 FIFO 重组，同任务累计 2 次即拆解或上报。
+- PM 收口：验证（测试/类型检查/构建）→ 分任务提交 → `coord_todo done` → 同步文档；子 agent 报告不算完成。
+
+## Agent 自我成长（三层沉淀）
+
+1. **角色记忆**：任务收口 `coord_agent {action:'memory_add', owner, type, title, content}` → `AI_GLOBAL_DIR/agents/memory/<id>/`。
+2. **自卡升级**：只改自己的卡（keywords / scope），`coord_agent {action:'update', id, note}` 自动 version+1；首任务复核 `first_mission_done`。
+3. **全局 META**：项目内 `coord_error` 五步法；确认跨项目普适 → `coord_meta promote`（META-NNNN）。
+4. 卡池维护：禁万金油卡；taxonomy 变更走评审（诞生/繁荣/剔除/合并），不物理删。技能 `agi-growth` 是完整协议。

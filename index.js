@@ -24,9 +24,10 @@ const TEMPLATE_FILES = {
 	metaRules: "templates/meta-rules.md",
 	globalMetaRules: "templates/global-meta-rules.md",
 	globalAgentsReadme: "templates/global-agents-readme.md",
+	globalTaxonomy: "templates/global-taxonomy.yml",
 };
 
-const SKILL_DIRS = ["agi-coordination", "agi-handoff", "agi-dispatch"];
+const SKILL_DIRS = ["agi-coordination", "agi-handoff", "agi-dispatch", "agi-growth"];
 
 function readAsset(relative) {
 	return readFileSync(new URL(`./${relative}`, import.meta.url), "utf8");

@@ -11,6 +11,7 @@ import path from "node:path";
 import * as L from "./lib.js";
 import {
 	consumeHandoff,
+	createIo,
 	initProject,
 	listMeta,
 	loadTodo,
@@ -23,6 +24,21 @@ import {
 	writeHandoff,
 } from "./project.js";
 import { runIssueTool } from "./issues.js";
+import { checkArchitecture } from "./arch.js";
+import { recallExperience, renderRecall } from "./recall.js";
+import {
+	addAgentMemory,
+	buildDispatch,
+	completeFirstMission,
+	listAgentCards,
+	listAgentMemory,
+	poolPaths,
+	queryAgentPool,
+	registerAgentCard,
+	renderCardList,
+	renderQuery,
+	updateAgentCard,
+} from "./agents.js";
 import { cwdOf, policyOf, sessionIdOf } from "./host.js";
 
 function text(value) {
@@ -101,6 +117,7 @@ export function registerCoordinationTools(ctx, env) {
 				"跳过：",
 				...(result.project.skipped.length ? result.project.skipped.map((item) => `  · ${item}`) : ["  （无）"]),
 				...(result.warnings.length ? ["", "警告：", ...result.warnings.map((item) => `  ! ${item}`)] : []),
+				...(result.global?.seeded?.length ? ["", `全局池：已播种 ${result.global.seeded.join(" / ")}（process-role 基卡）`] : []),
 				"",
 				"下一步：",
 				...result.next.map((item) => `  - ${item}`),
@@ -228,6 +245,7 @@ export function registerCoordinationTools(ctx, env) {
 		parameters: {
 			stage: { type: "string", required: true, description: "计划归属阶段 id（必须先存在，如 s1）。" },
 			steps: { type: "array", items: { type: "string" }, description: "计划步骤（一句一个，可独立验证）。省略时从 plan 提取编号行。" },
+			acceptance: { type: "array", items: { type: "string" }, description: "与 steps 一一对应的验收标准（问题分解 → 逐步验收 → 最后整合）。" },
 			plan: { type: "string", description: "计划 Markdown 原文；steps 省略时用它提取编号步骤。" },
 			title: { type: "string", description: "计划标题（默认取阶段标题）。" },
 			notes: { type: "string", description: "备注/风险/验收标准。" },
@@ -251,6 +269,7 @@ export function registerCoordinationTools(ctx, env) {
 				startDir,
 				stage: String(args.stage),
 				steps,
+				acceptance: args.acceptance,
 				notes: args.notes,
 				title: args.title,
 				sessionId: sessionIdOf(exec),
@@ -375,6 +394,13 @@ export function registerCoordinationTools(ctx, env) {
 		},
 		async execute(args, exec) {
 			const startDir = await resolveRoot(args, exec);
+			const policy = policyOf(ctx, exec);
+			let related = null;
+			try {
+				related = await recallExperience({ startDir, query: String(args.symptom ?? ""), limit: 3, policy });
+			} catch {
+				/* 未激活或检索失败不阻断记录 */
+			}
 			const result = await recordError({
 				startDir,
 				symptom: args.symptom,
@@ -385,13 +411,16 @@ export function registerCoordinationTools(ctx, env) {
 				metaRule: args.meta_rule,
 				evidence: args.evidence,
 				sessionId: sessionIdOf(exec),
-				policy: policyOf(ctx, exec),
+				policy,
 			});
+			const relatedText = related?.matches?.length
+				? `\n\n相关旧经验（先对照再修，勿重复踩坑）：\n${related.matches.map((match) => `  ${match.kind} ${match.id} — ${match.title}`).join("\n")}`
+				: "\n\n相关旧经验：无命中（首次遇到，按五步法沉淀）。";
 			return {
 				ok: true,
 				err: result.errId,
 				meta: result.metaId ?? "",
-				text: `${result.errId} 已记录${result.metaId ? `，蒸馏 ${result.metaId}` : "（未蒸馏 META，补齐 meta_rule 可补记）"}。\n路径：${result.path}`,
+				text: `${result.errId} 已记录${result.metaId ? `，蒸馏 ${result.metaId}` : "（未蒸馏 META，补齐 meta_rule 可补记）"}。\n路径：${result.path}${relatedText}`,
 			};
 		},
 	});
@@ -439,6 +468,209 @@ export function registerCoordinationTools(ctx, env) {
 				return { ok: true, text: `${result.projectRule} → ${result.globalRule}\n已写入 ${result.globalPath}` };
 			}
 			throw new Error(`未知 action ${action}。可选：list | promote`);
+		},
+	});
+
+	// ------------------------------------------------------------------ agent pool
+	ctx.tools.register({
+		name: "coord_agent",
+		description:
+			"全局角色卡池（RAG pool v2，AI_GLOBAL_DIR/agents）：派发前检索、未命中建卡、角色自升级、经验沉淀。action: query 检索（任务描述→top 卡+记忆，缺口提示建卡）；list 卡片清单；register 建卡（≥3 keywords、scope.do/dont 必写、taxonomy 路径必须存在，first_mission=pending）；update 自升级（只改自己的卡，version+1）；memory_add 写本角色经验；memory_list 查经验；first_mission_done 首任务复核。",
+		parameters: {
+			action: { type: "string", required: true, description: "query | list | register | update | memory_add | memory_list | first_mission_done" },
+			task: { type: "string", description: "query：任务描述（关键词越具体越好）。" },
+			limit: { type: "number", description: "query：返回卡/记忆条数（默认 5）。" },
+			threshold: { type: "number", description: "query：缺口阈值（默认 3；top 分低于它=建卡信号）。" },
+			id: { type: "string", description: "register/update/first_mission_done：卡片 id（kebab-case）。" },
+			type: { type: "string", description: "register：process-role | domain-expert。" },
+			name: { type: "string", description: "register：显示名。" },
+			summary: { type: "string", description: "register/update：≤80 字摘要（禁「通用/万能/all-in-one」）。" },
+			taxonomy: { type: "array", items: { type: "string" }, description: "register：taxonomy 路径数组（如 embedded.driver.sensor-imu）。" },
+			keywords: { type: "array", items: { type: "string" }, description: "register/update：≥3 个检索关键词。" },
+			scope_do: { type: "array", items: { type: "string" }, description: "register/update：scope.do（职责内，≥1 条）。" },
+			scope_dont: { type: "array", items: { type: "string" }, description: "register/update：scope.dont（明确不做，≥1 条）。" },
+			applies_to: { type: "array", items: { type: "string" }, description: "register/update：典型任务场景（检索加权）。" },
+			reject_hint: { type: "string", description: "register/update：退单建议（涉及 XX → 某 agent）。" },
+			note: { type: "string", description: "update：自升级记录一行（为什么改）。" },
+			owner: { type: "string", description: "memory_add/memory_list：角色 id（省略时用 id）。" },
+			title: { type: "string", description: "memory_add：经验标题（description）。" },
+			content: { type: "string", description: "memory_add：经验正文（可多行）。" },
+			domains: { type: "array", items: { type: "string" }, description: "memory_add：领域标签。" },
+		},
+		output: {
+			schema: objectSchema({ ok: { type: "boolean" }, text: { type: "string" } }),
+			render: (_args, value) => text(value.text),
+		},
+		async execute(args, exec) {
+			const io = createIo(policyOf(ctx, exec));
+			const action = String(args.action ?? "");
+			const paths = poolPaths();
+
+			if (action === "query") {
+				if (!args.task?.trim()) throw new Error("query 需要 task（任务描述）。");
+				const result = await queryAgentPool(io, args.task, { limit: Number(args.limit) || 5, threshold: args.threshold === undefined ? 3 : Number(args.threshold) });
+				return { ok: true, text: renderQuery(result, Number(args.limit) || 5) };
+			}
+
+			if (action === "list") {
+				const cards = await listAgentCards(io);
+				return { ok: true, text: `${renderCardList(cards)}\n\n路径：${paths.poolDir}` };
+			}
+
+			if (action === "register") {
+				const result = await registerAgentCard(io, {
+					id: args.id,
+					type: args.type,
+					name: args.name,
+					summary: args.summary,
+					taxonomy: args.taxonomy,
+					keywords: args.keywords,
+					scope: { do: args.scope_do, dont: args.scope_dont },
+					applies_to: args.applies_to,
+					reject_hint: args.reject_hint,
+				});
+				return {
+					ok: true,
+					text: [
+						`已建卡 ${result.card.id}（${result.card.type}）→ ${result.path}`,
+						"first_mission=pending：首任务完成后调用 coord_agent {action:'first_mission_done', id}。",
+						"派发前先 coord_agent {action:'query', task} 复核命中。",
+					].join("\n"),
+				};
+			}
+
+			if (action === "update") {
+				if (!args.id) throw new Error("update 需要 id。");
+				const result = await updateAgentCard(io, String(args.id), {
+					summary: args.summary,
+					keywords: args.keywords,
+					scope: { do: args.scope_do, dont: args.scope_dont },
+					applies_to: args.applies_to,
+					reject_hint: args.reject_hint,
+					note: args.note,
+				});
+				return { ok: true, text: `${result.card.id} 已升级到 v${result.card.version}（${result.note}）\n路径：${result.path}` };
+			}
+
+			if (action === "memory_add") {
+				const owner = String(args.owner ?? args.id ?? "").trim();
+				if (!owner) throw new Error("memory_add 需要 owner（角色 id）。");
+				if (!args.title?.trim()) throw new Error("memory_add 需要 title。");
+				const result = await addAgentMemory(io, {
+					owner,
+					type: args.type,
+					title: args.title,
+					content: args.content,
+					domains: args.domains,
+					keywords: args.keywords,
+				});
+				return { ok: true, text: `经验已写入 ${result.file}（${result.type}）\n索引：${paths.memoryDir}\\${owner}\\MEMORY.md` };
+			}
+
+			if (action === "memory_list") {
+				const owner = args.owner ?? args.id;
+				const rows = await listAgentMemory(io, owner ? String(owner) : undefined);
+				if (rows.length === 0) return { ok: true, text: "没有记忆条目。用 coord_agent {action:'memory_add'} 沉淀经验。" };
+				return {
+					ok: true,
+					text: [
+						`记忆 ${rows.length} 条：`,
+						...rows.map((row) => `  [${row.owner}] ${row.id}${row.type ? `（${row.type}）` : ""} — ${row.summary ?? ""}`),
+					].join("\n"),
+				};
+			}
+
+			if (action === "first_mission_done") {
+				if (!args.id) throw new Error("first_mission_done 需要 id。");
+				const result = await completeFirstMission(io, String(args.id));
+				return { ok: true, text: `${result.id} first_mission → done（首任务复核完成）\n路径：${result.path}` };
+			}
+
+			throw new Error(`未知 action ${action}。可选：query | list | register | update | memory_add | memory_list | first_mission_done`);
+		},
+	});
+
+	// ------------------------------------------------------------------ dispatch
+	ctx.tools.register({
+		name: "coord_dispatch",
+		description:
+			"生成多 agent 派发矩阵与任务卡：按 todo.md 未完成任务检索角色卡池，输出阶段×任务×角色×文件域的派发建议，并（默认）落盘 .ai/dispatch/DISPATCH-*.md。只生成矩阵，不执行派发；真正执行用 subagent / subagent_fork / workflow（pipeline）。缺口任务走 coord_agent register 建卡。",
+		parameters: {
+			stage: { type: "string", description: "只调度某阶段（s1）；省略 = 全部未完成。" },
+			tasks: { type: "array", items: { type: "string" }, description: "只调度指定任务编号（T-003）。" },
+			record: { type: "boolean", description: "是否落盘派发记录（默认 true）。" },
+			threshold: { type: "number", description: "角色卡命中阈值（默认 3）。" },
+			meta_injection: { type: "string", description: "任务卡 META 预注入：full | partial | none（默认 partial）。" },
+			root: { type: "string", description: "项目根；省略 = 当前会话工作目录。" },
+		},
+		output: {
+			schema: objectSchema({ ok: { type: "boolean" }, path: { type: "string" }, text: { type: "string" } }),
+			render: (_args, value) => text(value.text),
+		},
+		async execute(args, exec) {
+			const startDir = await resolveRoot(args, exec);
+			const { paths, file, io } = await loadTodo(startDir, policyOf(ctx, exec));
+			const result = await buildDispatch({
+				io,
+				todoFile: file,
+				paths,
+				stage: args.stage,
+				taskIds: args.tasks,
+				record: args.record !== false,
+				threshold: args.threshold === undefined ? 3 : Number(args.threshold),
+				metaInjection: args.meta_injection ? String(args.meta_injection) : "partial",
+			});
+			return {
+				ok: true,
+				path: result.path ?? "",
+				text: result.path ? `${result.text}\n\n已记录：${result.path}` : result.text,
+			};
+		},
+	});
+
+	// ------------------------------------------------------------------ recall
+	ctx.tools.register({
+		name: "coord_recall",
+		description:
+			"旧经验检索（自我使用旧有经验 / 自纠正）：按关键词在 .ai 的 ERR 卡、项目 META、全局 META、角色记忆里召回相关条目并打分。开工前、写新 ERR 前、连续同根因报错时先跑；命中先对照旧经验再动手，避免重复踩坑。",
+		parameters: {
+			query: { type: "string", required: true, description: "要检索的现象/关键词（报错原文、任务描述、技术关键词）。" },
+			limit: { type: "number", description: "返回条数（默认 5）。" },
+			root: { type: "string", description: "项目根；省略 = 当前会话工作目录。" },
+		},
+		output: {
+			schema: objectSchema({ ok: { type: "boolean" }, text: { type: "string" } }),
+			render: (_args, value) => text(value.text),
+		},
+		async execute(args, exec) {
+			if (!args.query?.trim()) throw new Error("recall 需要 query。");
+			const startDir = await resolveRoot(args, exec);
+			const result = await recallExperience({
+				startDir,
+				query: String(args.query),
+				limit: args.limit === undefined ? 5 : Number(args.limit),
+				policy: policyOf(ctx, exec),
+			});
+			return { ok: true, text: renderRecall(result) };
+		},
+	});
+
+	// ------------------------------------------------------------------ architecture
+	ctx.tools.register({
+		name: "coord_arch",
+		description:
+			"七层单向依赖检查：扫描 src/<shared|core|interface|presentation>/ 的直接 import，报告反向/跨层引用（presentation → interface → core → shared）。G2 写操作后跑；违规先落 interface 契约或登记 REQ，不要「能跑就放过」。启发式检查，间接依赖仍需评审。",
+		parameters: {
+			root: { type: "string", description: "项目根；省略 = 当前会话工作目录。" },
+		},
+		output: {
+			schema: objectSchema({ ok: { type: "boolean" }, text: { type: "string" } }),
+			render: (_args, value) => text(value.text),
+		},
+		async execute(args, exec) {
+			const startDir = await resolveRoot(args, exec);
+			const result = await checkArchitecture({ root: startDir, io: createIo(policyOf(ctx, exec)) });
+			return { ok: result.ok, text: result.text };
 		},
 	});
 }

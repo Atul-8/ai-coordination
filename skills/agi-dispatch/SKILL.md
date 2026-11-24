@@ -15,6 +15,16 @@ whenToUse: 任务跨多个阶段或文件域；需要 writer→reviewer 串行�
 | 多阶段 / 多文件 fan-out，阶段内串行 | `workflow` + `pipeline`（无屏障；每项独立跑完所有 stage） |
 | 多路并行且后一步需要全部结果 | `workflow` + `parallel`（屏障，尽量少用） |
 | 需要共享任务 DAG、跨 agent 认领 | `team_task_create / team_task_list / team_task_update` |
+| 生成派发矩阵 / 检索角色卡 | `coord_dispatch`（矩阵+落盘）/ `coord_agent query` |
+
+## 派发前：检索 → 矩阵 → 任务卡
+
+1. **检索三档**：`coord_agent {action:'query', task:'任务描述'}` → 强命中（top ≥ 3）组合派发｜弱命中标注「边界试探」｜缺口走建卡协议（`coord_agent register`，见技能 `agi-growth`）。
+2. **生成矩阵**：`coord_dispatch {stage:'s1'}` 从 todo.md 未完成任务生成「阶段 × 任务 × 角色卡 × 缺口」矩阵，并落盘 `.ai/dispatch/DISPATCH-*.md`。矩阵是派发依据，不执行派发。
+3. **组装任务卡**：任务 ID + 目标 + 验收命令 + 写入范围（文件域）+ 角色卡 scope + `meta_injection`（full/partial/none）+ 退单规则。
+4. 真正执行时用 `subagent` / `subagent_fork` / `workflow`；子 agent 不负责归档。
+
+**PM 不阻塞**：`subagent` 启动即返回、`workflow` 可后台运行。派发完立即向用户汇报「矩阵 + 已派发 + 待命」，把控制权交回用户，**不要轮询或阻塞等待**；子 agent 完成通知到达后再收口（验证 → 分任务提交 → `coord_todo done` → 同步文档）。
 
 ## 派发矩阵（PM 必做）
 

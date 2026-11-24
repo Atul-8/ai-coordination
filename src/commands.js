@@ -15,9 +15,19 @@
 
 import path from "node:path";
 import * as L from "./lib.js";
-import { initProject, listMeta, loadTodo, saveTodo, statusReport } from "./project.js";
+import { createIo, globalMetaRulesPath, initProject, listMeta, loadTodo, saveTodo, statusReport } from "./project.js";
 import { runIssueTool } from "./issues.js";
 import { consumeHandoff, readHandoff } from "./project.js";
+import { checkArchitecture } from "./arch.js";
+import { recallExperience, renderRecall } from "./recall.js";
+import {
+	buildDispatch,
+	listAgentCards,
+	listAgentMemory,
+	queryAgentPool,
+	renderCardList,
+	renderQuery,
+} from "./agents.js";
 import { cwdOf, execOfInvocation, policyOf, shortSessionOf } from "./host.js";
 
 export function registerCoordinationCommands(ctx, env) {
@@ -177,11 +187,59 @@ export function registerCoordinationCommands(ctx, env) {
 		].join("\n");
 	};
 
+	const runAgents = async (invocation, arg) => {
+		const io = createIo(policyOf(ctx, execOfInvocation(invocation)));
+		const task = String(arg ?? "").trim();
+		if (task) return renderQuery(await queryAgentPool(io, task, { limit: 5 }), 5);
+		return renderCardList(await listAgentCards(io));
+	};
+
+	const runDispatch = async (invocation, arg) => {
+		const startDir = await resolveDir(invocation);
+		const { paths, file, io } = await loadTodo(startDir, policyOf(ctx, execOfInvocation(invocation)));
+		const stage = String(arg ?? "").trim() || undefined;
+		const result = await buildDispatch({ io, todoFile: file, paths, stage });
+		return result.path ? `${result.text}\n\n已记录：${result.path}` : result.text;
+	};
+
+	const runGrowth = async (invocation) => {
+		const io = createIo(policyOf(ctx, execOfInvocation(invocation)));
+		const cards = await listAgentCards(io);
+		const memories = await listAgentMemory(io);
+		const pending = cards.filter((card) => card.first_mission === "pending");
+		const byOwner = new Map();
+		for (const memory of memories) byOwner.set(memory.owner, (byOwner.get(memory.owner) ?? 0) + 1);
+		const globalMeta = (await io.read(globalMetaRulesPath())) ?? "";
+		return [
+			"自我成长状态（三层：memory → 自卡升级 → 全局 META）",
+			"",
+			`待复核卡（first_mission=pending）：${pending.length ? pending.map((card) => card.id).join(", ") : "（无）"}`,
+			`记忆条目：${memories.length} 条${byOwner.size ? `（${[...byOwner.entries()].map(([owner, count]) => `${owner}=${count}`).join(" / ")}）` : ""}`,
+			`全局 META：${L.countMetaRules(globalMeta)} 条（${globalMetaRulesPath()}）`,
+			"",
+			"操作：coord_agent memory_add / update / first_mission_done；跨项目普适教训 coord_meta promote。",
+		].join("\n");
+	};
+
+	const runRecall = async (invocation, arg) => {
+		const query = String(arg ?? "").trim();
+		if (!query) throw new Error("用法：/coord recall <现象/关键词>");
+		const startDir = await resolveDir(invocation);
+		const result = await recallExperience({ startDir, query, limit: 5, policy: policyOf(ctx, execOfInvocation(invocation)) });
+		return renderRecall(result);
+	};
+
+	const runArch = async (invocation) => {
+		const startDir = await resolveDir(invocation);
+		const result = await checkArchitecture({ root: startDir, io: createIo(policyOf(ctx, execOfInvocation(invocation))) });
+		return result.text;
+	};
+
 	// /coord 组命令
 	define(
 		"coord",
-		"coordination 入口：/coord init|status|todo|go|handoff|issues|meta",
-		"init | status | todo | go <sN|T-NNN> | handoff [done] | issues [sync] | meta",
+		"coordination 入口：/coord init|status|todo|go|handoff|issues|meta|agents|dispatch|growth|recall|arch",
+		"init | status | todo | go <sN|T-NNN> | handoff [done] | issues [sync] | meta | agents [任务] | dispatch [sN] | growth | recall <关键词> | arch",
 		async (invocation) => {
 			const raw = String(invocation.rawInput ?? "").trim();
 			const [sub, ...rest] = raw.split(/\s+/);
@@ -201,6 +259,16 @@ export function registerCoordinationCommands(ctx, env) {
 					return runIssues(invocation, arg);
 				case "meta":
 					return runMeta(invocation);
+				case "agents":
+					return runAgents(invocation, arg);
+				case "dispatch":
+					return runDispatch(invocation, arg);
+				case "growth":
+					return runGrowth(invocation);
+				case "recall":
+					return runRecall(invocation, arg);
+				case "arch":
+					return runArch(invocation);
 				default:
 					return runStatus(invocation);
 			}
@@ -214,4 +282,9 @@ export function registerCoordinationCommands(ctx, env) {
 	define("coord-go", "阶段调度：写 @session 关联并把任务清单派发给本会话", "[sN | T-NNN]", (invocation) => runGo(invocation, String(invocation.rawInput ?? "").trim()));
 	define("coord-handoff", "读交接卡；/coord-handoff done 消化接管", "[done]", (invocation) => runHandoff(invocation, String(invocation.rawInput ?? "").trim()));
 	define("coord-issues", "todo.md ↔ git issues：list / sync / close-done [--stage sN] [--dry-run]", "[sync|list|close-done|view N|close N|open N]", (invocation) => runIssues(invocation, String(invocation.rawInput ?? "").trim()));
+	define("coord-agents", "角色卡池：无参列卡；带任务描述检索（缺口提示建卡）", "[任务描述]", (invocation) => runAgents(invocation, String(invocation.rawInput ?? "").trim()));
+	define("coord-dispatch", "生成派发矩阵与任务卡并落盘 .ai/dispatch/", "[sN | T-NNN]", (invocation) => runDispatch(invocation, String(invocation.rawInput ?? "").trim()));
+	define("coord-growth", "自我成长状态：待复核卡 / 记忆分布 / 全局 META", undefined, (invocation) => runGrowth(invocation));
+	define("coord-recall", "旧经验检索：ERR / META / 角色记忆", "<现象或关键词>", (invocation) => runRecall(invocation, String(invocation.rawInput ?? "").trim()));
+	define("coord-arch", "七层单向依赖检查（src/<layer> 直接 import）", undefined, (invocation) => runArch(invocation));
 }

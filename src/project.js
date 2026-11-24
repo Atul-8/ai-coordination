@@ -16,6 +16,7 @@ import path from "node:path";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import * as L from "./lib.js";
+import { defaultCardBody, serializeCard } from "./pool.js";
 
 const run = promisify(execFile);
 
@@ -111,6 +112,14 @@ export function createIo(policy) {
 				return true;
 			} catch {
 				return false;
+			}
+		},
+		async kind(abs) {
+			try {
+				const stat = await fsp.stat(abs);
+				return stat.isDirectory() ? "dir" : stat.isFile() ? "file" : "other";
+			} catch {
+				return null;
 			}
 		},
 		async list(abs) {
@@ -223,16 +232,80 @@ export async function ensureGlobalSkeleton({ templates, policy }) {
 	try {
 		await io.mkdir(path.join(dir, "meta", "distilled"));
 		await io.mkdir(path.join(dir, "meta", "raw"));
-		await io.mkdir(path.join(dir, "agents", "pool"));
+		const agentsDir = path.join(dir, "agents");
+		await io.mkdir(path.join(agentsDir, "pool"));
+		await io.mkdir(path.join(agentsDir, "memory"));
 		const metaFile = path.join(dir, "meta", "distilled", "meta-rules.md");
 		if (!(await io.exists(metaFile))) await io.write(metaFile, templates.globalMetaRules);
-		const poolReadme = path.join(dir, "agents", "pool", "README.md");
+		const poolReadme = path.join(agentsDir, "pool", "README.md");
 		if (!(await io.exists(poolReadme))) await io.write(poolReadme, templates.globalAgentsReadme);
-		return { ok: true, dir, note: "最小骨架（无网络克隆）；RAG 卡池可在该目录自行 git 初始化" };
+		const taxonomyPath = path.join(agentsDir, "taxonomy.yml");
+		if (!(await io.exists(taxonomyPath))) await io.write(taxonomyPath, templates.globalTaxonomy ?? "");
+
+		// 池为空时播种 4 张 process-role 卡，让派发矩阵开箱可用（不覆盖已有卡池）
+		const poolFiles = (await io.list(path.join(agentsDir, "pool"))).filter((name) => name.endsWith(".md") && name !== "README.md");
+		const seeded = [];
+		if (poolFiles.length === 0) {
+			const created = L.todayStr();
+			for (const card of SEED_CARDS) {
+				const full = { ...card, status: "active", first_mission: "done", version: 1, created, last_reviewed: created };
+				await io.write(path.join(agentsDir, "pool", `${full.id}.md`), serializeCard(full, defaultCardBody(full)));
+				seeded.push(full.id);
+			}
+		}
+		return { ok: true, dir, seeded, note: seeded.length ? `已播种 ${seeded.join("/")}（process-role 基卡）；RAG 卡池可在该目录自行 git 初始化` : "最小骨架（无网络克隆）" };
 	} catch (error) {
 		return { ok: false, dir, error: error?.message ?? String(error) };
 	}
 }
+
+/** 开箱 seed：四个流程角色（first_mission=done，可由用户/PM 继续演进） */
+const SEED_CARDS = [
+	{
+		id: "writer",
+		type: "process-role",
+		name: "Writer（实现者）",
+		summary: "按任务卡实现，只做卡面范围，G2.5 先红后绿。",
+		taxonomy: ["process.implement"],
+		keywords: ["实现", "编码", "任务卡", "先红后绿", "G2"],
+		scope: { do: ["按任务卡实现", "层测试红→绿", "STRUCTURE/REQ/todo 同步"], dont: ["顺手重构", "超范围发挥"] },
+		applies_to: ["功能实现", "缺陷修复"],
+		reject_hint: "需要复核 → reviewer；需要补测 → tester",
+	},
+	{
+		id: "reviewer",
+		type: "process-role",
+		name: "Reviewer（复核者）",
+		summary: "只读复核 diff 与验收标准，输出缺陷清单，不改代码。",
+		taxonomy: ["process.review"],
+		keywords: ["复核", "审查", "diff", "缺陷", "验收"],
+		scope: { do: ["审阅 diff 与验收标准", "指出缺陷与风险", "核对测试证据"], dont: ["直接改代码", "替代测试"] },
+		applies_to: ["合并前复核", "方案评审"],
+		reject_hint: "需要改代码 → writer；需要跑测试 → tester",
+	},
+	{
+		id: "tester",
+		type: "process-role",
+		name: "Tester（测试者）",
+		summary: "补层测试与回归，跑验收命令，记录失败输出与复现步骤。",
+		taxonomy: ["process.lane-testing"],
+		keywords: ["测试", "单测", "回归", "覆盖", "npm test"],
+		scope: { do: ["补层测试", "跑验收命令", "记录失败输出"], dont: ["改实现", "放宽断言"] },
+		applies_to: ["测试补齐", "回归验证"],
+		reject_hint: "实现缺陷 → writer；验收标准不清 → PM",
+	},
+	{
+		id: "architect",
+		type: "process-role",
+		name: "Architect（架构者）",
+		summary: "七层边界、接口契约与依赖方向设计，落 STRUCTURE。",
+		taxonomy: ["process.design"],
+		keywords: ["架构", "设计", "接口", "依赖", "结构"],
+		scope: { do: ["七层与依赖方向", "接口契约", "STRUCTURE 更新"], dont: ["写业务实现", "越过计划"] },
+		applies_to: ["新模块设计", "跨层重构"],
+		reject_hint: "实现 → writer；评审 → reviewer",
+	},
+];
 
 // ---------------------------------------------------------------------------
 // todo.md 读写
@@ -261,10 +334,13 @@ export async function readTodoAt(paths, io) {
 // 计划落盘 + todo 登记
 // ---------------------------------------------------------------------------
 
-export async function savePlan({ startDir, stage, steps, notes, sessionId, title, policy }) {
+export async function savePlan({ startDir, stage, steps, acceptance, notes, sessionId, title, policy }) {
 	const { paths, file, io } = await loadTodo(startDir, policy);
 	if (file.stages.length === 0) {
 		throw new Error("todo.md 尚无「阶段定义」。请先在 todo.md「阶段定义」小节登记阶段（如 `- s1: 阶段标题`）再保存计划。");
+	}
+	if (acceptance && acceptance.length !== steps.length) {
+		throw new Error(`acceptance 数量（${acceptance.length}）必须与 steps（${steps.length}）一一对应。`);
 	}
 	const targetStage = file.stages.find((candidate) => candidate.id === stage);
 	if (!targetStage) {
@@ -283,6 +359,7 @@ export async function savePlan({ startDir, stage, steps, notes, sessionId, title
 		stageId: stage,
 		stageTitle: title?.trim() || targetStage.title,
 		steps,
+		acceptance,
 		notes,
 		sessionId,
 	});

@@ -30,31 +30,40 @@ function makeHarness() {
 	return { tools, commands, skills, call, cwd };
 }
 
-test("插件注册 8 工具 / 7 命令 / 3 技能", async () => {
+test("插件注册 12 工具 / 12 命令 / 4 技能", async () => {
 	const dir = await fsp.mkdtemp(path.join(os.tmpdir(), "dsh-agi-reg-"));
 	process.env.AI_GLOBAL_DIR = path.join(dir, "global");
 	try {
 		const { tools, commands, skills } = makeHarness();
 		assert.deepEqual([...tools.keys()].sort(), [
+			"coord_agent",
+			"coord_arch",
+			"coord_dispatch",
 			"coord_error",
 			"coord_handoff",
 			"coord_init",
 			"coord_issue",
 			"coord_meta",
 			"coord_plan_save",
+			"coord_recall",
 			"coord_status",
 			"coord_todo",
 		]);
 		assert.deepEqual([...commands.keys()].sort(), [
 			"coord",
+			"coord-agents",
+			"coord-arch",
+			"coord-dispatch",
 			"coord-go",
+			"coord-growth",
 			"coord-handoff",
 			"coord-init",
 			"coord-issues",
+			"coord-recall",
 			"coord-status",
 			"coord-todo",
 		]);
-		assert.deepEqual(skills.map((skill) => skill.name).sort(), ["agi-coordination", "agi-dispatch", "agi-handoff"]);
+		assert.deepEqual(skills.map((skill) => skill.name).sort(), ["agi-coordination", "agi-dispatch", "agi-growth", "agi-handoff"]);
 	} finally {
 		await fsp.rm(dir, { recursive: true, force: true });
 	}
@@ -98,7 +107,8 @@ test("端到端：初始化 → 任务 → 计划 → 状态 → 交接 → 错�
 		await call("coord_todo", { action: "stage_add", id: "s1", title: "核心实现", root: project });
 		const plan = await call("coord_plan_save", {
 			stage: "s1",
-			steps: ["写解析器", "写渲染器"],
+			steps: ["实现解析器", "实现渲染器"],
+			acceptance: ["npm test 全绿（解析器）", "快照测试通过（渲染器）"],
 			notes: "验收：node --test",
 			root: project,
 		});
@@ -107,7 +117,8 @@ test("端到端：初始化 → 任务 → 计划 → 状态 → 交接 → 错�
 		assert.deepEqual(plan.added, ["T-003", "T-004"]);
 		const planText = await fsp.readFile(path.join(project, plan.plan), "utf8");
 		assert.match(planText, /PLAN-001/);
-		assert.match(planText, /1\. 写解析器/);
+		assert.match(planText, /1\. 实现解析器/);
+		assert.match(planText, /验收：npm test 全绿（解析器）/);
 		const todoText = await fsp.readFile(path.join(project, "todo.md"), "utf8");
 		assert.match(todoText, /- s1: 核心实现 <!-- plan:docs\/plans\/PLAN-001-/);
 
@@ -163,6 +174,82 @@ test("端到端：初始化 → 任务 → 计划 → 状态 → 交接 → 错�
 
 		const metaList = await call("coord_meta", { action: "list", root: project });
 		assert.match(metaList.text, /META-001/);
+
+		// 角色卡池：开箱种子 / 检索 / 建卡 / 自升级 / 记忆 / first_mission
+		const cards = await call("coord_agent", { action: "list" });
+		assert.match(cards.text, /writer/);
+		assert.match(cards.text, /reviewer/);
+		assert.match(cards.text, /tester/);
+		assert.match(cards.text, /architect/);
+		const hit = await call("coord_agent", { action: "query", task: "实现一个任务卡" });
+		assert.match(hit.text, /writer/);
+
+		const reg = await call("coord_agent", {
+			action: "register",
+			id: "imu-expert",
+			type: "domain-expert",
+			name: "IMU 专家",
+			summary: "IMU 标定与姿态融合",
+			taxonomy: ["process.implement"],
+			keywords: ["IMU", "标定", "姿态", "陀螺"],
+			scope_do: ["标定与姿态融合"],
+			scope_dont: ["上位机 UI 实现"],
+			applies_to: ["IMU 调试"],
+			reject_hint: "UI 问题 → writer",
+		});
+		assert.match(reg.text, /first_mission=pending/);
+		const afterRegister = await call("coord_agent", { action: "query", task: "陀螺仪标定" });
+		assert.match(afterRegister.text, /imu-expert/);
+
+		const upgraded = await call("coord_agent", {
+			action: "update",
+			id: "imu-expert",
+			keywords: ["IMU", "标定", "姿态", "陀螺", "零偏"],
+			note: "T-042 补零偏关键词",
+		});
+		assert.match(upgraded.text, /v2/);
+
+		const memory = await call("coord_agent", {
+			action: "memory_add",
+			owner: "imu-expert",
+			type: "pitfall",
+			title: "零偏必须持续追踪",
+			content: "静置漂移：冻结偏置压不住，必须静止判定 + 持续 bias 追踪。",
+			domains: ["imu"],
+			keywords: ["零偏", "漂移"],
+		});
+		assert.match(memory.text, /经验已写入/);
+		const memoryList = await call("coord_agent", { action: "memory_list", owner: "imu-expert" });
+		assert.match(memoryList.text, /零偏/);
+
+		const firstMission = await call("coord_agent", { action: "first_mission_done", id: "imu-expert" });
+		assert.match(firstMission.text, /done/);
+
+		// 派发矩阵：命中 writer + 落盘 .ai/dispatch/
+		const dispatch = await call("coord_dispatch", { stage: "s1", root: project });
+		assert.match(dispatch.text, /派发矩阵/);
+		assert.match(dispatch.text, /T-003/);
+		assert.match(dispatch.text, /writer/);
+		assert.ok(dispatch.path, "dispatch record path");
+		await fsp.access(dispatch.path);
+
+		const growth = await commands.get("coord-growth").handler({ rawInput: "", agent: { id: SESSION }, signal: new AbortController().signal });
+		assert.equal(growth.kind, "success");
+		assert.match(growth.text, /待复核卡/);
+
+		// 旧经验检索：能召回刚记录的 ERR
+		const recall = await call("coord_recall", { query: "断言不匹配", root: project });
+		assert.match(recall.text, /ERR-001/);
+
+		// 七层单向依赖检查：反向引用必须被抓住
+		await fsp.mkdir(path.join(project, "src", "shared"), { recursive: true });
+		await fsp.mkdir(path.join(project, "src", "core"), { recursive: true });
+		await fsp.writeFile(path.join(project, "src", "shared", "a.js"), 'import x from "../core/b.js";\nexport default x;\n', "utf8");
+		await fsp.writeFile(path.join(project, "src", "core", "b.js"), "export default 1;\n", "utf8");
+		const arch = await call("coord_arch", { root: project });
+		assert.equal(arch.ok, false);
+		assert.match(arch.text, /反向依赖/);
+		assert.match(arch.text, /shared 依赖 core/);
 
 		// issue 无 remote 时报错而不是伪造
 		await assert.rejects(call("coord_issue", { action: "list", root: project }), /git remote origin/);

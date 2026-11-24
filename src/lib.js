@@ -260,7 +260,7 @@ export function slugify(text, max = 16) {
 /**
  * 生成 docs/plans/PLAN-NNN-*.md 正文。
  */
-export function buildPlanDoc({ planNo, stageId, stageTitle, steps, notes, sessionId, date = todayStr() }) {
+export function buildPlanDoc({ planNo, stageId, stageTitle, steps, acceptance, notes, sessionId, date = todayStr() }) {
 	const head = `# PLAN-${String(planNo).padStart(3, "0")} ${stageTitle ?? ""}`.trimEnd();
 	return [
 		head,
@@ -272,7 +272,10 @@ export function buildPlanDoc({ planNo, stageId, stageTitle, steps, notes, sessio
 		"",
 		"## 计划步骤",
 		"",
-		...steps.map((step, i) => `${i + 1}. ${step}`),
+		...steps.flatMap((step, i) => [
+			`${i + 1}. ${step}`,
+			...(acceptance?.[i] ? [`   - 验收：${acceptance[i]}`] : []),
+		]),
 		"",
 		"## 备注 / 风险 / 验收",
 		"",

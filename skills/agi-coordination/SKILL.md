@@ -31,6 +31,12 @@ whenToUse: 项目内有 .ai/ 目录；或用户要求初始化 coordination、�
 
 判断标准：需要 ≥2 次写操作、或跨会话继续、或用户要求计划 → 大活。
 
+**研究与分解（大活入口必做）**：
+
+1. 先检索外部已有方案（`web_search` / `web_fetch`：官方文档、开源仓库、已验证做法）；优先复用，计划里记录来源与取舍。
+2. 把需求拆成 n 个可独立验收的小问题；每个小问题一条验收测试/命令（`coord_plan_save` 的 `acceptance`）。
+3. 逐个红→绿，最后单独一步做集成；禁止跳过验收一把梭。
+
 ## G1 · 开门
 
 1. `coord_todo {action:'list'}` 确认阶段与待办；有 `~` 进行中任务优先续作。
@@ -42,8 +48,9 @@ whenToUse: 项目内有 .ai/ 目录；或用户要求初始化 coordination、�
 ## G2 · 同步门控（每次写操作后）
 
 1. 跑层测试（testing 层对应模块）；
-2. 更新 `.ai/STRUCTURE.md`（新增/移动/删除文件时）；
-3. 更新任务/需求状态（`coord_todo start|done`、REQ 卡回写）。
+2. 跑 `coord_arch` 检查单向依赖（presentation → interface → core → shared；反向/跨层先落 interface 契约）；
+3. 更新 `.ai/STRUCTURE.md`（新增/移动/删除文件时）；
+4. 更新任务/需求状态（`coord_todo start|done`、REQ 卡回写）。
 
 依赖方向铁律：shared ← core ← interface ← presentation；testing 可依赖全部。跨层引用 = 架构破坏，先在 STRUCTURE.md 标注再动手。
 
@@ -63,6 +70,7 @@ whenToUse: 项目内有 .ai/ 目录；或用户要求初始化 coordination、�
 5. **META 蒸馏**：按受控词表（BUILD/ENV/TEST/DATA/API/ARCH/PROC/DOC/SEC/PERF/DEP/COLLAB）提一条规则 → 项目池 `### META-NNN`；确认普适后 `coord_meta promote`
 
 连续 2 次同根因报错 → 停止修复，升级为 REQ 卡走计划流程。
+动手前先 `coord_recall <关键词>` 召回旧 ERR/META/角色记忆；`coord_error` 也会自动附相关旧经验。
 
 ## G4 · 离场检查
 
@@ -93,9 +101,17 @@ DSH 的计划模式（`exit_plan_mode`）负责只读探索与审批。计划被
 | `/coord go s1` / `/coord go T-003` | 阶段/单任务调度 |
 | `/coord issues [sync] [--dry-run] [--stage s1]` | todo ↔ issues |
 | `/coord meta` | META 概览 |
+| `/coord agents [任务]` | 角色卡池：列卡 / 检索 |
+| `/coord dispatch [sN]` | 派发矩阵（落盘 `.ai/dispatch/`） |
+| `/coord growth` | 自我成长状态 |
+| `/coord recall <关键词>` | 旧经验检索 |
+| `/coord arch` | 七层单向依赖检查 |
 | `/coord handoff [done]` | 读卡 / 消化交接 |
 
-工具：`coord_init` `coord_todo` `coord_plan_save` `coord_status` `coord_issue` `coord_error` `coord_meta` `coord_handoff`。
+工具：`coord_init` `coord_todo` `coord_plan_save` `coord_status` `coord_issue` `coord_error` `coord_meta` `coord_handoff` `coord_agent` `coord_dispatch` `coord_recall` `coord_arch`。
+
+- 多 agent 派发：`coord_agent query` 检索角色卡 → `coord_dispatch` 生成矩阵/任务卡 → `subagent` / `workflow` 执行（技能 `agi-dispatch`）。
+- 自我成长：任务收口写 `coord_agent memory_add`；只改自己的卡用 `coord_agent update`；普适教训 `coord_meta promote`（技能 `agi-growth`）。
 
 ## 失败与降级
 
