@@ -66,6 +66,19 @@ test("插件注册 13 工具 / 13 命令 / 4 技能", async () => {
 			"coord-todo",
 		]);
 		assert.deepEqual(skills.map((skill) => skill.name).sort(), ["agi-coordination", "agi-dispatch", "agi-growth", "agi-handoff"]);
+
+		// 工具参数必须是合法 JSON Schema（不能把 required:true 简写直接发给模型）
+		for (const [name, definition] of tools) {
+			assert.equal(definition.parameters.type, "object", `${name} parameters.type`);
+			assert.equal(typeof definition.parameters.properties, "object", `${name} parameters.properties`);
+			for (const [key, property] of Object.entries(definition.parameters.properties)) {
+				assert.ok(!("required" in property), `${name}.${key} 泄漏 required 注解`);
+			}
+		}
+		const agent = tools.get("coord_agent");
+		assert.deepEqual(agent.parameters.required, ["action"]);
+		assert.equal(agent.parameters.properties.type.type, "string");
+		assert.equal(agent.parameters.properties.sources, undefined);
 	} finally {
 		await fsp.rm(dir, { recursive: true, force: true });
 	}

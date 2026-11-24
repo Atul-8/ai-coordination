@@ -51,6 +51,30 @@ function objectSchema(properties) {
 	return { type: "object", additionalProperties: false, properties };
 }
 
+/**
+ * 把插件内部的参数简写（字段上带 required:true）编译成合法 JSON Schema。
+ * 必须做：ctx.tools.register 不像 defineTool 那样编译参数；直接把简写发给模型，
+ * 当某个参数恰好叫 `type` 时整个 parameters 会变成非法 schema（type 值不是字符串）。
+ */
+function toJsonSchema(parameters) {
+	const properties = {};
+	const required = [];
+	for (const [key, spec] of Object.entries(parameters ?? {})) {
+		const { required: isRequired, ...rest } = spec;
+		properties[key] = rest;
+		if (isRequired === true) required.push(key);
+	}
+	return { type: "object", properties, ...(required.length ? { required } : {}) };
+}
+
+/** 注册工具前统一编译参数 schema（已是 object 根的保持原样）。 */
+function registerTool(ctx, definition) {
+	const parameters = definition.parameters;
+	const compiled =
+		parameters && parameters.type === "object" && parameters.properties ? parameters : toJsonSchema(parameters);
+	ctx.tools.register({ ...definition, parameters: compiled });
+}
+
 // ---------------------------------------------------------------------------
 // 任务阶段登记（todo.md「阶段定义」小节）
 // ---------------------------------------------------------------------------
@@ -85,7 +109,7 @@ export function registerCoordinationTools(ctx, env) {
 	const resolveRoot = async (args, exec) => (args?.root ? path.resolve(String(args.root)) : await cwdOf(ctx, exec));
 
 	// ------------------------------------------------------------------ init
-	ctx.tools.register({
+	registerTool(ctx, {
 		name: "coord_init",
 		description:
 			"初始化项目的 coordination 层（幂等）：写入 AGENTS.md 规范插桩、todo.md、.ai/（STRUCTURE、REQ/ERR/META 模板、issues CLI）、docs/plans/，并确保全局池骨架。项目根已有 .ai/ 时先报告状态，不要重复初始化。",
@@ -136,7 +160,7 @@ export function registerCoordinationTools(ctx, env) {
 	});
 
 	// ------------------------------------------------------------------ todo
-	ctx.tools.register({
+	registerTool(ctx, {
 		name: "coord_todo",
 		description:
 			"维护项目 todo.md（唯一任务事实源）。action: list 看板；add 新建任务(desc, stage 默认 s0)；start/done 标记进行中/完成(id)；link 关联当前宿主 session(id)；set_issue 写入 issue 编号(id, issue)；stage_add 登记阶段(id, title)。禁止用 edit/write 直接改任务行，否则会与工具写入冲突。",
@@ -221,7 +245,7 @@ export function registerCoordinationTools(ctx, env) {
 	});
 
 	// ------------------------------------------------------------------ status
-	ctx.tools.register({
+	registerTool(ctx, {
 		name: "coord_status",
 		description:
 			"coordination 全量状态：todo 看板、阶段进度、项目/全局 META 条数、HANDOFF 卡片状态、STRUCTURE 与 issues CLI 是否就绪。只读，不改任何文件。",
@@ -240,7 +264,7 @@ export function registerCoordinationTools(ctx, env) {
 	});
 
 	// ------------------------------------------------------------------ plan
-	ctx.tools.register({
+	registerTool(ctx, {
 		name: "coord_plan_save",
 		description:
 			"把已获用户批准的计划落盘：写 docs/plans/PLAN-NNN-*.md，回写 todo.md 阶段行的 plan 引用，并把每个步骤登记为任务（自动编号）。计划模式（plan mode）里先用 exit_plan_mode 获得批准，再调用本工具；不要在未批准时落盘。",
@@ -292,7 +316,7 @@ export function registerCoordinationTools(ctx, env) {
 	});
 
 	// ------------------------------------------------------------------ handoff
-	ctx.tools.register({
+	registerTool(ctx, {
 		name: "coord_handoff",
 		description:
 			"跨宿主交接卡：action=write 写 .ai/HANDOFF.md（交出方换宿主前必做，自动附 git status/log 取证）；action=read 读卡片；action=consume 接手方确认接上后消化卡片（状态改 resumed、任务 @session 重绑本会话）。write 必须给出 next 与 verify。",
@@ -350,7 +374,7 @@ export function registerCoordinationTools(ctx, env) {
 	});
 
 	// ------------------------------------------------------------------ issue
-	ctx.tools.register({
+	registerTool(ctx, {
 		name: "coord_issue",
 		description:
 			"todo.md ↔ git issues 同步。action: sync 为无编号待办建 issue 并回写 (#N)；list 查看映射；close-done 关闭已完成任务的 issue；view/close/open 针对单个编号。GitHub 用 gh CLI（需已登录），Gitee 需 GITEE_TOKEN。sync 建议先 dry_run 预览。",
@@ -380,7 +404,7 @@ export function registerCoordinationTools(ctx, env) {
 	});
 
 	// ------------------------------------------------------------------ error
-	ctx.tools.register({
+	registerTool(ctx, {
 		name: "coord_error",
 		description:
 			"G3 五步错误提炼：写 .ai/errors/raw/ERR-NNN.md（现象/根因/修复/预防），并按受控分类蒸馏一条 META 规则到项目池。任何构建/测试/运行时报错都当场记录；不许写「玄学」或「暂时好了」。连续两次同根因报错应先停下来升级为 REQ 卡走计划流程。",
@@ -432,7 +456,7 @@ export function registerCoordinationTools(ctx, env) {
 	});
 
 	// ------------------------------------------------------------------ meta
-	ctx.tools.register({
+	registerTool(ctx, {
 		name: "coord_meta",
 		description:
 			"项目 META 规则池管理。action=list 列出项目/全局规则；action=promote 把一条确认跨项目普适的项目规则提升到全局池（AI_GLOBAL_DIR/meta/distilled/meta-rules.md，四位编号），并在项目规则末尾回写全局编号。提升前先与用户确认「确实普适」。",
@@ -478,7 +502,7 @@ export function registerCoordinationTools(ctx, env) {
 	});
 
 	// ------------------------------------------------------------------ agent pool
-	ctx.tools.register({
+	registerTool(ctx, {
 		name: "coord_agent",
 		description:
 			"全局角色卡池（RAG pool v2，AI_GLOBAL_DIR/agents）：派发前检索、未命中建卡、角色自升级、经验沉淀。action: query 检索（任务描述→top 卡+记忆，缺口提示建卡）；list 卡片清单；register 建卡（≥3 keywords、scope.do/dont 必写、taxonomy 路径必须存在，first_mission=pending）；update 自升级（只改自己的卡，version+1）；reflect 从刚完成的任务里提取可补充的检索词（提示词成长建议，不写盘）；memory_add 写本角色经验；memory_list 查经验；first_mission_done 首任务复核。",
@@ -615,7 +639,7 @@ export function registerCoordinationTools(ctx, env) {
 	});
 
 	// ------------------------------------------------------------------ dispatch
-	ctx.tools.register({
+	registerTool(ctx, {
 		name: "coord_dispatch",
 		description:
 			"生成多 agent 派发矩阵与任务卡：按 todo.md 未完成任务检索角色卡池，输出阶段×任务×角色×文件域的派发建议，并（默认）落盘 .ai/dispatch/DISPATCH-*.md。只生成矩阵，不执行派发；真正执行用 subagent / subagent_fork / workflow（pipeline）。缺口任务走 coord_agent register 建卡。",
@@ -655,7 +679,7 @@ export function registerCoordinationTools(ctx, env) {
 	});
 
 	// ------------------------------------------------------------------ recall
-	ctx.tools.register({
+	registerTool(ctx, {
 		name: "coord_recall",
 		description:
 			"旧经验检索（自我使用旧有经验 / 自纠正）：按关键词在 .ai 的 ERR 卡、项目 META、全局 META、角色记忆里召回相关条目并打分。开工前、写新 ERR 前、连续同根因报错时先跑；命中先对照旧经验再动手，避免重复踩坑。",
@@ -682,7 +706,7 @@ export function registerCoordinationTools(ctx, env) {
 	});
 
 	// ------------------------------------------------------------------ architecture
-	ctx.tools.register({
+	registerTool(ctx, {
 		name: "coord_arch",
 		description:
 			"七层单向依赖检查：扫描 src/<shared|core|interface|presentation>/ 的直接 import，报告反向/跨层引用（presentation → interface → core → shared）。G2 写操作后跑；违规先落 interface 契约或登记 REQ，不要「能跑就放过」。启发式检查，间接依赖仍需评审。",
@@ -701,7 +725,7 @@ export function registerCoordinationTools(ctx, env) {
 	});
 
 	// ------------------------------------------------------------------ research
-	ctx.tools.register({
+	registerTool(ctx, {
 		name: "coord_research",
 		description:
 			"记录外部方案检索（不闭门造车的门禁产物）：官方文档 / 开源仓库 / 已验证做法。coord_plan_save 落盘前必须传 research 编号，或显式 skip_research 说明原因。返回 RESEARCH-NNN 编号与 .ai/research/ 路径。",
