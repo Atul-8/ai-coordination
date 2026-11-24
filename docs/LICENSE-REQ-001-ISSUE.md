@@ -1,8 +1,7 @@
-# LICENSE-REQ-001 — 许可请求（可直接粘贴到 GitHub Issue）
+# LICENSE-REQ-001 — 许可记录（发版/对外分发时可选使用）
 
-> 用途：渠道①「仓库 Issue」。当前 PAT 缺少 issues 写权限，需人工在
-> https://github.com/Atul-8/ai-coordination/issues/new 粘贴以下正文，并加标签 `license-request`
-> （标签不存在时先创建）。
+> 按当前规则，警告与记录**以 README + 会话警告为主**；本文件只在**发版或对外分发**时作为 release notes /
+> Issue 正文使用，平时不必创建。当前项目未发版，因此该步骤可省略。
 
 **标题**：`[license-request] LICENSE-REQ-001 eai-agent GPL-3.0 port — approved`
 

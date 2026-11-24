@@ -123,7 +123,7 @@ compaction + subagent/fork/workflow + ask-user + todo + web + present。
 | 项 | 结果 |
 | --- | --- |
 | 单元/端到端测试 | `npm test`（lib + pool + plugin）→ 17/17 通过 |
-| 安装 | `plugin_manager install_bundle target=<仓库根>` → `application: applied`，bundle `dsh-ai-coordination@0.6.0`（仓库根即 bundle；remove→install 后 link 指向根目录） |
+| 安装 | `plugin_manager install_bundle target=<仓库根>` → `application: applied`，bundle `dsh-ai-coordination@0.6.1`（仓库根即 bundle；remove→install 后 link 指向根目录） |
 | 预设行 | `Config.listConfigs(name=dsh-agent-preset)` 出现 `include:preset-agi`（status schema） |
 | 技能目录 | 安装后目录出现 `agi-coordination` / `agi-handoff` / `agi-dispatch` / `agi-growth` |
 | 工具可用 | `Tool.listTools` 出现 13 个 `coord_*`（含 `coord_agent` / `coord_dispatch` / `coord_recall` / `coord_arch` / `coord_research`） |

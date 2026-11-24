@@ -16,21 +16,21 @@ G3 错误/META 蒸馏 + 跨宿主交接」做成宿主级能力，并附带 `AGI
 
 - **MIT / ISC / BSD-2** 等宽松许可：README 致谢 + 保留原始版权声明与许可证文本。
 - **非 MIT**（Apache-2.0 / GPL / LGPL / MPL / CC-BY / 自定义）：必须**先报备开发者并取得书面同意**，同意后才能使用；
-  未获同意不得合并、发布。三种渠道缺一不可：
-  1. 仓库 Issue（标签 `license-request`）；
-  2. 邮件（来源/许可证/使用范围/请求事项）；
-  3. 公开披露：README 本节 + [docs/THIRD-PARTY.md](docs/THIRD-PARTY.md)，随提交入库。
+  未获同意不得合并、发布。警告与记录**以 README + 会话警告为主**：
+  1. **会话警告**（主要）：复制/移植前在会话里明确说明来源、许可证、使用范围，取得用户书面同意；
+  2. **README 公示**（主要）：README + [docs/THIRD-PARTY.md](docs/THIRD-PARTY.md) 致谢与台账，随提交入库；
+  3. **发布记录**（可选）：发版或对外分发时在 release notes / Issue 补一条；**未发版可省略**（很多项目长期不发版）。
 
 ### 当前第三方代码台账
 
 | 来源 | 许可证 | 使用范围 | 状态 |
 | --- | --- | --- | --- |
-| [eai-agent](https://gitee.com/eai-code/eai-agent)（commit `623b3b4`） | **GPL-3.0**（以其 LICENSE 为准） | `src/pool.js`：front-matter 解析、taxonomy/卡片校验、中文分词与关键词打分（移植/改写自 `scripts/lib.mjs`） | ✅ **已授权**（2026-11-24 版权人书面授权，LGPL-3.0 例外） |
+| [eai-agent](https://gitee.com/eai-code/eai-agent)（commit `623b3b4`） | **GPL-3.0**（以其 LICENSE 为准） | `src/pool.js`：front-matter 解析、taxonomy/卡片校验、中文分词与关键词打分（移植/改写自 `scripts/lib.mjs`） | ✅ **已授权**（2026-11-24 会话内版权人书面授权，LGPL-3.0 例外） |
 | DeepSeek Harness（DSH） | 官方发行包 | 运行时、插件/预设 API 与文档参考 | 使用官方接口，无代码复制 |
 
 > **LICENSE-REQ-001 已获批**：授权范围仅限 `src/pool.js` 列出的逻辑；后续从 eai 引入新实现需重新报备。
-> 三渠道留痕：README 本节 + [docs/THIRD-PARTY.md](docs/THIRD-PARTY.md) + [交接卡](docs/HANDOFF-LICENSE-REQ-001.md)；
-> 渠道① GitHub Issue 待人工创建（当前 PAT 无 issues 写权限），正文已备：[docs/LICENSE-REQ-001-ISSUE.md](docs/LICENSE-REQ-001-ISSUE.md)。
+> 留痕：README 本节 + [docs/THIRD-PARTY.md](docs/THIRD-PARTY.md) + [会话交接卡](docs/HANDOFF-LICENSE-REQ-001.md)；
+> 发版时再补发布记录（当前未发版，不强制）。
 
 ## 安装
 

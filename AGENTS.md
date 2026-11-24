@@ -39,13 +39,13 @@ pi 版在 `pi-ai-coordination` 分支，ZCode 版在 `zcode-ai-coordination` 分
 ## 第三方代码与许可（强制）
 
 - 复用任何外部代码/片段/模板，必须在 `README.md`「致谢与第三方代码」声明来源、许可证与用途。
-- **非 MIT**（Apache-2.0 / GPL / LGPL / MPL / CC-BY 等）必须先经三种渠道报备开发者并取得书面同意，才能合入：
-  ① 仓库 Issue（`license-request`）② README + `docs/THIRD-PARTY.md` 公开披露 ③ 会话交接卡
-  （本仓库用 `docs/HANDOFF-LICENSE-REQ-NNN.md`，因 `.ai/` 被 gitignore）；台账见 `docs/THIRD-PARTY.md`。
+- **非 MIT**（Apache-2.0 / GPL / LGPL / MPL / CC-BY 等）必须先报备开发者并取得书面同意，才能合入；
+  警告与记录**以 README + 会话警告为主**：① 复制前在会话里说明来源/许可证/范围并取得同意
+  ② README + `docs/THIRD-PARTY.md` 公示（台账）③ 发布记录可选（发版时才需要，未发版可省略）。
 - 未获批的移植保持 `pending`：不得发布，且必须准备「独立实现 / 移除」回退方案。
-- 当前状态：`LICENSE-REQ-001`（eai-agent GPL-3.0 → `src/pool.js`）已由版权人授权（2026-11-24，LGPL-3.0 例外）；
-  渠道① GitHub Issue 尚待人工创建（PAT 无 issues 权限），正文在 `docs/LICENSE-REQ-001-ISSUE.md`。
-- 从 eai 引入**新**实现（超出 `src/pool.js` 已授权范围）必须重新走三渠道报备。
+- 当前状态：`LICENSE-REQ-001` 已由版权人授权（2026-11-24，LGPL-3.0 例外）；会话警告 + README 公示已留痕，
+  发布记录待发版时补（当前未发版，不需要）。
+- 从 eai 引入**新**实现（超出 `src/pool.js` 已授权范围）必须重新报备（会话警告 + README 公示）。
 
 ## 兼容红线
 
