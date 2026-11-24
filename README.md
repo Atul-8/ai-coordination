@@ -50,6 +50,12 @@ Plugins → Add plugin → 选择本仓库根目录
 安装后顶层插件热加载；**预设行需要新建会话**才能选择。
 bundle 以 link 方式安装时，修改 JS 源码需要重启 DSH 才会加载新模块。
 
+也可以直接用 Git 源安装（默认分支 `dsh`，仓库根即 bundle）：
+
+```bash
+dsh plugin add github:Atul-8/ai-coordination
+```
+
 ## 初始化项目
 
 在目标项目会话里让 AI 调用 `eai_init`，或键入 `/eai-init`。产物：
