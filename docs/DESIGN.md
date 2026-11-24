@@ -118,7 +118,7 @@ compaction + subagent/fork/workflow + ask-user + todo + web + present。
 | 项 | 结果 |
 | --- | --- |
 | 单元/契约/全链路测试 | `npm test` → **30/30** 通过（lib 9 + pool 6 + 插件契约 2 + full 13） |
-| 安装 | `plugin_manager install_bundle target=<仓库根>` → `application: applied`，bundle `dsh-eai-workflow@1.1.0`（仓库根即 bundle；remove→install 后 link 指向根目录） |
+| 安装 | `plugin_manager install_bundle target=<仓库根>` → `application: applied`，bundle `dsh-eai-workflow@1.1.1`（仓库根即 bundle；remove→install 后 link 指向根目录） |
 | 工具 schema | `ctx.tools.register` 不做参数编译：插件统一把 `required:true` 简写编译为合法 JSON Schema（`type:object` + `properties` + `required`），修复 `eai_agent` 的 `type` 参数导致 provider 报 `anyOf` 非法 schema |
 | 预设行 | `Config.listConfigs(name=dsh-agent-preset)` 出现 `include:preset-eai-workflow`（status schema） |
 | 技能目录 | 安装后目录出现 `eai-coordination` / `eai-handoff` / `eai-dispatch` / `eai-growth` |

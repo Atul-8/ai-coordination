@@ -612,7 +612,11 @@ test("用户入口只有 /eai-pm（其余命令不注册）", async () => {
 		const pm = await cmd("eai-pm", "修复登录问题");
 		assert.equal(pm.kind, "success");
 		assert.match(pm.text, /G0 路由/);
-		assert.match(followups.at(-1).content[0].text, /需求：修复登录问题/);
+		const message = followups.at(-1);
+		assert.equal(message.role, "user");
+		assert.match(message.id, /^msg-/);
+		assert.deepEqual(message.source, { kind: "user" });
+		assert.match(message.content[0].text, /需求：修复登录问题/);
 
 		await call("eai_init", {});
 		await call("eai_todo", { action: "add", desc: "看板可见的任务" });

@@ -43,6 +43,7 @@
 | 重复 promote 污染全局池 | 按来源去重 | 两次 promote 只保留一条 |
 | 多行 desc 破坏 todo 行 | 压成单行 | 换行描述写成单行 |
 | 无 session 的 consume | 明确报错（命令层已隐藏，工具仍校验） | 空 session 拒绝 |
+| `/eai-pm` followup 消息 | 必须传完整 `UserMessage`（role/id/content/source）；缺 role 会导致下一次请求 422 | 断言 followup 参数含 `role:"user"` 与 `id` |
 | todo.md 缺失静默当空 | `loadTodo` 报缺失 | 删除后 list 报错 |
 | 外部包 `lodash/core` 误报 | 裸包名跳过 | 外部 import 不产生违规 |
 | 同秒 dispatch 覆盖 | 秒级 + 冲突序号 | 连续两次路径不同 |
@@ -62,5 +63,5 @@
 - [ ] `npm test` 全绿（30/30）
 - [ ] `plugin_manager remove_bundle` → `install_bundle <仓库根>`，结果 `application: applied`
 - [ ] 新会话选 `EAI · 工作流`，跑 `eai_init` → `eai_todo add` → `eai_status`
-- [ ] 版本号已 bump（当前 `1.1.0`），README/DESIGN 数字一致
+- [ ] 版本号已 bump（当前 `1.1.1`），README/DESIGN 数字一致
 - [ ] LICENSE-REQ-001 状态与 README/THIRD-PARTY 一致（已授权，发布记录可选）

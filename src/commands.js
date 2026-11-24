@@ -21,6 +21,7 @@
  */
 
 import path from "node:path";
+import { randomUUID } from "node:crypto";
 import * as L from "./lib.js";
 import { createIo, globalMetaRulesPath, initProject, listMeta, loadTodo, saveTodo, statusReport } from "./project.js";
 import { runIssueTool } from "./issues.js";
@@ -150,7 +151,7 @@ export function registerCoordinationCommands(ctx, env) {
 
 		const agent = ctx.get?.("agents")?.get(invocation.agent?.id);
 		if (agent?.followup) {
-			await agent.followup({ content: [{ type: "text", text: prompt }], source: { kind: "user" } });
+			await agent.followup({ role: "user", id: `msg-${randomUUID()}`, content: [{ type: "text", text: prompt }], source: { kind: "user" } });
 			return `已调度 ${title}：${picked.length} 项任务，已关联 session ${short} 并派发给本会话。`;
 		}
 		return `已写入 @session 关联（${short}），但当前宿主不能自动唤醒模型。请把下面内容发给我执行：\n\n${prompt}`;
@@ -186,7 +187,14 @@ export function registerCoordinationCommands(ctx, env) {
 		].join("\n");
 		const agent = ctx.get?.("agents")?.get(invocation.agent?.id);
 		if (agent?.followup) {
-			await agent.followup({ content: [{ type: "text", text: prompt }], source: { kind: "user" } });
+			// followup() 接收完整 UserMessage（role + id + content + source），
+			// 不是 {content, source} 简写；缺 role 会让下一次请求 422。
+			await agent.followup({
+				role: "user",
+				id: `msg-${randomUUID()}`,
+				content: [{ type: "text", text: prompt }],
+				source: { kind: "user" },
+			});
 			return `已接管需求并派发 G0 路由：${requirement}`;
 		}
 		return `当前宿主不能自动唤醒模型。请把下面内容发给我执行：\n\n${prompt}`;
