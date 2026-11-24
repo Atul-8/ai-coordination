@@ -17,14 +17,22 @@ export async function recordResearch({ startDir, topic, sources, decision, notes
 	const io = createIo(policy);
 	const cleanTopic = String(topic ?? "").trim();
 	if (!cleanTopic) throw new Error("research 需要 topic（要解决的实现问题）。");
-	const list = Array.isArray(sources) ? sources.map(String).map((entry) => entry.trim()).filter(Boolean) : [];
+	const list = Array.isArray(sources)
+		? sources.map(String).map((entry) => entry.trim()).filter(Boolean)
+		: typeof sources === "string" && sources.trim()
+			? [sources.trim()]
+			: [];
 	if (list.length === 0) throw new Error("research 至少需要 1 条来源（URL / 仓库 / 文档）。没有来源说明还没检索。");
 	for (const source of list) {
 		if (!/^https?:\/\//i.test(source) && !/^[\w.-]+\/[\w.-]+$/.test(source)) {
 			throw new Error(`来源格式不合法：${source}（给 URL，或 owner/repo）`);
 		}
 	}
-	const normalized = DECISIONS.includes(decision) ? decision : "adapt";
+	const chosen = decision === undefined || decision === null || decision === "" ? "adapt" : String(decision);
+	if (!DECISIONS.includes(chosen)) {
+		throw new Error(`decision 非法：${chosen}。可选：${DECISIONS.join(" / ")}`);
+	}
+	const normalized = chosen;
 	const dir = path.join(paths.aiDir, "research");
 	const files = await io.list(dir);
 	const max = files.reduce((acc, name) => {
@@ -55,14 +63,4 @@ export async function recordResearch({ startDir, topic, sources, decision, notes
 	].join("\n");
 	await io.write(path.join(dir, file), content);
 	return { id, path: path.join(dir, file), file: `.ai/research/${file}`, decision: normalized, sources: list.length };
-}
-
-/** 计划落盘门禁：找到研究记录文件（按 id 前缀），返回相对路径或 null。 */
-export async function findResearchRef(io, paths, research) {
-	const needle = String(research ?? "").trim();
-	if (!needle) return null;
-	const files = await io.list(path.join(paths.aiDir, "research"));
-	const match = files.find((name) => name.startsWith(needle) && name.endsWith(".md"));
-	if (!match) throw new Error(`找不到研究记录 ${needle}（.ai/research/）。先 coord_research 记录，或检查编号。`);
-	return `.ai/research/${match}`;
 }

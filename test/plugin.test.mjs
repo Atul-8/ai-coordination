@@ -293,8 +293,9 @@ test("端到端：初始化 → 任务 → 计划 → 状态 → 交接 → 错�
 		assert.match(arch.text, /shared 依赖 core/);
 		assert.match(arch.text, /@\/core\/b\.js/);
 
-		// issue 无 remote 时报错而不是伪造
-		await assert.rejects(call("coord_issue", { action: "list", root: project }), /git remote origin/);
+		// issue：无 remote 时 list 仍可用（本地视图），sync 才报错
+		assert.match((await call("coord_issue", { action: "list", root: project })).text, /remote=（未配置/);
+		await assert.rejects(call("coord_issue", { action: "sync", root: project }), /git remote origin/);
 
 		// 命令：/coord-status 与 /coord-go 空参
 		const statusCommand = await commands.get("coord-status").handler({ rawInput: "", agent: { id: SESSION }, signal: new AbortController().signal });

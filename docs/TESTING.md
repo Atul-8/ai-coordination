@@ -31,6 +31,23 @@
 | 沙箱 | read-only 拒绝写；workspace-write 越界拒绝；范围内放行；全局池在工作区外时警告但不阻断 |
 | 清单 | `dsh.bundle.patch`、preset-agi/agi、persona、locale、icon、4 个技能 frontmatter |
 
+## 安全回归（0.7.0 审计后新增）
+
+独立 workflow 审计发现 31 项问题（5 项 P0），已修复并全部纳入测试：
+
+| 问题 | 修复 | 测试 |
+| --- | --- | --- |
+| 卡片 id 路径穿越（`../evil`） | `cardPath()` 强制 kebab-case | 三个 action 的 `../evil` 拒绝 |
+| desc 伪造 `(#N)` / `@session:` | 行尾锚定解析 + `sanitizeTodoDesc` 中和 | 注入描述后 metadata 不生效 |
+| `set_issue` 写入 NaN/小数 | 整数 ≥1 校验 | `"abc"` / `3.7` 拒绝 |
+| 重复 promote 污染全局池 | 按来源去重 | 两次 promote 只保留一条 |
+| 多行 desc 破坏 todo 行 | 压成单行 | 换行描述写成单行 |
+| 无 session 的 consume / `/coord go` | 明确报错 | 空 session 拒绝 |
+| todo.md 缺失静默当空 | `loadTodo` 报缺失 | 删除后 list 报错 |
+| 外部包 `lodash/core` 误报 | 裸包名跳过 | 外部 import 不产生违规 |
+| 同秒 dispatch 覆盖 | 秒级 + 冲突序号 | 连续两次路径不同 |
+| 数值参数 NaN/0/-1 | `intArg` / `numberArg` | limit/threshold 非法值拒绝 |
+
 ## 未覆盖（分发前仍需人工/环境验证）
 
 1. **真实 issue 创建**：需要 `gh` 登录或 `GITEE_TOKEN`，测试只验证 dry-run 与认证报错。
@@ -45,5 +62,5 @@
 - [ ] `npm test` 全绿（30/30）
 - [ ] `plugin_manager remove_bundle` → `install_bundle <仓库根>`，结果 `application: applied`
 - [ ] 新会话选 `AGI · 协调开发`，跑 `coord_init` → `coord_todo add` → `coord_status`
-- [ ] 版本号已 bump（当前 `0.6.3`），README/DESIGN 数字一致
+- [ ] 版本号已 bump（当前 `0.7.0`），README/DESIGN 数字一致
 - [ ] LICENSE-REQ-001 状态与 README/THIRD-PARTY 一致（已授权，发布记录可选）

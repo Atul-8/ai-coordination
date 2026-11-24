@@ -9,6 +9,12 @@
  *   /coord handoff     读交接卡；/coord handoff done 消化交接卡
  *   /coord issues      任务 ↔ issue 映射；/coord issues sync [--dry-run]
  *   /coord meta        项目/全局 META 规则概览
+ *   /coord agents      角色卡池：列表 / 检索
+ *   /coord dispatch    派发矩阵 + 任务卡（落盘 .ai/dispatch/）
+ *   /coord growth      自我成长状态
+ *   /coord recall      旧经验检索
+ *   /coord arch        七层单向依赖检查
+ *   /coord research    记录外部方案检索（计划门禁）
  *
  * 命令在校验与计算后直接返回文本；只有 /coord go 需要唤醒模型（followup）。
  */
@@ -115,6 +121,7 @@ export function registerCoordinationCommands(ctx, env) {
 		if (picked.length === 0) return "所选范围内没有待办任务。";
 
 		const short = shortSessionOf(execOfInvocation(invocation));
+		if (!short) throw new Error("当前命令没有关联会话，无法写入 @session；请在会话内执行 /coord go。");
 		for (const item of picked) L.updateItem(file, item.id, { session: short, doing: item.doing || false });
 		await saveTodo(paths, file, io);
 
@@ -122,7 +129,7 @@ export function registerCoordinationCommands(ctx, env) {
 		const planLine = stage?.plan ? `阶段计划：${stage.plan}` : "阶段计划：（无）";
 		const prompt = [
 			`[/coord-go 阶段调度] ${title}`,
-			`当前会话：${short ?? "unknown"}（已写入 todo.md @session 关联）`,
+			`当前会话：${short}（已写入 todo.md @session 关联）`,
 			planLine,
 			`按顺序执行以下 ${picked.length} 项任务：`,
 			...picked.map((item, i) => `${i + 1}. **${item.id}** ${item.desc}${item.issue ? `（issue #${item.issue}，详情用 .ai/scripts/issues.js view ${item.issue}）` : ""}`),
@@ -148,9 +155,11 @@ export function registerCoordinationCommands(ctx, env) {
 		const policy = policyOf(ctx, execOfInvocation(invocation));
 		const action = String(arg ?? "").trim();
 		if (action === "done") {
-			const result = await consumeHandoff({ startDir, sessionId: invocation.agent?.id, policy });
+			if (!invocation.agent?.id) throw new Error("当前命令没有关联会话，无法消化交接卡。");
+			const result = await consumeHandoff({ startDir, sessionId: invocation.agent.id, policy });
 			if (result.skipped) return result.skipped;
-			return `交接卡已消化：状态 resumed，接手方 dsh/${result.session}${result.taskId ? `，${result.taskId} 已重绑本会话` : ""}。`;
+			const taskText = result.taskId ? (result.taskFound ? `，${result.taskId} 已重绑本会话` : `；任务 ${result.taskId} 不在 todo.md，未重绑`) : "";
+			return `交接卡已消化：状态 resumed，接手方 dsh/${result.session}${taskText}。`;
 		}
 		const found = await readHandoff({ startDir, policy });
 		if (!found) return "没有交接卡（.ai/HANDOFF.md 不存在）。开发到一半要换宿主时，用 coord_handoff 写卡。";
@@ -262,6 +271,7 @@ export function registerCoordinationCommands(ctx, env) {
 			const raw = String(invocation.rawInput ?? "").trim();
 			const [sub, ...rest] = raw.split(/\s+/);
 			const arg = rest.join(" ");
+			if (!sub) return runStatus(invocation);
 			switch (sub) {
 				case "init":
 					return runInit(invocation, arg);
@@ -290,7 +300,7 @@ export function registerCoordinationCommands(ctx, env) {
 				case "research":
 					return runResearch(invocation, arg);
 				default:
-					return runStatus(invocation);
+					throw new Error(`未知子命令 ${sub || "（空）"}。可选：init | status | todo | go | handoff | issues | meta | agents | dispatch | growth | recall | arch | research`);
 			}
 		},
 	);

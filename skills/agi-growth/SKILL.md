@@ -70,7 +70,7 @@ coord_agent {action:'query', task:'实现 STM32 USB HID 描述符'}
 
 - 必填：id、type、name、summary（≤80 字，禁通用/万能）、taxonomy（路径必须存在于 taxonomy.yml）、≥3 keywords、scope.do/dont 各 ≥1。
 - 新卡 `first_mission: pending`；首任务完成且 PM 复核通过 → `{action:'first_mission_done', id}`。
-- 不合格的卡：修卡或废弃（不要物理删，改 status/deprecated）。
+- 不合格的卡：修卡或废弃。`coord_agent` 没有废弃 action——废弃需手工把 `status` 改成 `deprecated`（仅 PM 评审后），不要物理删。
 
 **退单队列**：子 agent 开工前对照 scope 自查，不符就拒单：
 

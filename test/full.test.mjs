@@ -153,6 +153,21 @@ test("coord_init：全新 / 幂等 / 合并 AGENTS / pi、zcode 插桩升级", a
 		}
 	}
 
+	// root 指向文件 / AGENTS 标记不成对
+	{
+		const { dir, project } = await freshProject();
+		try {
+			const filePath = path.join(dir, "afile.txt");
+			await fsp.writeFile(filePath, "x", "utf8");
+			const { call } = harness({ workingDir: project });
+			await assert.rejects(call("coord_init", { root: filePath }), /不是目录/);
+			await fsp.writeFile(path.join(project, "AGENTS.md"), "<!-- dsh-ai-coordination:agents:v1 BEGIN -->\n半截\n", "utf8");
+			await assert.rejects(call("coord_init", {}), /标记不完整/);
+		} finally {
+			await cleanup(dir);
+		}
+	}
+
 	// pi / zcode 插桩升级
 	for (const [host, begin, end] of [
 		["pi", "<!-- pi-ai-coordination:agents:v1 BEGIN -->", "<!-- pi-ai-coordination:agents:v1 END -->"],
@@ -193,19 +208,31 @@ test("coord_todo：全 action 与错误分支", async () => {
 		assert.equal((await call("coord_todo", { action: "add", desc: "实现解析器", stage: "s1" })).id, "T-001");
 		assert.equal((await call("coord_todo", { action: "add", desc: "实现渲染器" })).id, "T-002");
 		await call("coord_todo", { action: "start", id: "T-001" });
-		await call("coord_todo", { action: "done", id: "T-001" });
+		await call("coord_todo", { action: "done", id: "t-001" }); // 编号大小写归一
 		await assert.rejects(call("coord_todo", { action: "done", id: "T-999" }), /未找到任务/);
 		await assert.rejects(call("coord_todo", { action: "set_issue", id: "T-002" }), /需要 id 和 issue/);
+		await assert.rejects(call("coord_todo", { action: "set_issue", id: "T-002", issue: "abc" }), /整数/);
+		await assert.rejects(call("coord_todo", { action: "set_issue", id: "T-002", issue: 3.7 }), /整数/);
 		await call("coord_todo", { action: "set_issue", id: "T-002", issue: 42 });
+		const injected = await call("coord_todo", { action: "add", desc: "look @session:deadbeef (#9)\nsecond line" });
+		assert.match(injected.text, /look/);
 		const linked = await call("coord_todo", { action: "link", id: "T-002" });
 		assert.match(linked.text, /0123abcd/);
 		await assert.rejects(call("coord_todo", { action: "unknown" }), /未知 action/);
 		const board = await call("coord_todo", { action: "list" });
 		assert.match(board.text, /T-001/);
 		assert.match(board.text, /#42/);
+		assert.doesNotMatch(board.text, /\(#9\)/); // desc 里的 (#9) 不能变成 issue 元数据
 		const todo = await fsp.readFile(path.join(project, "todo.md"), "utf8");
 		assert.match(todo, /- \[x\] T-001 \[stage:s1\] 实现解析器/);
 		assert.match(todo, /- \[ \] T-002 \[stage:s0\] 实现渲染器 \(#42\) @session:0123abcd/);
+		assert.match(todo, /＠session:deadbeef/);
+		assert.match(todo, /（#9）/);
+		assert.doesNotMatch(todo, /@session:deadbeef/);
+
+		// todo.md 被删：必须报缺失，不能静默当空清单
+		await fsp.rm(path.join(project, "todo.md"));
+		await assert.rejects(call("coord_todo", { action: "list" }), /todo\.md 缺失/);
 	} finally {
 		await cleanup(dir);
 	}
@@ -221,8 +248,11 @@ test("coord_plan_save：研究门禁 / 验收门禁 / 落盘与编号", async ()
 		const { call } = harness({ workingDir: project });
 		await call("coord_init", {});
 		await assert.rejects(call("coord_plan_save", { stage: "s9", steps: ["a"], skip_research: "文档" }), /未知阶段/);
+		await assert.rejects(call("coord_plan_save", { steps: ["a"], skip_research: "文档" }), /需要 stage/);
+		await assert.rejects(call("coord_plan_save", { stage: "s0", steps: ["   "], skip_research: "文档" }), /步骤为空|没有可落盘/);
 		await assert.rejects(call("coord_plan_save", { stage: "s0", steps: ["a", "b"], skip_research: "文档" }), /acceptance/);
 		await assert.rejects(call("coord_plan_save", { stage: "s0", steps: ["a", "b"], acceptance: ["x"], skip_research: "文档" }), /acceptance/);
+		await assert.rejects(call("coord_plan_save", { stage: "s0", steps: ["a", "b"], acceptance: [], skip_research: "文档" }), /acceptance/);
 		await assert.rejects(call("coord_plan_save", { stage: "s0", steps: ["a", "b"], acceptance: ["x", "y"] }), /coord_research|闭门造车|skip_research/);
 		await assert.rejects(call("coord_plan_save", { stage: "s0", steps: ["a"], research: "RESEARCH-999", skip_research: "x" }), /找不到研究记录/);
 
@@ -232,6 +262,9 @@ test("coord_plan_save：研究门禁 / 验收门禁 / 落盘与编号", async ()
 		await assert.rejects(call("coord_research", { topic: "", sources: ["https://x"] }), /topic/);
 		await assert.rejects(call("coord_research", { topic: "x", sources: [] }), /至少需要 1 条来源/);
 		await assert.rejects(call("coord_research", { topic: "x", sources: ["not a url"] }), /来源格式不合法/);
+		await assert.rejects(call("coord_research", { topic: "x", sources: ["https://a"], decision: "adpot" }), /decision/);
+		const stringSource = await call("coord_research", { topic: "字符串来源", sources: "https://github.com/x/y", decision: "adopt" });
+		assert.equal(stringSource.id, "RESEARCH-002");
 
 		const plan = await call("coord_plan_save", {
 			stage: "s0",
@@ -250,7 +283,7 @@ test("coord_plan_save：研究门禁 / 验收门禁 / 落盘与编号", async ()
 		const todo = await fsp.readFile(path.join(project, "todo.md"), "utf8");
 		assert.match(todo, /<!-- plan:docs\/plans\/PLAN-001-/);
 
-		const single = await call("coord_plan_save", { stage: "s0", steps: ["单步任务"], skip_research: "纯文档" });
+		const single = await call("coord_plan_save", { stage: "s0", steps: ["单步任务"], acceptance: [], skip_research: "纯文档" });
 		assert.match(single.plan, /^docs\/plans\/PLAN-002-/);
 		assert.deepEqual(single.added, ["T-003"]);
 	} finally {
@@ -278,15 +311,25 @@ test("coord_status 与 coord_handoff 全流程", async () => {
 		assert.match(card, /- 已完成: 完成 A \/ 证据：abc/); // 单行化
 		assert.match(card, /- 下一步: 继续 B/);
 		const status = await call("coord_status", {});
+		assert.match(status.text, /项目规则 0 条/); // 模板示例 META-0000 不计入
 		assert.match(status.text, /HANDOFF open/);
 		assert.match(status.text, /META/);
 		const read = await call("coord_handoff", { action: "read" });
 		assert.match(read.text, /状态: open/);
+		await assert.rejects(
+			call("coord_handoff", { action: "consume" }, { agent: { id: "" } }),
+			/没有关联会话/,
+		);
 		const consumed = await call("coord_handoff", { action: "consume" });
 		assert.equal(consumed.status, "resumed");
 		assert.match((await call("coord_handoff", { action: "consume" })).text, /无需消化/);
 		assert.match((await call("coord_handoff", { action: "read" })).text, /状态: resumed/);
 		assert.match(await fsp.readFile(path.join(project, "todo.md"), "utf8"), /T-001 .*@session:0123abcd/);
+
+		// task 指向不存在的任务：不能假称重绑
+		await call("coord_handoff", { action: "write", task: "T-999", next: "n", verify: "v" });
+		const missingTask = await call("coord_handoff", { action: "consume" });
+		assert.match(missingTask.text, /不在 todo.md，未重绑/);
 	} finally {
 		await cleanup(dir);
 	}
@@ -334,7 +377,10 @@ test("coord_error 与 coord_meta：编号、校验、提升", async () => {
 		await assert.rejects(call("coord_meta", { action: "promote", rule: "META-999" }), /未找到匹配/);
 		const promoted = await call("coord_meta", { action: "promote", rule: "META-001" });
 		assert.match(promoted.text, /META-0001/);
+		const promotedAgain = await call("coord_meta", { action: "promote", rule: "META-001" });
+		assert.match(promotedAgain.text, /META-0001/);
 		const globalText = await fsp.readFile(path.join(process.env.AI_GLOBAL_DIR, "meta/distilled/meta-rules.md"), "utf8");
+		assert.equal((globalText.match(/### META-0001 /g) ?? []).length, 1, "重复 promote 不能重复写全局规则");
 		assert.match(globalText, /### META-0001 \[META-001\]/);
 		const projectText = await fsp.readFile(path.join(project, ".ai/errors/distilled/meta-rules.md"), "utf8");
 		assert.match(projectText, /- \*\*全局\*\*: META-0001/);
@@ -358,6 +404,7 @@ test("coord_recall 与 coord_arch", async () => {
 		const recall = await call("coord_recall", { query: "IMU 漂移" });
 		assert.match(recall.text, /ERR-001/);
 		assert.match(recall.text, /META-001/);
+		await assert.rejects(call("coord_recall", { query: "IMU", limit: "abc" }), /limit/);
 
 		// 无 src
 		const empty = await call("coord_arch", {});
@@ -372,6 +419,12 @@ test("coord_recall 与 coord_arch", async () => {
 		const ok = await call("coord_arch", {});
 		assert.equal(ok.ok, true);
 		assert.match(ok.text, /未发现反向依赖/);
+
+		// 外部裸包名（lodash/core）不能被误判为内部层
+		await fsp.writeFile(path.join(project, "src/shared/ext.js"), 'import x from "lodash/core";\nexport default x;\n');
+		const external = await call("coord_arch", {});
+		assert.equal(external.ok, true, external.text);
+		assert.match(external.text, /未发现反向依赖/);
 
 		// JS 相对 + 别名 + Python 相对
 		await fsp.writeFile(path.join(project, "src/shared/bad.js"), 'import a from "../core/engine.js";\nimport b from "@/core/engine.js";\nexport default a + b;\n');
@@ -400,7 +453,11 @@ test("coord_issue：本地 remote 检测、dry-run、认证错误", async () => 
 		const { call } = harness({ workingDir: project });
 		await call("coord_init", {});
 		await call("coord_todo", { action: "add", desc: "需要 issue 的任务" });
-		await assert.rejects(call("coord_issue", { action: "list" }), /git remote origin/);
+		const localList = await call("coord_issue", { action: "list" });
+		assert.match(localList.text, /remote=（未配置/);
+		await assert.rejects(call("coord_issue", { action: "sync" }), /git remote origin/);
+		await assert.rejects(call("coord_issue", { action: "bogus" }), /未知 action/);
+		await assert.rejects(call("coord_issue", { action: "view" }), /number/);
 
 		await run("git", ["init"], { cwd: project });
 		await run("git", ["remote", "add", "origin", "https://github.com/example/repo.git"], { cwd: project });
@@ -446,6 +503,11 @@ test("coord_agent：检索、建卡校验、升级、记忆、复核、reflect",
 		const hit = await call("coord_agent", { action: "query", task: "实现一个任务卡" });
 		assert.match(hit.text, /writer/);
 		await assert.rejects(call("coord_agent", { action: "query" }), /task/);
+		await assert.rejects(call("coord_agent", { action: "query", task: "x", limit: 0 }), /limit/);
+		await assert.rejects(call("coord_agent", { action: "query", task: "x", threshold: "abc" }), /threshold/);
+		for (const action of ["update", "reflect", "first_mission_done"]) {
+			await assert.rejects(call("coord_agent", { action, id: "../evil", task: "x" }), /id 非法/);
+		}
 
 		const invalid = [
 			{ id: "Bad_Id", type: "process-role", name: "x", summary: "y", taxonomy: ["process.implement"], keywords: ["a", "b", "c"], scope_do: ["d"], scope_dont: ["e"] },
@@ -473,6 +535,11 @@ test("coord_agent：检索、建卡校验、升级、记忆、复核、reflect",
 
 		const up = await call("coord_agent", { action: "update", id: "fpga-expert", keywords: ["fpga", "时序", "约束", "vivado"], note: "补工具词" });
 		assert.match(up.text, /v2/);
+
+		// 卡内 version 非数字：自升级必须给出有限版本号
+		const cardFile = path.join(process.env.AI_GLOBAL_DIR, "agents/pool/fpga-expert.md");
+		await fsp.writeFile(cardFile, (await fsp.readFile(cardFile, "utf8")).replace(/version: \d+/, "version: abc"), "utf8");
+		assert.match((await call("coord_agent", { action: "update", id: "fpga-expert", note: "修版本" })).text, /v1/);
 		const reflected = await call("coord_agent", { action: "reflect", id: "fpga-expert", task: "Vivado 综合资源优化" });
 		assert.match(reflected.text, /建议补充/);
 		assert.match(reflected.text, /vivado|资源|综合/);
@@ -480,10 +547,15 @@ test("coord_agent：检索、建卡校验、升级、记忆、复核、reflect",
 
 		const memory = await call("coord_agent", { action: "memory_add", owner: "fpga-expert", type: "pitfall", title: "时序约束要先读 XDC", content: "现象/根因/修复/预防", domains: ["fpga"], keywords: ["xdc", "时序"] });
 		assert.match(memory.text, /经验已写入/);
+		await assert.rejects(call("coord_agent", { action: "memory_add", owner: "fpga-expert", type: "bogus", title: "x" }), /未知记忆类型/);
+		await call("coord_agent", { action: "memory_add", owner: "fpga-expert", type: "pitfall", title: "时序约束要先读 XDC", content: "第二次" });
+		const memoryFiles = (await fsp.readdir(path.join(process.env.AI_GLOBAL_DIR, "agents/memory/fpga-expert"))).filter((name) => name.startsWith("pitfall_"));
+		assert.ok(memoryFiles.length >= 2, "同名记忆应追加序号而不是覆盖");
 		assert.match((await call("coord_agent", { action: "memory_list", owner: "fpga-expert" })).text, /XDC/);
 		assert.match((await call("coord_agent", { action: "memory_list" })).text, /fpga-expert/);
 		await assert.rejects(call("coord_agent", { action: "memory_add", owner: "Bad", title: "x" }), /owner 非法/);
 		assert.match((await call("coord_agent", { action: "first_mission_done", id: "fpga-expert" })).text, /done/);
+		assert.match((await call("coord_agent", { action: "first_mission_done", id: "fpga-expert" })).text, /已复核/);
 		const cardText = await fsp.readFile(path.join(process.env.AI_GLOBAL_DIR, "agents/pool/fpga-expert.md"), "utf8");
 		assert.match(cardText, /first_mission: "done"/);
 	} finally {
@@ -497,6 +569,9 @@ test("coord_dispatch：矩阵、JSON 派发计划、缺口", async () => {
 		const { call } = harness({ workingDir: project });
 		await call("coord_init", {});
 		assert.match((await call("coord_dispatch", {})).text, /没有待办任务/);
+		await assert.rejects(call("coord_dispatch", { stage: "s9" }), /未定义阶段/);
+		await assert.rejects(call("coord_dispatch", { meta_injection: "BAD" }), /meta_injection/);
+		await assert.rejects(call("coord_dispatch", { threshold: "abc" }), /threshold/);
 		await call("coord_todo", { action: "stage_add", id: "s1", title: "实现" });
 		await call("coord_todo", { action: "add", desc: "实现解析器", stage: "s1" });
 		await call("coord_todo", { action: "add", desc: "zzz qqq", stage: "s1" });
@@ -511,6 +586,8 @@ test("coord_dispatch：矩阵、JSON 派发计划、缺口", async () => {
 		assert.ok(json.tasks.some((task) => task.role === null));
 		const noRecord = await call("coord_dispatch", { stage: "s1", record: false });
 		assert.equal(noRecord.path, "");
+		const again = await call("coord_dispatch", { stage: "s1" });
+		assert.notEqual(again.path, result.path, "同秒派发不能覆盖上一份记录");
 	} finally {
 		await cleanup(dir);
 	}
@@ -557,6 +634,9 @@ test("全部 /coord 命令可执行", async () => {
 
 		await cmd("coord", "go");
 		await cmd("coord-go", "");
+		const noSessionGo = await cmd("coord", "go s0", { agent: {} });
+		assert.equal(noSessionGo.kind, "error");
+		assert.match(noSessionGo.text, /没有关联会话/);
 		await assert.rejects(async () => {
 			const result = await cmd("coord", "go s9");
 			if (result.kind === "error") throw new Error(result.text);
@@ -569,7 +649,10 @@ test("全部 /coord 命令可执行", async () => {
 
 		await cmd("coord", "issues");
 		await cmd("coord-issues", "list");
-		assert.equal((await cmd("coord", "unknown-sub")).kind, "success"); // 未知子命令回落到状态
+		const unknownSub = await cmd("coord", "unknown-sub");
+		assert.equal(unknownSub.kind, "error");
+		assert.match(unknownSub.text, /未知子命令/);
+		assert.equal((await cmd("coord", "")).kind, "success"); // 空参回落到状态
 
 		// /coord go s0 会写 @session 并 followup
 		const goResult = await cmd("coord", "go s0");

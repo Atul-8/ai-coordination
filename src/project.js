@@ -66,11 +66,6 @@ export function findCoordDir(startDir) {
 	return null;
 }
 
-/** 已激活项目根或 null */
-export function activatedRoot(cwd) {
-	return findCoordDir(cwd)?.root ?? null;
-}
-
 // ---------------------------------------------------------------------------
 // 沙箱策略 + 文件访问
 // ---------------------------------------------------------------------------
@@ -80,10 +75,15 @@ function assertWritable(policy, target) {
 	if (policy.mode === "read-only") {
 		throw new Error(`当前会话为只读模式，不能写入 ${target}。请切换权限后重试，或让用户手动执行。`);
 	}
-	if (policy.mode === "workspace-write" && policy.workspaceRoot) {
+	if (policy.mode === "workspace-write") {
+		if (!policy.workspaceRoot) throw new Error(`workspace-write 策略缺少 workspaceRoot，拒绝写入 ${target}（fail-closed）。`);
 		if (!L.isInside(policy.workspaceRoot, target)) {
 			throw new Error(`写入越界：${target} 不在工作区 ${policy.workspaceRoot} 内（当前为 workspace-write）。全局池写入需要 danger-full-access。`);
 		}
+		return;
+	}
+	if (policy.mode !== "danger-full-access") {
+		throw new Error(`未知沙箱模式 ${policy.mode}，拒绝写入 ${target}（fail-closed）。`);
 	}
 }
 
@@ -144,6 +144,10 @@ export function createIo(policy) {
 export async function initProject({ root, templates, issuesScript, policy }) {
 	const io = createIo(policy);
 	const projectRoot = path.resolve(root);
+	const rootKind = await io.kind(projectRoot);
+	if (rootKind === "file" || rootKind === "other") {
+		throw new Error(`项目根不是目录：${projectRoot}（当前是 ${rootKind}）。请传目录路径。`);
+	}
 	const created = [];
 	const skipped = [];
 	const warnings = [];
@@ -317,6 +321,9 @@ export async function loadTodo(startDir, policy) {
 		throw new Error(`coordination 未激活：${startDir} 及其上级没有 .ai/ 目录。先运行 coord_init 初始化项目。`);
 	}
 	const io = createIo(policy);
+	if (!(await io.exists(paths.todoPath))) {
+		throw new Error(`todo.md 缺失（.ai/ 存在但 ${paths.todoPath} 不在）。运行 coord_init 重建，或手工恢复后再操作。`);
+	}
 	const raw = (await io.read(paths.todoPath)) ?? "";
 	return { paths, file: L.parseTodo(raw), io };
 }
@@ -339,32 +346,37 @@ export async function savePlan({ startDir, stage, steps, acceptance, research, s
 	if (file.stages.length === 0) {
 		throw new Error("todo.md 尚无「阶段定义」。请先在 todo.md「阶段定义」小节登记阶段（如 `- s1: 阶段标题`）再保存计划。");
 	}
-	if (steps.length > 1) {
-		if (!Array.isArray(acceptance) || acceptance.length !== steps.length) {
-			throw new Error(`多步骤计划必须给 acceptance（与 steps 一一对应，${steps.length} 条）：问题分解 → 逐步验收 → 最后整合。`);
+	const targetStage = file.stages.find((candidate) => candidate.id === stage);
+	if (!targetStage) {
+		throw new Error(`未知阶段 ${stage}。现有：${file.stages.map((s) => s.id).join(", ") || "（无）"}。`);
+	}
+	const cleanSteps = (steps ?? []).map((step) => L.sanitizeOneLine(step)).filter(Boolean);
+	if (cleanSteps.length === 0) throw new Error("计划步骤为空：steps 每项必须是非空文本。");
+	const cleanAcceptance = Array.isArray(acceptance) && acceptance.length > 0 ? acceptance.map((item) => L.sanitizeOneLine(item)) : undefined;
+	if (cleanSteps.length > 1) {
+		if (!cleanAcceptance || cleanAcceptance.length !== cleanSteps.length) {
+			throw new Error(`多步骤计划必须给 acceptance（与 steps 一一对应，${cleanSteps.length} 条）：问题分解 → 逐步验收 → 最后整合。`);
 		}
-	} else if (acceptance && acceptance.length !== steps.length) {
-		throw new Error(`acceptance 数量（${acceptance.length}）必须与 steps（${steps.length}）一一对应。`);
+	} else if (cleanAcceptance && cleanAcceptance.length !== cleanSteps.length) {
+		throw new Error(`acceptance 数量（${cleanAcceptance.length}）必须与 steps（${cleanSteps.length}）一一对应。`);
 	}
 
 	// 研究门禁：先记录外部方案检索，或显式说明为什么不需要（纯文档/无实现）
 	let researchRef = null;
 	if (research) {
+		const matched = String(research).match(/RESEARCH-(\d+)/i);
+		const needle = matched ? `RESEARCH-${matched[1].padStart(3, "0")}` : String(research).trim();
 		const files = await io.list(path.join(paths.aiDir, "research"));
-		const match = files.find((name) => name.startsWith(String(research)) && name.endsWith(".md"));
+		const match = files.find((name) => name.toUpperCase().startsWith(needle.toUpperCase()) && name.endsWith(".md"));
 		if (!match) throw new Error(`找不到研究记录 ${research}（.ai/research/）。先 coord_research，或检查编号。`);
 		researchRef = `.ai/research/${match}`;
 	} else if (!skipResearch?.trim()) {
 		throw new Error("计划落盘前先记录外部方案检索：coord_research {topic, sources, decision}；纯文档/无实现任务可显式传 skip_research:'原因'。不要闭门造车。");
 	}
-	const targetStage = file.stages.find((candidate) => candidate.id === stage);
-	if (!targetStage) {
-		throw new Error(`未知阶段 ${stage}。现有：${file.stages.map((s) => s.id).join(", ") || "（无）"}。`);
-	}
 
 	const planNames = await io.list(paths.plansDir);
 	const planNo = L.nextPlanNo(planNames);
-	const slug = L.slugify(steps[0] ?? title ?? "plan");
+	const slug = L.slugify(cleanSteps[0] ?? title ?? "plan");
 	const planName = `PLAN-${String(planNo).padStart(3, "0")}-${slug}.md`;
 	const planAbs = path.join(paths.plansDir, planName);
 	const planRel = `docs/plans/${planName}`;
@@ -373,8 +385,8 @@ export async function savePlan({ startDir, stage, steps, acceptance, research, s
 		planNo,
 		stageId: stage,
 		stageTitle: title?.trim() || targetStage.title,
-		steps,
-		acceptance,
+		steps: cleanSteps,
+		acceptance: cleanAcceptance,
 		research: researchRef,
 		notes,
 		sessionId,
@@ -383,14 +395,14 @@ export async function savePlan({ startDir, stage, steps, acceptance, research, s
 
 	L.setStagePlan(file, stage, planRel);
 	const added = [];
-	for (const step of steps) {
-		const id = L.nextItemId(file.items);
+	for (const step of cleanSteps) {
+		const id = L.nextItemId(file.items, file.lines);
 		L.appendItem(file, { id, done: false, doing: false, stage, desc: step });
 		added.push(id);
 	}
 	await saveTodo(paths, file, io);
 
-	return { planNo, planName, planRel, stage, added, total: steps.length };
+	return { planNo, planName, planRel, stage, added, total: cleanSteps.length };
 }
 
 // ---------------------------------------------------------------------------
@@ -471,6 +483,7 @@ export async function consumeHandoff({ startDir, sessionId, policy }) {
 	if (!found) throw new Error("没有交接卡（.ai/HANDOFF.md 不存在）。");
 	const card = found.card;
 	if (card.status !== "open") return { card, skipped: `卡片状态为 ${card.status}，无需消化` };
+	if (!sessionId) throw new Error("当前工具调用没有关联会话，无法消化交接卡（接手方需要 session）。");
 
 	const short = L.shortSessionId(sessionId);
 	const taskId = String(card.task ?? "").match(/T-\d+/)?.[0];
@@ -480,12 +493,17 @@ export async function consumeHandoff({ startDir, sessionId, policy }) {
 		return line;
 	});
 	const { paths, file, io } = await loadTodo(startDir, policy);
-	if (taskId && file.items.some((item) => item.id === taskId)) {
-		L.updateItem(file, taskId, { session: short });
-		await saveTodo(paths, file, io);
+	let taskFound = false;
+	if (taskId) {
+		const item = file.items.find((candidate) => candidate.id.toUpperCase() === taskId.toUpperCase());
+		if (item) {
+			L.updateItem(file, item.id, { session: short });
+			await saveTodo(paths, file, io);
+			taskFound = true;
+		}
 	}
 	await io.write(paths.handoffPath, lines.join("\n"));
-	return { card, taskId, session: short, path: paths.handoffPath };
+	return { card, taskId, taskFound, session: short, path: paths.handoffPath };
 }
 
 // ---------------------------------------------------------------------------
@@ -564,7 +582,7 @@ export function listMetaRules(text) {
 		const header = (firstLineEnd < 0 ? entry : entry.slice(0, firstLineEnd)).trim();
 		const body = firstLineEnd < 0 ? "" : entry.slice(firstLineEnd + 1);
 		const m = header.match(/^(\d+)\s*(?:\[[^\]]+\])?\s*(.*)$/);
-		if (!m) continue;
+		if (!m || Number(m[1]) === 0) continue; // META-0000 是模板示例，不算真规则
 		rules.push({ no: Number(m[1]), id: `META-${m[1]}`, title: m[2].trim(), body: body.trim() });
 	}
 	return rules;
@@ -598,16 +616,21 @@ export async function promoteMeta({ startDir, rule, policy }) {
 	if (picked.length > 1) throw new Error(`匹配到多条规则（${picked.map((entry) => entry.id).join(", ")}），请用 META-NNN 精确指定。`);
 
 	const target = picked[0];
-	const globalText = (await io.read(globalMetaRulesPath())) ?? "";
-	const globalNo = L.lastMetaNo(globalText) + 1;
-	const globalId = `META-${String(globalNo).padStart(4, "0")}`;
 	const projectName = path.basename(paths.root);
-	const block = `### ${globalId} [${target.id}] ${target.title}\n- **来源**: ${projectName} ${target.id}\n- **反例**: （见该项目 ${target.id}）\n`;
-	await io.write(globalMetaRulesPath(), `${globalText.trimEnd()}${globalText.trim() ? "\n\n" : ""}${block}`);
+	const globalText = (await io.read(globalMetaRulesPath())) ?? "";
+	const existing = listMetaRules(globalText).find((entry) => entry.body.includes(`- **来源**: ${projectName} ${target.id}`));
+	let globalId = existing?.id;
+	let deduped = Boolean(existing);
+	if (!globalId) {
+		const globalNo = L.lastMetaNo(globalText) + 1;
+		globalId = `META-${String(globalNo).padStart(4, "0")}`;
+		const block = `### ${globalId} [${target.id}] ${target.title}\n- **来源**: ${projectName} ${target.id}\n- **反例**: （见该项目 ${target.id}）\n`;
+		await io.write(globalMetaRulesPath(), `${globalText.trimEnd()}${globalText.trim() ? "\n\n" : ""}${block}`);
+	}
 
-	// 回写项目规则：末尾追加全局关联（避免重复追加）
+	// 回写项目规则：已有任何「全局」关联则跳过，避免重复追加
 	const marker = `- **全局**: ${globalId}`;
-	if (!projectText.includes(marker)) {
+	if (!projectText.includes(marker) && !/^- \*\*全局\*\*: META-/m.test(projectText)) {
 		const updated = projectText.replace(
 			new RegExp(`(###\\s+${target.id}[^\\n]*\\n(?:[^\\n]*\\n)*?)(?=\\n###\\s+META-|$)`),
 			(match) => `${match.trimEnd()}\n${marker}\n`,
@@ -615,19 +638,5 @@ export async function promoteMeta({ startDir, rule, policy }) {
 		await io.write(paths.metaRulesPath, updated);
 	}
 
-	return { projectRule: target.id, globalRule: globalId, globalPath: globalMetaRulesPath() };
-}
-
-// ---------------------------------------------------------------------------
-// git 取证
-// ---------------------------------------------------------------------------
-
-export async function gitSnapshot(root) {
-	try {
-		const status = await run("git", ["-C", root, "status", "--short"], { encoding: "utf8" });
-		const log = await run("git", ["-C", root, "log", "--oneline", "-5"], { encoding: "utf8" });
-		return { status: status.stdout.trim(), log: log.stdout.trim() };
-	} catch {
-		return null;
-	}
+	return { projectRule: target.id, globalRule: globalId, globalPath: globalMetaRulesPath(), deduped };
 }

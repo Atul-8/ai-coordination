@@ -7,7 +7,7 @@ whenToUse: 项目内有 .ai/ 目录；或用户要求初始化 coordination、�
 # agi-coordination — 七层分治纪律（DSH 原生版）
 
 本技能是 pi-ai-coordination 的 DSH 重构：宿主会话日志承担上下文，todo.md 承担任务事实，
-协调能力由 8 个 `coord_*` 工具与 `/coord-*` 命令提供。激活条件：项目根存在 `.ai/`（`findCoordDir` 向上查找）。
+协调能力由 13 个 `coord_*` 工具与 `/coord-*` 命令提供。激活条件：项目根存在 `.ai/`（`findCoordDir` 向上查找）。
 
 ## 项目初始化（coord_init）
 

@@ -1,5 +1,5 @@
 /**
- * tools.js — 模型面向的 coordination 工具（8 个）
+ * tools.js — 模型面向的 coordination 工具（13 个）
  *
  * 设计要点：
  *   - 工具优先读「最近上级 .ai」，root 参数可显式指向项目根
@@ -73,6 +73,21 @@ function registerTool(ctx, definition) {
 	const compiled =
 		parameters && parameters.type === "object" && parameters.properties ? parameters : toJsonSchema(parameters);
 	ctx.tools.register({ ...definition, parameters: compiled });
+}
+
+/** 非负/正整数参数校验（未提供时返回 fallback）。 */
+function intArg(value, name, { min = 1, fallback } = {}) {
+	if (value === undefined || value === null || value === "") return fallback;
+	const number = Number(value);
+	if (!Number.isInteger(number) || number < min) throw new Error(`${name} 必须是 >=${min} 的整数，收到 ${JSON.stringify(value)}`);
+	return number;
+}
+
+function numberArg(value, name, { min = 0, fallback } = {}) {
+	if (value === undefined || value === null || value === "") return fallback;
+	const number = Number(value);
+	if (!Number.isFinite(number) || number < min) throw new Error(`${name} 必须是 >=${min} 的数字，收到 ${JSON.stringify(value)}`);
+	return number;
 }
 
 // ---------------------------------------------------------------------------
@@ -196,10 +211,12 @@ export function registerCoordinationTools(ctx, env) {
 			if (action === "stage_add") {
 				if (!args.id || !args.title) throw new Error("stage_add 需要 id（如 s1）和 title。");
 				if (!/^s\d+$/.test(args.id)) throw new Error(`阶段 id 必须形如 s1，收到 ${args.id}`);
+				const title = String(args.title).trim();
+				if (!title) throw new Error("stage_add 的 title 不能为空。");
 				if (file.stages.some((stage) => stage.id === args.id)) throw new Error(`阶段 ${args.id} 已存在。`);
-				addStage(file, args.id, String(args.title).trim());
+				addStage(file, args.id, title);
 				await saveTodo(paths, file, io);
-				return { action, ok: true, id: args.id, text: `已登记阶段 ${args.id}: ${args.title}` };
+				return { action, ok: true, id: args.id, text: `已登记阶段 ${args.id}: ${title}` };
 			}
 
 			if (action === "add") {
@@ -208,10 +225,11 @@ export function registerCoordinationTools(ctx, env) {
 				if (!file.stages.some((item) => item.id === stage)) {
 					throw new Error(`未知阶段 ${stage}。现有：${file.stages.map((item) => item.id).join(", ") || "（无）"}。先用 coord_todo {action:'stage_add'} 登记，或改 todo.md「阶段定义」。`);
 				}
-				const id = L.nextItemId(file.items);
-				L.appendItem(file, { id, done: false, doing: false, stage, desc: String(args.desc).trim() });
+				const desc = L.sanitizeTodoDesc(args.desc);
+				const id = L.nextItemId(file.items, file.lines);
+				L.appendItem(file, { id, done: false, doing: false, stage, desc });
 				await saveTodo(paths, file, io);
-				return { action, ok: true, id, text: `已添加 ${id} [stage:${stage}] ${args.desc}` };
+				return { action, ok: true, id, text: `已添加 ${id} [stage:${stage}] ${desc}` };
 			}
 
 			if (action === "start" || action === "done") {
@@ -234,10 +252,12 @@ export function registerCoordinationTools(ctx, env) {
 
 			if (action === "set_issue") {
 				if (!args.id || args.issue === undefined) throw new Error("set_issue 需要 id 和 issue。");
-				const item = L.updateItem(file, args.id, { issue: Number(args.issue) });
+				const issue = Number(args.issue);
+				if (!Number.isInteger(issue) || issue < 1) throw new Error(`issue 必须是 >=1 的整数，收到 ${JSON.stringify(args.issue)}`);
+				const item = L.updateItem(file, args.id, { issue });
 				if (!item) throw new Error(`未找到任务 ${args.id}。`);
 				await saveTodo(paths, file, io);
-				return { action, ok: true, id: args.id, text: `${args.id} ↔ issue #${args.issue}` };
+				return { action, ok: true, id: item.id, text: `${item.id} ↔ issue #${issue}` };
 			}
 
 			throw new Error(`未知 action ${action}。可选：list | add | start | done | link | set_issue | stage_add`);
@@ -290,12 +310,14 @@ export function registerCoordinationTools(ctx, env) {
 			render: (_args, value) => text(value.text),
 		},
 		async execute(args, exec) {
+			const stage = String(args.stage ?? "").trim();
+			if (!stage) throw new Error("coord_plan_save 需要 stage（阶段 id，如 s1）。");
 			const startDir = await resolveRoot(args, exec);
 			const steps = Array.isArray(args.steps) && args.steps.length > 0 ? args.steps.map(String) : L.extractSteps(args.plan);
 			if (steps.length === 0) throw new Error("没有可落盘的步骤：传 steps 数组，或传带编号列表的 plan。");
 			const result = await savePlan({
 				startDir,
-				stage: String(args.stage),
+				stage,
 				steps,
 				acceptance: args.acceptance,
 				research: args.research,
@@ -363,10 +385,11 @@ export function registerCoordinationTools(ctx, env) {
 			if (action === "consume") {
 				const result = await consumeHandoff({ startDir, sessionId: sessionIdOf(exec), policy });
 				if (result.skipped) return { ok: true, status: result.card.status, text: result.skipped };
+				const taskText = result.taskId ? (result.taskFound ? `，${result.taskId} 已重绑本会话` : `；任务 ${result.taskId} 不在 todo.md，未重绑`) : "";
 				return {
 					ok: true,
 					status: "resumed",
-					text: `交接卡已消化：状态 resumed，接手方 dsh/${result.session}${result.taskId ? `，${result.taskId} 已重绑本会话` : ""}。\n继续按卡片「下一步」执行；G2 纪律照常。`,
+					text: `交接卡已消化：状态 resumed，接手方 dsh/${result.session}${taskText}。\n继续按卡片「下一步」执行；G2 纪律照常。`,
 				};
 			}
 			throw new Error(`未知 action ${action}。可选：write | read | consume`);
@@ -538,8 +561,10 @@ export function registerCoordinationTools(ctx, env) {
 
 			if (action === "query") {
 				if (!args.task?.trim()) throw new Error("query 需要 task（任务描述）。");
-				const result = await queryAgentPool(io, args.task, { limit: Number(args.limit) || 5, threshold: args.threshold === undefined ? 3 : Number(args.threshold) });
-				return { ok: true, text: renderQuery(result, Number(args.limit) || 5) };
+				const limit = intArg(args.limit, "limit", { fallback: 5 });
+				const threshold = numberArg(args.threshold, "threshold", { fallback: 3 });
+				const result = await queryAgentPool(io, args.task, { limit, threshold });
+				return { ok: true, text: renderQuery(result, limit) };
 			}
 
 			if (action === "list") {
@@ -592,7 +617,7 @@ export function registerCoordinationTools(ctx, env) {
 						`提示词成长建议 · ${result.id}`,
 						`- 现有 keywords：${existing.join(" / ") || "（无）"}`,
 						`- 建议补充：${result.proposed.join(" / ") || "（本次任务没有新词，暂不升级）"}`,
-						"（分词候选可能含碎片，update 前人工筛掉噪声词。）",,
+						"（分词候选可能含碎片，update 前人工筛掉噪声词。）",
 						result.proposed.length
 							? `确认后：coord_agent {action:'update', id:'${result.id}', keywords:[${[...existing, ...result.proposed].map((word) => `'${word}'`).join(", ")}], note:'reflect: 补检索词'}`
 							: "无需升级；升级必须基于经验证据，不要凭感觉改卡。",
@@ -612,7 +637,7 @@ export function registerCoordinationTools(ctx, env) {
 					domains: args.domains,
 					keywords: args.keywords,
 				});
-				return { ok: true, text: `经验已写入 ${result.file}（${result.type}）\n索引：${paths.memoryDir}\\${owner}\\MEMORY.md` };
+				return { ok: true, text: `经验已写入 ${result.file}（${result.type}）\n索引：${path.join(paths.memoryDir, owner, "MEMORY.md")}` };
 			}
 
 			if (action === "memory_list") {
@@ -631,7 +656,10 @@ export function registerCoordinationTools(ctx, env) {
 			if (action === "first_mission_done") {
 				if (!args.id) throw new Error("first_mission_done 需要 id。");
 				const result = await completeFirstMission(io, String(args.id));
-				return { ok: true, text: `${result.id} first_mission → done（首任务复核完成）\n路径：${result.path}` };
+				return {
+					ok: true,
+					text: result.already ? `${result.id} 已复核过（first_mission=done），跳过。` : `${result.id} first_mission → done（首任务复核完成）\n路径：${result.path}`,
+				};
 			}
 
 			throw new Error(`未知 action ${action}。可选：query | list | register | update | memory_add | memory_list | first_mission_done`);
@@ -662,10 +690,10 @@ export function registerCoordinationTools(ctx, env) {
 				io,
 				todoFile: file,
 				paths,
-				stage: args.stage,
-				taskIds: args.tasks,
+				stage: args.stage ? String(args.stage).trim() : undefined,
+				taskIds: Array.isArray(args.tasks) ? args.tasks.map(String) : undefined,
 				record: args.record !== false,
-				threshold: args.threshold === undefined ? 3 : Number(args.threshold),
+				threshold: numberArg(args.threshold, "threshold", { fallback: 3 }),
 				metaInjection: args.meta_injection ? String(args.meta_injection) : "partial",
 			});
 			return {
@@ -698,7 +726,7 @@ export function registerCoordinationTools(ctx, env) {
 			const result = await recallExperience({
 				startDir,
 				query: String(args.query),
-				limit: args.limit === undefined ? 5 : Number(args.limit),
+				limit: intArg(args.limit, "limit", { fallback: 5 }),
 				policy: policyOf(ctx, exec),
 			});
 			return { ok: true, text: renderRecall(result) };

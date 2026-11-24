@@ -27,8 +27,13 @@ export async function detectRemote(root) {
 }
 
 async function gh(args, cwd) {
-	const { stdout } = await run("gh", args, { cwd, encoding: "utf8" });
-	return stdout.trim();
+	try {
+		const { stdout } = await run("gh", args, { cwd, encoding: "utf8" });
+		return stdout.trim();
+	} catch (error) {
+		if (error?.code === "ENOENT") throw new Error("gh CLI 不可用：请先安装 GitHub CLI 并 `gh auth login`。");
+		throw new Error(`gh 调用失败：${String(error?.stderr ?? error?.message ?? error).trim()}`);
+	}
 }
 
 function giteeToken() {
@@ -38,10 +43,12 @@ function giteeToken() {
 }
 
 async function giteeApi(remote, method, route, body) {
-	const response = await fetch(`https://gitee.com/api/v5/repos/${remote.owner}/${remote.repo}${route}`, {
+	const token = giteeToken();
+	const suffix = method === "GET" ? `${route}${route.includes("?") ? "&" : "?"}access_token=${encodeURIComponent(token)}` : route;
+	const response = await fetch(`https://gitee.com/api/v5/repos/${remote.owner}/${remote.repo}${suffix}`, {
 		method,
 		headers: { "Content-Type": "application/json" },
-		body: body ? JSON.stringify({ access_token: giteeToken(), ...body }) : undefined,
+		body: body ? JSON.stringify({ access_token: token, ...body }) : undefined,
 	});
 	if (!response.ok) {
 		throw new Error(`Gitee API ${method} ${route} → ${response.status} ${await response.text().catch(() => "")}`);
@@ -101,10 +108,26 @@ async function getIssue(remote, cwd, number) {
  * @param {{startDir:string, action:string, stage?:string, dryRun?:boolean, number?:number, policy:any}} input
  */
 export async function runIssueTool({ startDir, action, stage, dryRun, number, policy }) {
+	const ACTIONS = ["sync", "list", "close-done", "view", "close", "open"];
+	if (!ACTIONS.includes(action)) throw new Error(`未知 action ${action}。可选：${ACTIONS.join(" | ")}`);
+	if (["view", "close", "open"].includes(action)) {
+		if (!Number.isInteger(number) || number < 1) throw new Error(`${action} 需要 number（>=1 的整数）。`);
+	}
 	const { paths, file, io } = await loadTodo(startDir, policy);
 	const cwd = paths.root;
-	const remote = await detectRemote(cwd);
-	const head = `root=${cwd} host=${remote.host} repo=${remote.owner}/${remote.repo}`;
+	let remote = null;
+	if (action === "list") {
+		try {
+			remote = await detectRemote(cwd);
+		} catch {
+			remote = null; // list 是本地视图，不应该被 remote 缺失阻断
+		}
+	} else {
+		remote = await detectRemote(cwd);
+	}
+	const head = remote
+		? `root=${cwd} host=${remote.host} repo=${remote.owner}/${remote.repo}`
+		: `root=${cwd} remote=（未配置；list 仍可用）`;
 	const stageFilter = (item) => !stage || item.stage === stage;
 
 	if (action === "list" || action === "sync") {
@@ -114,7 +137,7 @@ export async function runIssueTool({ startDir, action, stage, dryRun, number, po
 				const mark = item.done ? "x" : item.doing ? "~" : " ";
 				return `  [${mark}] ${item.id} [${item.stage}] ${item.desc}${item.issue ? `  → #${item.issue}` : "  → （未建 issue）"}`;
 			});
-			return { host: remote.host, repo: `${remote.owner}/${remote.repo}`, text: [head, ...(lines.length ? lines : ["（无匹配任务）"])].join("\n") };
+			return { host: remote?.host ?? "", repo: remote ? `${remote.owner}/${remote.repo}` : "", text: [head, ...(lines.length ? lines : ["（无匹配任务）"])].join("\n") };
 		}
 
 		const targets = file.items.filter((item) => !item.done && item.issue === undefined && stageFilter(item));
@@ -130,6 +153,7 @@ export async function runIssueTool({ startDir, action, stage, dryRun, number, po
 			const created = await createIssue(remote, cwd, file, item);
 			L.updateItem(file, item.id, { issue: created });
 			item.issue = created;
+			await saveTodo(paths, file, io); // 逐个持久化：中途失败不丢已创建编号
 			lines.push(`${item.id} → #${created} 已创建并回写 todo.md`);
 		}
 		if (!dryRun) await saveTodo(paths, file, io);

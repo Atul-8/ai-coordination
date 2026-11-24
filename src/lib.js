@@ -48,12 +48,15 @@ export function parseTodo(raw) {
 	lines.forEach((line, i) => {
 		const header = line.match(/^##\s+(.*)$/);
 		if (header) {
-			section = header[1];
+			section = header[1].trim();
 			if (section.includes("任务")) taskSectionStart = i;
 			return;
 		}
 
-		if (section.includes("阶段")) {
+		const isTaskSection = section === "任务" || (section.includes("任务") && !section.includes("阶段"));
+		const isStageSection = section.includes("阶段") && !section.includes("任务");
+
+		if (isStageSection) {
 			const m = line.match(STAGE_RE);
 			if (m) {
 				const plan = line.match(/<!--\s*plan:([^>]*?)\s*-->/)?.[1]?.trim();
@@ -62,14 +65,15 @@ export function parseTodo(raw) {
 			return;
 		}
 
-		if (section.includes("任务")) {
+		if (isTaskSection) {
 			const m = line.match(ITEM_RE);
 			if (!m) return;
 			let rest = m[4].trim();
-			const issue = rest.match(/\(#(\d+)\)/);
-			if (issue) rest = rest.replace(/\(#\d+\)/, "").trim();
-			const session = rest.match(/@session:([0-9a-zA-Z]+)/);
-			if (session) rest = rest.replace(/@session:[0-9a-zA-Z]+/, "").trim();
+			// 元数据只认行尾，避免描述里的 "(#9)" / "@session:xxx" 被当成关联
+			const session = rest.match(/\s+@session:([0-9a-zA-Z]+)\s*$/);
+			if (session) rest = rest.slice(0, session.index).trim();
+			const issue = rest.match(/\s+\(#(\d+)\)\s*$/);
+			if (issue) rest = rest.slice(0, issue.index).trim();
 			items.push({
 				id: m[2],
 				done: m[1] === "x",
@@ -86,6 +90,19 @@ export function parseTodo(raw) {
 	return { lines, stages, items, taskSectionStart };
 }
 
+/** 任务描述/步骤一律压成单行，避免破坏 todo.md 行格式。 */
+export function sanitizeOneLine(value) {
+	return String(value ?? "").replace(/\r?\n+/g, " / ").replace(/\s+/g, " ").trim();
+}
+
+/** 任务描述额外中和元数据标记，防止 desc 伪造 (#N) / @session。 */
+export function sanitizeTodoDesc(value) {
+	return sanitizeOneLine(value)
+		.replace(/@session:/gi, "＠session:")
+		.replace(/\(#(\d+)\)/g, "（#$1）")
+		.replace(/\(#/g, "（#");
+}
+
 function cleanTitle(value) {
 	return String(value).replace(/<!--.*?-->/g, "").trim();
 }
@@ -93,14 +110,20 @@ function cleanTitle(value) {
 /** 规范化生成一条任务行 */
 export function formatItemLine(item) {
 	const mark = item.done ? "x" : item.doing ? "~" : " ";
-	let line = `- [${mark}] ${item.id} [stage:${item.stage}] ${item.desc}`;
+	let line = `- [${mark}] ${item.id} [stage:${item.stage}] ${sanitizeTodoDesc(item.desc)}`;
 	if (item.issue !== undefined) line += ` (#${item.issue})`;
 	if (item.session) line += ` @session:${item.session}`;
 	return line;
 }
 
-export function nextItemId(items) {
-	const max = items.reduce((acc, item) => Math.max(acc, Number(String(item.id).replace("T-", "")) || 0), 0);
+export function nextItemId(items, lines = []) {
+	let max = 0;
+	for (const item of items ?? []) max = Math.max(max, Number(String(item.id).replace("T-", "")) || 0);
+	// 也扫描原始任务行（含手工改坏、缺 stage 的行）：不能导致编号复用
+	for (const line of lines ?? []) {
+		const match = String(line).match(/^-\s*\[[ x~]\]\s*(T-\d+)\b/);
+		if (match) max = Math.max(max, Number(match[1].replace("T-", "")) || 0);
+	}
 	return `T-${String(max + 1).padStart(3, "0")}`;
 }
 
@@ -134,7 +157,8 @@ export function appendItem(file, item) {
 
 /** 原地更新一条任务行（done / doing / issue / session / desc） */
 export function updateItem(file, id, patch) {
-	const item = file.items.find((candidate) => candidate.id === id);
+	const wanted = String(id ?? "").toUpperCase();
+	const item = file.items.find((candidate) => String(candidate.id).toUpperCase() === wanted);
 	if (!item) return null;
 	Object.assign(item, patch);
 	file.lines[item.lineIndex] = formatItemLine(item);
@@ -231,16 +255,21 @@ export function nextErrNo(names) {
 	return max + 1;
 }
 
-/** meta-rules.md 中 META 规则条数 */
+/** meta-rules.md 中 META 规则条数（META-0000 是模板示例，不计入） */
 export function countMetaRules(text) {
-	return (String(text ?? "").match(/^###\s+META-/gm) ?? []).length;
+	let count = 0;
+	for (const match of String(text ?? "").matchAll(/^###\s+META-(\d+)/gm)) {
+		if (Number(match[1]) !== 0) count++;
+	}
+	return count;
 }
 
-/** meta-rules.md 中最后一个 META 编号 */
+/** meta-rules.md 中最后一个 META 编号（忽略示例 META-0000） */
 export function lastMetaNo(text) {
 	let max = 0;
 	for (const m of String(text ?? "").matchAll(/^###\s+META-(\d+)/gm)) {
-		max = Math.max(max, Number(m[1]));
+		const value = Number(m[1]);
+		if (value !== 0) max = Math.max(max, value);
 	}
 	return max;
 }
@@ -321,7 +350,10 @@ export function applyAgentsBlock(existing, block) {
 	for (const [host, pair] of Object.entries(AGENTS_MARKERS)) {
 		const beginIdx = existing.indexOf(pair.begin);
 		const endIdx = existing.indexOf(pair.end);
-		if (beginIdx < 0 || endIdx < 0) continue;
+		if (beginIdx < 0 && endIdx < 0) continue;
+		if (beginIdx < 0 || endIdx < 0 || endIdx < beginIdx) {
+			throw new Error(`AGENTS.md 的 ${host} 插桩标记不完整（BEGIN/END 不成对），拒绝改写；请先手工修复标记。`);
+		}
 		const before = existing.slice(0, beginIdx);
 		const tail = existing.slice(endIdx + pair.end.length).replace(/^\r?\n+/, "");
 		const content = `${before}${wrapped}${tail ? `\n${tail}` : ""}`;

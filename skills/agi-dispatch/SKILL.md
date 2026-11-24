@@ -14,7 +14,7 @@ whenToUse: 任务跨多个阶段或文件域；需要 writer→reviewer 串行�
 | 子任务需要本会话上下文（续写、复核本次改动） | `subagent_fork` |
 | 多阶段 / 多文件 fan-out，阶段内串行 | `workflow` + `pipeline`（无屏障；每项独立跑完所有 stage） |
 | 多路并行且后一步需要全部结果 | `workflow` + `parallel`（屏障，尽量少用） |
-| 需要共享任务 DAG、跨 agent 认领 | `team_task_create / team_task_list / team_task_update` |
+| 需要共享任务 DAG、跨 agent 认领 | `team_task_list / team_task_get / team_task_update`（update 是 CAS，先 get 拿 revision） |
 | 生成派发矩阵 / 检索角色卡 | `coord_dispatch`（矩阵+落盘）/ `coord_agent query` |
 
 ## 派发前：检索 → 矩阵 → 任务卡
@@ -47,7 +47,7 @@ whenToUse: 任务跨多个阶段或文件域；需要 writer→reviewer 串行�
 
 - 可用：`agent(prompt, opts?)`、`pipeline(items, ...stages)`、`parallel(thunks)`、`phase(title)`、`log(msg)`、`args`。
 - `agent` 返回最终文本；带 `opts.schema` 时返回校验后的对象；失败为 `null`，要 `.filter(Boolean)`。
-- 可选 `provider`/`model`/`reasoningEffort` 覆盖路由；不要猜测不可用的模型。
+- 可选 `provider`/`model` 覆盖路由（`reasoningEffort` 是 subagent 工具的参数，不是 workflow 的）；不要猜测不可用的模型。
 - 不要写文件、网络、定时器逻辑——脚本只做编排，实际工作由 agent 完成。
 - 端到端返回 JSON 可序列化结果；PM 读取后统一验收。
 

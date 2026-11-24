@@ -62,6 +62,8 @@ function resolveImport(spec, file, root) {
 		}
 		return layerOf(path.join(root, value.replace(/\./g, "/")), root);
 	}
+	const internalAlias = value.startsWith("@/") || value.startsWith("~/") || value.startsWith("src/");
+	if (!internalAlias && !value.startsWith(".")) return null; // 裸包名（lodash/core 等）一律视为外部依赖
 	if (value.startsWith("@/") || value.startsWith("~/")) value = value.slice(2);
 	if (value.startsWith("src/")) value = value.slice(4);
 	if (value.startsWith(".")) {
@@ -121,7 +123,7 @@ export async function checkArchitecture({ root, io }) {
 	const layerText = LAYERS.map((layer) => `${layer.id} ${counts[layer.id]}`).join(" · ");
 	const lines = [
 		`架构检查：${root}`,
-		`层文件：${layerText}`,
+		`层文件：${layerText}${files.length >= 800 ? "（已达扫描上限 800，结果可能不完整）" : ""}`,
 		"依赖方向：presentation → interface → core → shared（禁止反向 / 跨层直插）",
 		"",
 		violations.length === 0 ? "✓ 未发现反向依赖。" : `✗ ${violations.length} 处反向依赖：`,

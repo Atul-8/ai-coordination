@@ -26,6 +26,15 @@ export function poolPaths() {
 	};
 }
 
+/** 卡片文件路径：id 必须是 kebab-case，禁止路径分隔符/穿越。 */
+function cardPath(id) {
+	const safe = String(id ?? "").trim();
+	if (!/^[a-z0-9][a-z0-9-]*$/.test(safe)) {
+		throw new Error(`卡片 id 非法（kebab-case，仅小写字母/数字/连字符）：${safe}`);
+	}
+	return path.join(poolPaths().poolDir, `${safe}.md`);
+}
+
 async function loadTaxonomy(io, paths) {
 	const raw = (await io.read(paths.taxonomyPath)) ?? "";
 	return P.parseTaxonomy(raw);
@@ -108,10 +117,10 @@ export function renderQuery(result, limit = 5) {
 		`分词：${result.tokens.join(" ")}`,
 		"",
 		`▶ 推荐卡（top ${Math.min(limit, result.cards.length)}，threshold=${result.threshold}）`,
-		...(result.cards.length ? result.cards.map((card) => `  ${String(card.score).padStart(4)}  ${card.id}（${card.type}）— ${card.summary}`) : ["  （池为空）"]),
+		...(result.cards.length ? result.cards.map((card) => `  ${card.score.toFixed(1).padStart(6)}  ${card.id}（${card.type}）— ${card.summary}`) : ["  （池为空）"]),
 		"",
 		"▶ 相关记忆",
-		...(result.memory.length ? result.memory.map((entry) => `  ${String(entry.score).padStart(4)}  [${entry.owner}] ${entry.id} — ${entry.summary ?? ""}`) : ["  （无相关记忆命中）"]),
+		...(result.memory.length ? result.memory.map((entry) => `  ${entry.score.toFixed(1).padStart(6)}  [${entry.owner}] ${entry.id} — ${entry.summary ?? ""}`) : ["  （无相关记忆命中）"]),
 	];
 	if (result.suggestCreate) {
 		lines.push("", `⚠ 缺口：最高分 ${result.topScore} < 阈值 ${result.threshold} → 走建卡协议（coord_agent register），禁万金油卡。`);
@@ -188,7 +197,7 @@ export async function registerAgentCard(io, input) {
 /** 自升级：只改自己的 keywords / scope / summary；version+1 并追加记录。 */
 export async function updateAgentCard(io, id, patch) {
 	const paths = poolPaths();
-	const file = path.join(paths.poolDir, `${id}.md`);
+	const file = cardPath(id);
 	const raw = await io.read(file);
 	if (!raw) throw new Error(`卡不存在：${id}（建卡用 coord_agent register）`);
 	const frontMatter = P.parseFrontMatter(raw);
@@ -201,7 +210,8 @@ export async function updateAgentCard(io, id, patch) {
 	if (patch.scope?.dont?.length) card.scope = { ...(card.scope ?? {}), dont: patch.scope.dont.map(String) };
 	if (patch.applies_to?.length) card.applies_to = patch.applies_to.map(String);
 	if (patch.reject_hint) card.reject_hint = String(patch.reject_hint);
-	card.version = Number(card.version ?? 1) + 1;
+	const currentVersion = Number(card.version);
+	card.version = (Number.isFinite(currentVersion) ? currentVersion : 0) + 1;
 	card.last_reviewed = L.todayStr();
 
 	const taxonomy = await loadTaxonomy(io, paths);
@@ -219,8 +229,7 @@ export async function updateAgentCard(io, id, patch) {
 
 /** 提示词成长建议：从这次任务里找出卡面没覆盖的检索词（不写盘，PM 决定是否 update）。 */
 export async function reflectCard(io, id, task) {
-	const paths = poolPaths();
-	const file = path.join(paths.poolDir, `${id}.md`);
+	const file = cardPath(id);
 	const raw = await io.read(file);
 	if (!raw) throw new Error(`卡不存在：${id}`);
 	const frontMatter = P.parseFrontMatter(raw);
@@ -235,16 +244,16 @@ export async function reflectCard(io, id, task) {
 }
 
 export async function completeFirstMission(io, id) {
-	const paths = poolPaths();
-	const file = path.join(paths.poolDir, `${id}.md`);
+	const file = cardPath(id);
 	const raw = await io.read(file);
 	if (!raw) throw new Error(`卡不存在：${id}`);
 	const frontMatter = P.parseFrontMatter(raw);
 	if (!frontMatter) throw new Error(`${id}.md 缺少 front-matter`);
+	if (frontMatter.first_mission === "done") return { id, path: file, already: true };
 	const card = { ...frontMatter, first_mission: "done", last_reviewed: L.todayStr() };
 	const body = raw.slice(raw.indexOf("\n---", 3) + 4).replace(/^\r?\n/, "").trimEnd();
 	await io.write(file, P.serializeCard(card, `${body}\n\n- ${L.todayStr()}: 首任务复核通过，first_mission=done\n`));
-	return { id, path: file };
+	return { id, path: file, already: false };
 }
 
 // ---------------------------------------------------------------------------
@@ -257,9 +266,16 @@ export async function addAgentMemory(io, { owner, type, title, content, domains,
 	const paths = poolPaths();
 	const id = String(owner ?? "").trim();
 	if (!/^[a-z0-9][a-z0-9-]*$/.test(id)) throw new Error(`owner 非法（kebab-case）：${id}`);
-	const normalizedType = MEMORY_TYPES.includes(type) ? type : "feedback";
+	if (!MEMORY_TYPES.includes(type)) throw new Error(`未知记忆类型 ${type}。可选：${MEMORY_TYPES.join(", ")}`);
+	const normalizedType = type;
 	const slug = L.slugify(title, 40).replace(/\./g, "-");
-	const file = path.join(paths.memoryDir, id, `${normalizedType}_${slug}.md`);
+	let file = path.join(paths.memoryDir, id, `${normalizedType}_${slug}.md`);
+	let suffix = 1;
+	while (await io.exists(file)) {
+		suffix += 1;
+		file = path.join(paths.memoryDir, id, `${normalizedType}_${slug}-${suffix}.md`);
+	}
+	const fileName = path.basename(file);
 	const body = [
 		"---",
 		`name: ${JSON.stringify(slug)}`,
@@ -278,8 +294,8 @@ export async function addAgentMemory(io, { owner, type, title, content, domains,
 	// MEMORY.md 索引页：存在则追加，不存在则创建
 	const indexPath = path.join(paths.memoryDir, id, "MEMORY.md");
 	const existing = (await io.read(indexPath)) ?? `# ${id} — 记忆索引\n`;
-	if (!existing.includes(`${normalizedType}_${slug}.md`)) {
-		await io.write(indexPath, `${existing.trimEnd()}\n- [${title}](./${normalizedType}_${slug}.md) — ${L.todayStr()}\n`);
+	if (!existing.includes(fileName)) {
+		await io.write(indexPath, `${existing.trimEnd()}\n- [${title}](./${fileName}) — ${L.todayStr()}\n`);
 	}
 	return { owner: id, type: normalizedType, file };
 }
@@ -309,6 +325,12 @@ export async function listAgentMemory(io, owner) {
  * 不执行 subagent：矩阵交给 PM/模型，用 subagent / workflow 真正派发。
  */
 export async function buildDispatch({ io, todoFile, paths, stage, taskIds, record = true, threshold = 3, metaInjection = "partial" }) {
+	if (!["full", "partial", "none"].includes(metaInjection)) {
+		throw new Error(`meta_injection 非法：${metaInjection}。可选 full | partial | none。`);
+	}
+	if (stage && !todoFile.stages.some((candidate) => candidate.id === stage)) {
+		throw new Error(`未定义阶段 ${stage}。现有：${todoFile.stages.map((candidate) => candidate.id).join(", ") || "（无）"}。`);
+	}
 	const wanted = taskIds?.length ? new Set(taskIds.map((id) => String(id).toUpperCase())) : null;
 	const tasks = todoFile.items.filter(
 		(item) => !item.done && (!stage || item.stage === stage) && (!wanted || wanted.has(item.id.toUpperCase())),
@@ -360,7 +382,7 @@ export async function buildDispatch({ io, todoFile, paths, stage, taskIds, recor
 		"| --- | --- | --- | --- | --- |",
 		...rows.map((row) => {
 			const role = row.card ? `${row.card.id}` : "（缺口）";
-			const score = row.card ? String(row.card.score) : "-";
+			const score = row.card ? row.card.score.toFixed(1) : "-";
 			const advice = row.card ? "lane 内 writer→reviewer；同阶段不同文件域可并行" : "先 coord_agent register 建卡，再派发";
 			return `| ${row.item.stage} | ${row.item.id} ${escapeCell(row.item.desc)} | ${role} | ${score} | ${advice} |`;
 		}),
@@ -400,12 +422,20 @@ export async function buildDispatch({ io, todoFile, paths, stage, taskIds, recor
 	let filePath = null;
 	let jsonPath = null;
 	if (record) {
-		const stamp = `${L.todayStr().replace(/-/g, "")}-${new Date().toTimeString().slice(0, 5).replace(":", "")}`;
+		const now = new Date();
+		const pad = (value) => String(value).padStart(2, "0");
+		const stamp = `${L.todayStr(now).replace(/-/g, "")}-${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
 		const dir = path.join(paths.aiDir, "dispatch");
-		filePath = path.join(dir, `DISPATCH-${stamp}.md`);
+		let base = path.join(dir, `DISPATCH-${stamp}`);
+		let suffix = 1;
+		while (await io.exists(`${base}.md`)) {
+			suffix += 1;
+			base = path.join(dir, `DISPATCH-${stamp}-${suffix}`);
+		}
+		filePath = `${base}.md`;
+		jsonPath = `${base}.json`;
 		await io.write(filePath, lines.join("\n"));
-		jsonPath = path.join(dir, `DISPATCH-${stamp}.json`);
-		await io.write(jsonPath, JSON.stringify({ generatedAt: new Date().toISOString(), stage: stage ?? "all", metaInjection, tasks: plan }, null, 2));
+		await io.write(jsonPath, JSON.stringify({ generatedAt: now.toISOString(), stage: stage ?? "all", metaInjection, tasks: plan }, null, 2));
 	}
 	return { tasks, rows, gaps, plan, path: filePath, jsonPath, text: lines.join("\n") };
 }
