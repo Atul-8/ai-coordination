@@ -1,12 +1,12 @@
 #!/usr/bin/env node
 /**
- * issues.js — todo.md ↔ git issues 双向桥（dsh-ai-coordination 版）
+ * issues.js — todo.md ↔ git issues 双向桥（dsh-eai-workflow 版）
  *
  * 零依赖 Node 脚本。宿主自动检测（git remote origin）：
  * - github.com → 调用 gh CLI（需已 `gh auth login`）
  * - gitee.com  → 调用 Gitee OpenAPI v5（需环境变量 GITEE_TOKEN）
  *
- * 与插件工具 coord_issue 行为一致；项目内保留本脚本，便于终端/其他宿主直接执行。
+ * 与插件工具 eai_issue 行为一致；项目内保留本脚本，便于终端/其他宿主直接执行。
  *
  * 用法（在项目根目录，或任意子目录）：
  *   node issues.js sync [--stage s1] [--dry-run]  为无 issue 编号的待办任务创建 issue 并回写 (#N)
@@ -127,14 +127,14 @@ async function createIssue(root, item) {
 	const title = `[${item.id}] ${item.desc}`;
 	const stageTitle = parseTodo(root).stages.get(item.stage) ?? "";
 	const body = [
-		`来自 dsh-ai-coordination todo.md 的任务项。`,
+		`来自 dsh-eai-workflow todo.md 的任务项。`,
 		"",
 		`- 任务编号: ${item.id}`,
 		`- 阶段: ${item.stage}（${stageTitle}）`,
 		`- 阶段计划: ${stagePlanRef(root, item.stage) ?? "（无）"}`,
 		"- 状态: 待办（todo.md 单一事实源）",
 		"",
-		"> 调度：项目内 `/coord-go " + item.stage + "`；完成由 `coord_issue close-done` 或本脚本 close-done 自动关闭。",
+		"> 调度：项目内 `/eai-go " + item.stage + "`；完成由 `eai_issue close-done` 或本脚本 close-done 自动关闭。",
 	].join("\n");
 	const labels = ["coordination", `stage:${item.stage}`];
 
@@ -226,7 +226,7 @@ async function main() {
 			it.issue = num;
 			console.log(`[issues] ${it.id} → #${num} 已创建并回写`);
 		}
-		if (!dryRun) console.log("[issues] 同步完成。可 /coord-go 调度对应阶段。");
+		if (!dryRun) console.log("[issues] 同步完成。可 /eai-go 调度对应阶段。");
 		return;
 	}
 

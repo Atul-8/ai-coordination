@@ -91,7 +91,7 @@ test("applyAgentsBlock 幂等与跨宿主升级", () => {
 	const block = "# 规范\n内容";
 	const created = L.applyAgentsBlock(null, block);
 	assert.equal(created.action, "created");
-	assert.match(created.content, /dsh-ai-coordination:agents:v1 BEGIN/);
+	assert.match(created.content, /eai-workflow:agents:v1 BEGIN/);
 
 	const same = L.applyAgentsBlock(created.content, block);
 	assert.equal(same.action, "updated");

@@ -14,7 +14,7 @@
 - **License**: GPL-3.0 (per repository LICENSE)
 - **Scope used**: `src/pool.js` — front-matter parsing, taxonomy/card validation,
   Chinese 2-gram tokenization and keyword scoring, ported/adapted from `scripts/lib.mjs`
-- **This project**: dsh-ai-coordination (LGPL-3.0)
+- **This project**: dsh-eai-workflow (LGPL-3.0)
 - **Copyright holder decision**: **APPROVED** — eai is the copyright holder's personal
   development repository; direct authorization granted in session on 2026-11-24 to
   distribute the ported scope under LGPL-3.0.

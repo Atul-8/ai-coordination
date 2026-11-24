@@ -1,8 +1,8 @@
 # META 规则 — 项目级蒸馏池
 
 > G3 五步法的产物。一条规则 = 一次踩坑换取的永久复利。
-> 新规则编号由 `coord_error` 自动递增（先查现有最大编号）；`.ai` 若独立成库先 `git pull`。
-> 全局池（默认 `C:\.ai_global`，`AI_GLOBAL_DIR` 可覆盖）：确认普适后由 `coord_meta promote` 提升，全局编号 META-NNNN。
+> 新规则编号由 `eai_error` 自动递增（先查现有最大编号）；`.ai` 若独立成库先 `git pull`。
+> 全局池（默认 `C:\.ai_global`，`AI_GLOBAL_DIR` 可覆盖）：确认普适后由 `eai_meta promote` 提升，全局编号 META-NNNN。
 
 ## 受控词表（类别.主题）
 

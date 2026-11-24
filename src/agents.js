@@ -123,7 +123,7 @@ export function renderQuery(result, limit = 5) {
 		...(result.memory.length ? result.memory.map((entry) => `  ${entry.score.toFixed(1).padStart(6)}  [${entry.owner}] ${entry.id} — ${entry.summary ?? ""}`) : ["  （无相关记忆命中）"]),
 	];
 	if (result.suggestCreate) {
-		lines.push("", `⚠ 缺口：最高分 ${result.topScore} < 阈值 ${result.threshold} → 走建卡协议（coord_agent register），禁万金油卡。`);
+		lines.push("", `⚠ 缺口：最高分 ${result.topScore} < 阈值 ${result.threshold} → 走建卡协议（eai_agent register），禁万金油卡。`);
 	}
 	return lines.join("\n");
 }
@@ -146,7 +146,7 @@ export async function listAgentCards(io) {
 }
 
 export function renderCardList(cards) {
-	if (cards.length === 0) return "角色卡池为空。用 coord_agent {action:'register'} 建第一张卡（scope 必写，禁万金油卡）。";
+	if (cards.length === 0) return "角色卡池为空。用 eai_agent {action:'register'} 建第一张卡（scope 必写，禁万金油卡）。";
 	const limit = 40;
 	const shown = cards.slice(0, limit);
 	const head = cards.length > limit ? [`角色卡 ${cards.length} 张（仅显示前 ${limit} 张；用 query 检索更准）：`] : [`角色卡 ${cards.length} 张（AI_GLOBAL_DIR/agents/pool）：`];
@@ -186,7 +186,7 @@ export async function registerAgentCard(io, input) {
 	};
 	const errors = P.validateCard(card, taxonomy);
 	const existing = (await io.list(paths.poolDir)).filter((name) => name.endsWith(".md"));
-	if (existing.includes(`${card.id}.md`)) errors.push(`id 已存在：${card.id}（改卡走 coord_agent update，只改自己的卡）`);
+	if (existing.includes(`${card.id}.md`)) errors.push(`id 已存在：${card.id}（改卡走 eai_agent update，只改自己的卡）`);
 	if (errors.length) throw new Error(`建卡校验失败：\n- ${errors.join("\n- ")}`);
 
 	const file = path.join(paths.poolDir, `${card.id}.md`);
@@ -199,7 +199,7 @@ export async function updateAgentCard(io, id, patch) {
 	const paths = poolPaths();
 	const file = cardPath(id);
 	const raw = await io.read(file);
-	if (!raw) throw new Error(`卡不存在：${id}（建卡用 coord_agent register）`);
+	if (!raw) throw new Error(`卡不存在：${id}（建卡用 eai_agent register）`);
 	const frontMatter = P.parseFrontMatter(raw);
 	if (!frontMatter) throw new Error(`${id}.md 缺少 front-matter，拒绝改写。`);
 
@@ -383,7 +383,7 @@ export async function buildDispatch({ io, todoFile, paths, stage, taskIds, recor
 		...rows.map((row) => {
 			const role = row.card ? `${row.card.id}` : "（缺口）";
 			const score = row.card ? row.card.score.toFixed(1) : "-";
-			const advice = row.card ? "lane 内 writer→reviewer；同阶段不同文件域可并行" : "先 coord_agent register 建卡，再派发";
+			const advice = row.card ? "lane 内 writer→reviewer；同阶段不同文件域可并行" : "先 eai_agent register 建卡，再派发";
 			return `| ${row.item.stage} | ${row.item.id} ${escapeCell(row.item.desc)} | ${role} | ${score} | ${advice} |`;
 		}),
 		"",
@@ -403,7 +403,7 @@ export async function buildDispatch({ io, todoFile, paths, stage, taskIds, recor
 			);
 		} else {
 			lines.push(
-				`- 角色卡：缺口（top ${query.topScore} < ${threshold}）→ 建卡协议：\`coord_agent register\``,
+				`- 角色卡：缺口（top ${query.topScore} < ${threshold}）→ 建卡协议：\`eai_agent register\``,
 				`- 建议 keywords：${query.tokens.slice(0, 6).join(" / ") || "（从任务描述提取）"}`,
 			);
 		}
@@ -416,7 +416,7 @@ export async function buildDispatch({ io, todoFile, paths, stage, taskIds, recor
 	if (gaps.length) {
 		lines.push("## 缺口处理（建卡协议）", "");
 		for (const item of gaps) lines.push(`- ${item.id} ${item.desc}`);
-		lines.push("", "建卡 → 再跑 `coord_dispatch` 复核；no 万金油卡。", "");
+		lines.push("", "建卡 → 再跑 `eai_dispatch` 复核；no 万金油卡。", "");
 	}
 
 	let filePath = null;

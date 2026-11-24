@@ -1,7 +1,7 @@
 /**
- * lib.js — dsh-ai-coordination 纯函数层（无 I/O、无上下文依赖）
+ * lib.js — dsh-eai-workflow 纯函数层（无 I/O、无上下文依赖）
  *
- * 移植自 pi 版 extensions/coordination/lib.ts，语义保持一致：
+ * 移植自 pi 版 extensions/eaiination/lib.ts，语义保持一致：
  *   - todo.md 是唯一任务事实源，行格式固定
  *   - 阶段定义写在「阶段定义」小节，任务行写在「任务」小节
  *   - 行内容：- [ ] T-001 [stage:s1] 任务描述 (#12) @session:01a05cc8
@@ -12,9 +12,13 @@
 export const ITEM_RE = /^- \[( |x|~)\]\s*(T-\d+)\s+\[stage:([^\]]+)\]\s*(.*)$/;
 export const STAGE_RE = /^-\s*(s\d+)\s*[:：]\s*(.*)$/;
 
-/** 宿主插桩标记：dsh 版为本体；pi / zcode 为跨宿主接力时原位升级的对象 */
+/** 宿主插桩标记：eai 版为本体；legacyDsh / pi / zcode 为跨宿主接力时原位升级的对象 */
 export const AGENTS_MARKERS = {
-	dsh: {
+	eai: {
+		begin: "<!-- eai-workflow:agents:v1 BEGIN -->",
+		end: "<!-- eai-workflow:agents:v1 END -->",
+	},
+	legacyDsh: {
 		begin: "<!-- dsh-ai-coordination:agents:v1 BEGIN -->",
 		end: "<!-- dsh-ai-coordination:agents:v1 END -->",
 	},
@@ -194,7 +198,7 @@ export function stageStats(file) {
 	return [...map.values()];
 }
 
-/** 看板文本（工具 list 与 /coord-status 共用） */
+/** 看板文本（工具 list 与 /eai-status 共用） */
 export function renderBoard(file) {
 	const out = [];
 	for (const stat of stageStats(file)) {
@@ -211,7 +215,7 @@ export function renderBoard(file) {
 		const meta = [item.issue ? `#${item.issue}` : null, item.session ? `@${item.session}` : null].filter(Boolean).join(" ");
 		out.push(`  [${mark}] ${item.id} [${item.stage}] ${item.desc}${meta ? `  (${meta})` : ""}`);
 	}
-	if (file.items.length === 0) out.push("  （任务清单为空。用 coord_todo {action:'add'} 或 coord_plan_save 产出）");
+	if (file.items.length === 0) out.push("  （任务清单为空。用 eai_todo {action:'add'} 或 eai_plan_save 产出）");
 	return out.join("\n");
 }
 
@@ -298,7 +302,7 @@ export function buildPlanDoc({ planNo, stageId, stageTitle, steps, acceptance, r
 		`- **日期**: ${date}`,
 		`- **会话**: ${sessionId ?? "unknown"}（宿主 session，完整上下文见会话日志）`,
 		...(research ? [`- **研究**: ${research}`] : []),
-		"- **来源**: 计划模式审批后经 coord_plan_save 落盘",
+		"- **来源**: 计划模式审批后经 eai_plan_save 落盘",
 		"",
 		"## 计划步骤",
 		"",
@@ -343,7 +347,7 @@ export function extractSteps(markdown) {
  * @param {string} block 规范正文（不含标记）
  */
 export function applyAgentsBlock(existing, block) {
-	const markers = AGENTS_MARKERS.dsh;
+	const markers = AGENTS_MARKERS.eai;
 	const wrapped = `${markers.begin}\n${block.trim()}\n${markers.end}\n`;
 	if (!existing) return { content: wrapped, action: "created" };
 
@@ -357,7 +361,7 @@ export function applyAgentsBlock(existing, block) {
 		const before = existing.slice(0, beginIdx);
 		const tail = existing.slice(endIdx + pair.end.length).replace(/^\r?\n+/, "");
 		const content = `${before}${wrapped}${tail ? `\n${tail}` : ""}`;
-		return { content, action: host === "dsh" ? "updated" : `upgraded-${host}` };
+		return { content, action: host === "eai" ? "updated" : `upgraded-${host}` };
 	}
 
 	return { content: `${wrapped}\n${existing}`, action: "merged" };
@@ -468,7 +472,7 @@ function isAbsolutePath(p) {
 	return /^([A-Za-z]:|\/)/.test(p);
 }
 
-/** 组装 /coord-status 报告 */
+/** 组装 /eai-status 报告 */
 export function buildStatusReport({ root, board, metaCount, globalMetaCount, handoff, structureOk, issuesScriptOk, sessionId }) {
 	const lines = [
 		`项目  ${root}`,

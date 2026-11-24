@@ -63,14 +63,14 @@ function stagePlanRef(todoFile, stageId) {
 function issueBody(todoFile, item) {
 	const stageTitle = todoFile.stages.find((stage) => stage.id === item.stage)?.title ?? "";
 	return [
-		"来自 dsh-ai-coordination todo.md 的任务项。",
+		"来自 dsh-eai-workflow todo.md 的任务项。",
 		"",
 		`- 任务编号: ${item.id}`,
 		`- 阶段: ${item.stage}（${stageTitle}）`,
 		`- 阶段计划: ${stagePlanRef(todoFile, item.stage) ?? "（无）"}`,
 		"- 状态: 待办（todo.md 单一事实源）",
 		"",
-		`> 调度：项目内 /coord-go ${item.stage}；完成由 coord_issue close-done 自动关闭。`,
+		`> 调度：项目内 /eai-go ${item.stage}；完成由 eai_issue close-done 自动关闭。`,
 	].join("\n");
 }
 
@@ -157,7 +157,7 @@ export async function runIssueTool({ startDir, action, stage, dryRun, number, po
 			lines.push(`${item.id} → #${created} 已创建并回写 todo.md`);
 		}
 		if (!dryRun) await saveTodo(paths, file, io);
-		return { host: remote.host, repo: `${remote.owner}/${remote.repo}`, text: [head, ...lines, dryRun ? "（dry-run：未写入）" : "同步完成。可 /coord-go <stage> 调度。"].join("\n") };
+		return { host: remote.host, repo: `${remote.owner}/${remote.repo}`, text: [head, ...lines, dryRun ? "（dry-run：未写入）" : "同步完成。可 /eai-go <stage> 调度。"].join("\n") };
 	}
 
 	if (action === "close-done") {

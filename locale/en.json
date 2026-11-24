@@ -1,6 +1,6 @@
 {
   "meta": {
-    "title": "AI coordination",
-    "description": "Seven-layer coordination for long software work: todo.md pipeline, plan documents, git issue sync, G3 error and META distillation, cross-host handoff, plus the AGI agent preset. Project data lives in .ai/, todo.md and AGENTS.md."
+    "title": "EAI Workflow",
+    "description": "Seven-layer coordination for long software work: todo.md pipeline, plan documents, git issue sync, G3 error and META distillation, cross-host handoff, plus the EAI agent preset. Project data lives in .ai/, todo.md and AGENTS.md."
   }
 }

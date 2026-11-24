@@ -222,9 +222,9 @@ export async function initProject({ root, templates, issuesScript, policy }) {
 		warnings,
 		global,
 		next: [
-			"编辑 todo.md「阶段定义」登记阶段，再让 AI 用 coord_plan_save 落计划或 coord_todo add 建任务",
-			"DSH：/coord-status 看板 · /coord-go s1 调度 · 计划模式审批后自动落盘",
-			"多 agent：用 workflow/subagent 按阶段派发（技能 agi-dispatch）",
+			"编辑 todo.md「阶段定义」登记阶段，再让 AI 用 eai_plan_save 落计划或 eai_todo add 建任务",
+			"DSH：/eai-status 看板 · /eai-go s1 调度 · 计划模式审批后自动落盘",
+			"多 agent：用 workflow/subagent 按阶段派发（技能 eai-dispatch）",
 		],
 	};
 }
@@ -318,11 +318,11 @@ const SEED_CARDS = [
 export async function loadTodo(startDir, policy) {
 	const paths = findCoordDir(startDir);
 	if (!paths) {
-		throw new Error(`coordination 未激活：${startDir} 及其上级没有 .ai/ 目录。先运行 coord_init 初始化项目。`);
+		throw new Error(`coordination 未激活：${startDir} 及其上级没有 .ai/ 目录。先运行 eai_init 初始化项目。`);
 	}
 	const io = createIo(policy);
 	if (!(await io.exists(paths.todoPath))) {
-		throw new Error(`todo.md 缺失（.ai/ 存在但 ${paths.todoPath} 不在）。运行 coord_init 重建，或手工恢复后再操作。`);
+		throw new Error(`todo.md 缺失（.ai/ 存在但 ${paths.todoPath} 不在）。运行 eai_init 重建，或手工恢复后再操作。`);
 	}
 	const raw = (await io.read(paths.todoPath)) ?? "";
 	return { paths, file: L.parseTodo(raw), io };
@@ -368,10 +368,10 @@ export async function savePlan({ startDir, stage, steps, acceptance, research, s
 		const needle = matched ? `RESEARCH-${matched[1].padStart(3, "0")}` : String(research).trim();
 		const files = await io.list(path.join(paths.aiDir, "research"));
 		const match = files.find((name) => name.toUpperCase().startsWith(needle.toUpperCase()) && name.endsWith(".md"));
-		if (!match) throw new Error(`找不到研究记录 ${research}（.ai/research/）。先 coord_research，或检查编号。`);
+		if (!match) throw new Error(`找不到研究记录 ${research}（.ai/research/）。先 eai_research，或检查编号。`);
 		researchRef = `.ai/research/${match}`;
 	} else if (!skipResearch?.trim()) {
-		throw new Error("计划落盘前先记录外部方案检索：coord_research {topic, sources, decision}；纯文档/无实现任务可显式传 skip_research:'原因'。不要闭门造车。");
+		throw new Error("计划落盘前先记录外部方案检索：eai_research {topic, sources, decision}；纯文档/无实现任务可显式传 skip_research:'原因'。不要闭门造车。");
 	}
 
 	const planNames = await io.list(paths.plansDir);
@@ -412,7 +412,7 @@ export async function savePlan({ startDir, stage, steps, acceptance, research, s
 export async function statusReport({ startDir, sessionId, policy }) {
 	const paths = findCoordDir(startDir);
 	if (!paths) {
-		throw new Error(`coordination 未激活：${startDir} 及其上级没有 .ai/ 目录。先运行 coord_init 初始化项目。`);
+		throw new Error(`coordination 未激活：${startDir} 及其上级没有 .ai/ 目录。先运行 eai_init 初始化项目。`);
 	}
 	const io = createIo(policy);
 	const file = await readTodoAt(paths, io);
@@ -608,7 +608,7 @@ export async function promoteMeta({ startDir, rule, policy }) {
 	const io = createIo(policy);
 	const projectText = (await io.read(paths.metaRulesPath)) ?? "";
 	const rules = listMetaRules(projectText);
-	if (rules.length === 0) throw new Error(".ai/errors/distilled/meta-rules.md 中没有 META 规则。先通过 coord_error 蒸馏规则。");
+	if (rules.length === 0) throw new Error(".ai/errors/distilled/meta-rules.md 中没有 META 规则。先通过 eai_error 蒸馏规则。");
 
 	const needle = String(rule ?? "").trim();
 	const picked = rules.filter((entry) => entry.id.toLowerCase() === needle.toLowerCase() || entry.title.includes(needle));

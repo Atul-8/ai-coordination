@@ -1,6 +1,6 @@
 # META 规则 — 全局蒸馏池（跨项目）
 
-> 项目级规则确认普适后由 `coord_meta promote` 提升到此。编号 **META-NNNN**（4 位，与项目池 META-NNN 区分）。
+> 项目级规则确认普适后由 `eai_meta promote` 提升到此。编号 **META-NNNN**（4 位，与项目池 META-NNN 区分）。
 > 写入前先扫本文件现有最大编号再 +1；若本目录为 git 仓库先 pull。
 
 ## 受控词表（类别.主题）

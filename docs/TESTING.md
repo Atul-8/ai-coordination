@@ -27,9 +27,9 @@
 | issues | 无 remote 报错；本地 github remote 下 sync/list/close-done 的 dry-run；gitee 无 token 报错 |
 | 角色卡 | 空 taxonomy 拒绝建卡；播种卡清单；query 命中/缺参；6 类非法建卡；register/update/reflect/memory_add/memory_list/first_mission_done；卡文件落盘 |
 | 派发 | 无任务提示；矩阵与 role；`DISPATCH-*.json` 的任务数/prompt/缺口；record:false 不落盘 |
-| 命令 | `/coord` 组全子命令 + 全部扁平别名；空参/未知子命令；`/coord go` 写 `@session` 并 followup；research 参数格式 |
+| 命令 | `/eai` 组全子命令 + 全部扁平别名；空参/未知子命令；`/eai go` 写 `@session` 并 followup；research 参数格式 |
 | 沙箱 | read-only 拒绝写；workspace-write 越界拒绝；范围内放行；全局池在工作区外时警告但不阻断 |
-| 清单 | `dsh.bundle.patch`、preset-agi/agi、persona、locale、icon、4 个技能 frontmatter |
+| 清单 | `dsh.bundle.patch`、preset-eai-workflow/agi、persona、locale、icon、4 个技能 frontmatter |
 
 ## 安全回归（0.7.0 审计后新增）
 
@@ -42,7 +42,7 @@
 | `set_issue` 写入 NaN/小数 | 整数 ≥1 校验 | `"abc"` / `3.7` 拒绝 |
 | 重复 promote 污染全局池 | 按来源去重 | 两次 promote 只保留一条 |
 | 多行 desc 破坏 todo 行 | 压成单行 | 换行描述写成单行 |
-| 无 session 的 consume / `/coord go` | 明确报错 | 空 session 拒绝 |
+| 无 session 的 consume / `/eai go` | 明确报错 | 空 session 拒绝 |
 | todo.md 缺失静默当空 | `loadTodo` 报缺失 | 删除后 list 报错 |
 | 外部包 `lodash/core` 误报 | 裸包名跳过 | 外部 import 不产生违规 |
 | 同秒 dispatch 覆盖 | 秒级 + 冲突序号 | 连续两次路径不同 |
@@ -51,7 +51,7 @@
 ## 未覆盖（分发前仍需人工/环境验证）
 
 1. **真实 issue 创建**：需要 `gh` 登录或 `GITEE_TOKEN`，测试只验证 dry-run 与认证报错。
-2. **新会话选 AGI 预设**：需要在 Web UI 新建会话选择预设，跑一次 `coord_init`/`coord_status` 冒烟。
+2. **新会话选 EAI 预设**：需要在 Web UI 新建会话选择预设，跑一次 `eai_init`/`eai_status` 冒烟。
 3. **插件市场图标/详情渲染**：无浏览器控制，只校验文件与字段。
 4. **真实 provider 端到端**：schema 契约 + 本机安装后的实际请求已覆盖大部分；不同 provider 的严格模式仍需观察。
 5. **并发/性能**：卡池扫描是逐文件读取，几十张卡无压力；未做压力测试。
@@ -61,6 +61,6 @@
 
 - [ ] `npm test` 全绿（30/30）
 - [ ] `plugin_manager remove_bundle` → `install_bundle <仓库根>`，结果 `application: applied`
-- [ ] 新会话选 `AGI · 协调开发`，跑 `coord_init` → `coord_todo add` → `coord_status`
-- [ ] 版本号已 bump（当前 `0.7.0`），README/DESIGN 数字一致
+- [ ] 新会话选 `EAI · 工作流`，跑 `eai_init` → `eai_todo add` → `eai_status`
+- [ ] 版本号已 bump（当前 `1.0.0`），README/DESIGN 数字一致
 - [ ] LICENSE-REQ-001 状态与 README/THIRD-PARTY 一致（已授权，发布记录可选）

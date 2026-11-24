@@ -125,7 +125,7 @@ export function registerCoordinationTools(ctx, env) {
 
 	// ------------------------------------------------------------------ init
 	registerTool(ctx, {
-		name: "coord_init",
+		name: "eai_init",
 		description:
 			"初始化项目的 coordination 层（幂等）：写入 AGENTS.md 规范插桩、todo.md、.ai/（STRUCTURE、REQ/ERR/META 模板、issues CLI）、docs/plans/，并确保全局池骨架。项目根已有 .ai/ 时先报告状态，不要重复初始化。",
 		parameters: {
@@ -176,7 +176,7 @@ export function registerCoordinationTools(ctx, env) {
 
 	// ------------------------------------------------------------------ todo
 	registerTool(ctx, {
-		name: "coord_todo",
+		name: "eai_todo",
 		description:
 			"维护项目 todo.md（唯一任务事实源）。action: list 看板；add 新建任务(desc, stage 默认 s0)；start/done 标记进行中/完成(id)；link 关联当前宿主 session(id)；set_issue 写入 issue 编号(id, issue)；stage_add 登记阶段(id, title)。禁止用 edit/write 直接改任务行，否则会与工具写入冲突。",
 		parameters: {
@@ -223,7 +223,7 @@ export function registerCoordinationTools(ctx, env) {
 				if (!args.desc?.trim()) throw new Error("add 需要 desc（任务描述）。");
 				const stage = args.stage ?? "s0";
 				if (!file.stages.some((item) => item.id === stage)) {
-					throw new Error(`未知阶段 ${stage}。现有：${file.stages.map((item) => item.id).join(", ") || "（无）"}。先用 coord_todo {action:'stage_add'} 登记，或改 todo.md「阶段定义」。`);
+					throw new Error(`未知阶段 ${stage}。现有：${file.stages.map((item) => item.id).join(", ") || "（无）"}。先用 eai_todo {action:'stage_add'} 登记，或改 todo.md「阶段定义」。`);
 				}
 				const desc = L.sanitizeTodoDesc(args.desc);
 				const id = L.nextItemId(file.items, file.lines);
@@ -266,7 +266,7 @@ export function registerCoordinationTools(ctx, env) {
 
 	// ------------------------------------------------------------------ status
 	registerTool(ctx, {
-		name: "coord_status",
+		name: "eai_status",
 		description:
 			"coordination 全量状态：todo 看板、阶段进度、项目/全局 META 条数、HANDOFF 卡片状态、STRUCTURE 与 issues CLI 是否就绪。只读，不改任何文件。",
 		parameters: {
@@ -285,14 +285,14 @@ export function registerCoordinationTools(ctx, env) {
 
 	// ------------------------------------------------------------------ plan
 	registerTool(ctx, {
-		name: "coord_plan_save",
+		name: "eai_plan_save",
 		description:
 			"把已获用户批准的计划落盘：写 docs/plans/PLAN-NNN-*.md，回写 todo.md 阶段行的 plan 引用，并把每个步骤登记为任务（自动编号）。计划模式（plan mode）里先用 exit_plan_mode 获得批准，再调用本工具；不要在未批准时落盘。",
 		parameters: {
 			stage: { type: "string", required: true, description: "计划归属阶段 id（必须先存在，如 s1）。" },
 			steps: { type: "array", items: { type: "string" }, description: "计划步骤（一句一个，可独立验证）。省略时从 plan 提取编号行。" },
 			acceptance: { type: "array", items: { type: "string" }, description: "与 steps 一一对应的验收标准（多步骤计划必填；问题分解 → 逐步验收 → 最后整合）。" },
-			research: { type: "string", description: "coord_research 产出的研究编号（RESEARCH-NNN）；计划文档会引用它。" },
+			research: { type: "string", description: "eai_research 产出的研究编号（RESEARCH-NNN）；计划文档会引用它。" },
 			skip_research: { type: "string", description: "跳过研究门禁的理由（仅纯文档/无实现任务）；与 research 二选一。" },
 			plan: { type: "string", description: "计划 Markdown 原文；steps 省略时用它提取编号步骤。" },
 			title: { type: "string", description: "计划标题（默认取阶段标题）。" },
@@ -311,7 +311,7 @@ export function registerCoordinationTools(ctx, env) {
 		},
 		async execute(args, exec) {
 			const stage = String(args.stage ?? "").trim();
-			if (!stage) throw new Error("coord_plan_save 需要 stage（阶段 id，如 s1）。");
+			if (!stage) throw new Error("eai_plan_save 需要 stage（阶段 id，如 s1）。");
 			const startDir = await resolveRoot(args, exec);
 			const steps = Array.isArray(args.steps) && args.steps.length > 0 ? args.steps.map(String) : L.extractSteps(args.plan);
 			if (steps.length === 0) throw new Error("没有可落盘的步骤：传 steps 数组，或传带编号列表的 plan。");
@@ -339,7 +339,7 @@ export function registerCoordinationTools(ctx, env) {
 
 	// ------------------------------------------------------------------ handoff
 	registerTool(ctx, {
-		name: "coord_handoff",
+		name: "eai_handoff",
 		description:
 			"跨宿主交接卡：action=write 写 .ai/HANDOFF.md（交出方换宿主前必做，自动附 git status/log 取证）；action=read 读卡片；action=consume 接手方确认接上后消化卡片（状态改 resumed、任务 @session 重绑本会话）。write 必须给出 next 与 verify。",
 		parameters: {
@@ -398,7 +398,7 @@ export function registerCoordinationTools(ctx, env) {
 
 	// ------------------------------------------------------------------ issue
 	registerTool(ctx, {
-		name: "coord_issue",
+		name: "eai_issue",
 		description:
 			"todo.md ↔ git issues 同步。action: sync 为无编号待办建 issue 并回写 (#N)；list 查看映射；close-done 关闭已完成任务的 issue；view/close/open 针对单个编号。GitHub 用 gh CLI（需已登录），Gitee 需 GITEE_TOKEN。sync 建议先 dry_run 预览。",
 		parameters: {
@@ -428,7 +428,7 @@ export function registerCoordinationTools(ctx, env) {
 
 	// ------------------------------------------------------------------ error
 	registerTool(ctx, {
-		name: "coord_error",
+		name: "eai_error",
 		description:
 			"G3 五步错误提炼：写 .ai/errors/raw/ERR-NNN.md（现象/根因/修复/预防），并按受控分类蒸馏一条 META 规则到项目池。任何构建/测试/运行时报错都当场记录；不许写「玄学」或「暂时好了」。连续两次同根因报错应先停下来升级为 REQ 卡走计划流程。",
 		parameters: {
@@ -480,7 +480,7 @@ export function registerCoordinationTools(ctx, env) {
 
 	// ------------------------------------------------------------------ meta
 	registerTool(ctx, {
-		name: "coord_meta",
+		name: "eai_meta",
 		description:
 			"项目 META 规则池管理。action=list 列出项目/全局规则；action=promote 把一条确认跨项目普适的项目规则提升到全局池（AI_GLOBAL_DIR/meta/distilled/meta-rules.md，四位编号），并在项目规则末尾回写全局编号。提升前先与用户确认「确实普适」。",
 		parameters: {
@@ -526,7 +526,7 @@ export function registerCoordinationTools(ctx, env) {
 
 	// ------------------------------------------------------------------ agent pool
 	registerTool(ctx, {
-		name: "coord_agent",
+		name: "eai_agent",
 		description:
 			"全局角色卡池（RAG pool v2，AI_GLOBAL_DIR/agents）：派发前检索、未命中建卡、角色自升级、经验沉淀。action: query 检索（任务描述→top 卡+记忆，缺口提示建卡）；list 卡片清单；register 建卡（≥3 keywords、scope.do/dont 必写、taxonomy 路径必须存在，first_mission=pending）；update 自升级（只改自己的卡，version+1）；reflect 从刚完成的任务里提取可补充的检索词（提示词成长建议，不写盘）；memory_add 写本角色经验；memory_list 查经验；first_mission_done 首任务复核。",
 		parameters: {
@@ -588,8 +588,8 @@ export function registerCoordinationTools(ctx, env) {
 					ok: true,
 					text: [
 						`已建卡 ${result.card.id}（${result.card.type}）→ ${result.path}`,
-						"first_mission=pending：首任务完成后调用 coord_agent {action:'first_mission_done', id}。",
-						"派发前先 coord_agent {action:'query', task} 复核命中。",
+						"first_mission=pending：首任务完成后调用 eai_agent {action:'first_mission_done', id}。",
+						"派发前先 eai_agent {action:'query', task} 复核命中。",
 					].join("\n"),
 				};
 			}
@@ -619,7 +619,7 @@ export function registerCoordinationTools(ctx, env) {
 						`- 建议补充：${result.proposed.join(" / ") || "（本次任务没有新词，暂不升级）"}`,
 						"（分词候选可能含碎片，update 前人工筛掉噪声词。）",
 						result.proposed.length
-							? `确认后：coord_agent {action:'update', id:'${result.id}', keywords:[${[...existing, ...result.proposed].map((word) => `'${word}'`).join(", ")}], note:'reflect: 补检索词'}`
+							? `确认后：eai_agent {action:'update', id:'${result.id}', keywords:[${[...existing, ...result.proposed].map((word) => `'${word}'`).join(", ")}], note:'reflect: 补检索词'}`
 							: "无需升级；升级必须基于经验证据，不要凭感觉改卡。",
 					].join("\n"),
 				};
@@ -643,7 +643,7 @@ export function registerCoordinationTools(ctx, env) {
 			if (action === "memory_list") {
 				const owner = args.owner ?? args.id;
 				const rows = await listAgentMemory(io, owner ? String(owner) : undefined);
-				if (rows.length === 0) return { ok: true, text: "没有记忆条目。用 coord_agent {action:'memory_add'} 沉淀经验。" };
+				if (rows.length === 0) return { ok: true, text: "没有记忆条目。用 eai_agent {action:'memory_add'} 沉淀经验。" };
 				return {
 					ok: true,
 					text: [
@@ -668,9 +668,9 @@ export function registerCoordinationTools(ctx, env) {
 
 	// ------------------------------------------------------------------ dispatch
 	registerTool(ctx, {
-		name: "coord_dispatch",
+		name: "eai_dispatch",
 		description:
-			"生成多 agent 派发矩阵与任务卡：按 todo.md 未完成任务检索角色卡池，输出阶段×任务×角色×文件域的派发建议，并（默认）落盘 .ai/dispatch/DISPATCH-*.md。只生成矩阵，不执行派发；真正执行用 subagent / subagent_fork / workflow（pipeline）。缺口任务走 coord_agent register 建卡。",
+			"生成多 agent 派发矩阵与任务卡：按 todo.md 未完成任务检索角色卡池，输出阶段×任务×角色×文件域的派发建议，并（默认）落盘 .ai/dispatch/DISPATCH-*.md。只生成矩阵，不执行派发；真正执行用 subagent / subagent_fork / workflow（pipeline）。缺口任务走 eai_agent register 建卡。",
 		parameters: {
 			stage: { type: "string", description: "只调度某阶段（s1）；省略 = 全部未完成。" },
 			tasks: { type: "array", items: { type: "string" }, description: "只调度指定任务编号（T-003）。" },
@@ -708,7 +708,7 @@ export function registerCoordinationTools(ctx, env) {
 
 	// ------------------------------------------------------------------ recall
 	registerTool(ctx, {
-		name: "coord_recall",
+		name: "eai_recall",
 		description:
 			"旧经验检索（自我使用旧有经验 / 自纠正）：按关键词在 .ai 的 ERR 卡、项目 META、全局 META、角色记忆里召回相关条目并打分。开工前、写新 ERR 前、连续同根因报错时先跑；命中先对照旧经验再动手，避免重复踩坑。",
 		parameters: {
@@ -735,7 +735,7 @@ export function registerCoordinationTools(ctx, env) {
 
 	// ------------------------------------------------------------------ architecture
 	registerTool(ctx, {
-		name: "coord_arch",
+		name: "eai_arch",
 		description:
 			"七层单向依赖检查：扫描 src/<shared|core|interface|presentation>/ 的直接 import，报告反向/跨层引用（presentation → interface → core → shared）。G2 写操作后跑；违规先落 interface 契约或登记 REQ，不要「能跑就放过」。启发式检查，间接依赖仍需评审。",
 		parameters: {
@@ -754,9 +754,9 @@ export function registerCoordinationTools(ctx, env) {
 
 	// ------------------------------------------------------------------ research
 	registerTool(ctx, {
-		name: "coord_research",
+		name: "eai_research",
 		description:
-			"记录外部方案检索（不闭门造车的门禁产物）：官方文档 / 开源仓库 / 已验证做法。coord_plan_save 落盘前必须传 research 编号，或显式 skip_research 说明原因。返回 RESEARCH-NNN 编号与 .ai/research/ 路径。",
+			"记录外部方案检索（不闭门造车的门禁产物）：官方文档 / 开源仓库 / 已验证做法。eai_plan_save 落盘前必须传 research 编号，或显式 skip_research 说明原因。返回 RESEARCH-NNN 编号与 .ai/research/ 路径。",
 		parameters: {
 			topic: { type: "string", required: true, description: "要解决的实现问题（一句话）。" },
 			sources: { type: "array", items: { type: "string" }, required: true, description: "来源列表：URL 或 owner/repo（至少 1 条）；可附一句说明。" },

@@ -1,7 +1,7 @@
 /**
- * dsh-ai-coordination — DSH bundle 宿主插件入口
+ * dsh-eai-workflow — DSH bundle 宿主插件入口
  *
- * 顶层插件（全局）：注册 coord_* 工具、/coord-* 命令与 agi-* 技能。
+ * 顶层插件（全局）：注册 eai_* 工具、/eai-* 命令与 eai-* 技能。
  * 预设 `agi` 由 cordis.patch.yml 声明，负责 persona 与工具组合。
  *
  * 设计：框架 = 全局插件，项目 = 纯数据（.ai/ + todo.md + AGENTS.md）。
@@ -27,7 +27,7 @@ const TEMPLATE_FILES = {
 	globalTaxonomy: "templates/global-taxonomy.yml",
 };
 
-const SKILL_DIRS = ["agi-coordination", "agi-handoff", "agi-dispatch", "agi-growth"];
+const SKILL_DIRS = ["eai-coordination", "eai-handoff", "eai-dispatch", "eai-growth"];
 
 function readAsset(relative) {
 	return readFileSync(new URL(`./${relative}`, import.meta.url), "utf8");
@@ -64,11 +64,11 @@ function registerSkills(ctx) {
 				whenToUse: meta.whenToUse || meta["when-to-use"],
 				content,
 				source: "bundled",
-				provider: "dsh-ai-coordination",
+				provider: "dsh-eai-workflow",
 			});
 		} catch (error) {
 			// 单个技能冲突/缺失不影响协调工具：工具才是主链路。
-			console.warn(`[dsh-ai-coordination] 技能 ${dir} 注册失败：${error?.message ?? error}`);
+			console.warn(`[dsh-eai-workflow] 技能 ${dir} 注册失败：${error?.message ?? error}`);
 		}
 	}
 }

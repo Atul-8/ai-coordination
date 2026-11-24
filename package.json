@@ -1,7 +1,7 @@
 {
-  "name": "dsh-ai-coordination",
-  "version": "0.7.0",
-  "description": "七层分治协调框架的 DSH bundle：coord_* 工具 + /coord-* 命令 + AGI 预设 + 技能，项目数据落在 .ai/ 与 todo.md",
+  "name": "dsh-eai-workflow",
+  "version": "1.0.0",
+  "description": "七层分治协调框架的 DSH bundle：eai_* 工具 + /eai-* 命令 + EAI 预设 + 技能，项目数据落在 .ai/ 与 todo.md",
   "type": "module",
   "exports": {
     ".": "./index.js",
@@ -31,8 +31,9 @@
   "keywords": [
     "dsh-bundle",
     "deepseek-harness",
+    "eai",
+    "workflow",
     "coordination",
-    "agi",
     "agents",
     "todo",
     "plans"

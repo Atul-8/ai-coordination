@@ -13,7 +13,7 @@ const DECISIONS = ["adopt", "adapt", "build", "reject"];
 
 export async function recordResearch({ startDir, topic, sources, decision, notes, sessionId, policy }) {
 	const paths = findCoordDir(startDir);
-	if (!paths) throw new Error("coordination 未激活：缺少 .ai/ 目录。先 coord_init。");
+	if (!paths) throw new Error("coordination 未激活：缺少 .ai/ 目录。先 eai_init。");
 	const io = createIo(policy);
 	const cleanTopic = String(topic ?? "").trim();
 	if (!cleanTopic) throw new Error("research 需要 topic（要解决的实现问题）。");

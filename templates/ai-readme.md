@@ -1,14 +1,14 @@
 # .ai/ — coordination 层
 
-dsh-ai-coordination 框架数据目录。只放协调/状态/知识资产，不放业务代码。
+dsh-eai-workflow 框架数据目录。只放协调/状态/知识资产，不放业务代码。
 
 | 路径 | 作用 | 维护者 |
 | --- | --- | --- |
 | `STRUCTURE.md` | 七层结构地图（G2 同步对象） | 写操作后必须更新 |
 | `requirements/REQ-NNN.md` | 需求卡（背景/目标/验收） | G0 大活时创建 |
-| `errors/raw/ERR-NNN.md` | 错误现场记录（G3 第 1-2 步） | `coord_error` |
-| `errors/distilled/meta-rules.md` | 项目级 META 规则（G3 蒸馏） | `coord_error` / `coord_meta` |
-| `HANDOFF.md` | 跨宿主交接卡（换宿主时才存在） | `coord_handoff` |
+| `errors/raw/ERR-NNN.md` | 错误现场记录（G3 第 1-2 步） | `eai_error` |
+| `errors/distilled/meta-rules.md` | 项目级 META 规则（G3 蒸馏） | `eai_error` / `eai_meta` |
+| `HANDOFF.md` | 跨宿主交接卡（换宿主时才存在） | `eai_handoff` |
 | `scripts/issues.js` | todo.md ↔ git issues 同步 CLI | init 部署，勿手改 |
 
 ## 会话与状态（重要）
@@ -22,7 +22,7 @@ dsh-ai-coordination 框架数据目录。只放协调/状态/知识资产，不�
 
 | 路径 | 作用 |
 | --- | --- |
-| `meta/distilled/meta-rules.md` | 全局 META 经验池（项目规则确认普适后由 `coord_meta promote` 提升） |
+| `meta/distilled/meta-rules.md` | 全局 META 经验池（项目规则确认普适后由 `eai_meta promote` 提升） |
 | `meta/raw/` | 跨项目错误原始现场（可选） |
 | `agents/pool/*.md` | 角色卡单池（RAG v2）：pm=主会话；writer/reviewer/tester/architect=subagent |
 
