@@ -92,24 +92,16 @@ DSH 的计划模式（`exit_plan_mode`）负责只读探索与审批。计划被
 
 不要在计划未被批准时落盘；不要把计划直接贴在回答里代替 `exit_plan_mode`。
 
-## 命令总表
+## 用户命令
+
+用户侧只暴露一个入口：
 
 | 命令 | 作用 |
 | --- | --- |
-| `/eai init [root]` | 初始化（幂等） |
-| `/eai status` | 全量状态 |
-| `/eai todo` | 任务看板 |
-| `/eai pm <需求>` | G0 需求入口：分类路由后派发本会话 |
-| `/eai go s1` / `/eai go T-003` | 阶段/单任务调度 |
-| `/eai issues [sync] [--dry-run] [--stage s1]` | todo ↔ issues |
-| `/eai meta` | META 概览 |
-| `/eai agents [任务]` | 角色卡池：列卡 / 检索 |
-| `/eai dispatch [sN]` | 派发矩阵（落盘 `.ai/dispatch/`） |
-| `/eai growth` | 自我成长状态 |
-| `/eai recall <关键词>` | 旧经验检索 |
-| `/eai arch` | 七层单向依赖检查 |
-| `/eai research <主题> \| <来源…>` | 记录外部方案检索（计划门禁） |
-| `/eai handoff [done]` | 读卡 / 消化交接 |
+| `/eai-pm <需求>` | G0 需求入口：读 todo 看板 → 分类路由 → 派发本会话 |
+
+其余操作（初始化、看板、计划落盘、issue、META、交接、卡池、派发、旧经验、架构检查、研究）**不注册为斜杠命令**，
+由模型通过 `eai_*` 工具完成；实现里的 `/eai-*` 别名仍然保留，但被 `VISIBLE_COMMANDS` 隐藏，需要时可加回。
 
 工具：`eai_init` `eai_todo` `eai_plan_save` `eai_status` `eai_issue` `eai_error` `eai_meta` `eai_handoff` `eai_agent` `eai_dispatch` `eai_recall` `eai_arch` `eai_research`。
 

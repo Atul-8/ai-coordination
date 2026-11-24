@@ -6,7 +6,7 @@
 
 ### What it does
 
-A seven-layer coordination framework for long-running software work on DSH: 13 `eai_*` tools and `/eai-*` commands for todo.md planning, plan documents, git issue sync, G3 error/META distillation, RAG role-card dispatch (`eai_agent` / `eai_dispatch` / `eai_recall`), architecture checks (`eai_arch`) and cross-host handoff, plus four skills and an **EAI · 工作流** agent preset.
+A seven-layer coordination framework for long-running software work on DSH: 13 `eai_*` tools and a single `/eai-pm` entry point for todo.md planning, plan documents, git issue sync, G3 error/META distillation, RAG role-card dispatch (`eai_agent` / `eai_dispatch` / `eai_recall`), architecture checks (`eai_arch`) and cross-host handoff, plus four skills and an **EAI · 工作流** agent preset. Other `/eai-*` commands exist in code but are intentionally hidden; users interact only with `/eai-pm`.
 
 ### Checklist
 

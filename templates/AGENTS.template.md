@@ -59,7 +59,7 @@ todo.md 是**唯一任务事实源**，行格式：
 | `eai_arch` | 七层单向依赖检查 |
 | `eai_research` | 外部方案检索记录（计划门禁） |
 
-命令：`/eai status|todo|init|pm|go <sN\|T-NNN>|issues|meta|handoff|agents|dispatch|growth|recall|arch|research`；扁平别名 `/eai-status` `/eai-pm` `/eai-go` 等。
+命令：只向用户暴露 `/eai-pm <需求>`（G0 入口）；其余能力由模型用 `eai_*` 工具完成，不再提供 `/eai-*` 用户命令。
 
 > 其他宿主：pi / ZCode 使用 `/pm` `/plan` `/issue` `/go` `/error` `/meta` `/status`；工具名相同（`eai_todo`）。
 

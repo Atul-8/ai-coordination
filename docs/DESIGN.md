@@ -30,15 +30,9 @@
 
 | pi | DSH | 说明 |
 | --- | --- | --- |
-| `/eai-init` 扩展命令 | `/eai-init`、`/eai init`（`ctx.commands.register`） | 命令处理函数直接执行并返回文本 |
-| `/pm` 提示词（G0 路由） | `/eai-pm <需求>`、`/eai pm <需求>` | 读取 todo 看板后把需求+路由纪律 followup 给本会话；空参拒绝 |
-| `/todo` 看板 | `/eai-todo`、`/eai todo` | 纯计算，无 UI 依赖 |
-| `/eai-status` | `/eai-status`、`/eai status` | 纯计算 |
-| `/go s1` 交互选阶段 + 确认 | `/eai-go s1` 写 `@session` 后 `agent.followup()` 派发；无参列出阶段 | 命令树没有多选 UI，选择改为参数；确认由用户显式输入完成 |
+| `/pm` 提示词（G0 路由） | **`/eai-pm <需求>`（唯一用户命令）** | 读取 todo 看板后把需求+路由纪律 followup 给本会话；空参拒绝 |
 | `/plan` 自建只读计划模式 | **删除自建模式**，改用 DSH `dsh-plan-mode` + `exit_plan_mode` | DSH 已有更完整的计划审批；自建会与宿主模式冲突 |
-| `/issue` 提示词 | `/eai-issues` 命令 + `eai_issue` 工具 | 逻辑从提示词下沉为工具，行为可测 |
-| `/error` `/meta` `/status` 提示词 | `eai_error` / `eai_meta` / `eai_status` 工具 + persona 纪律 | 提示词模板在 DSH 不再作为命令载体 |
-| `/eai` 组命令与 `eai-*` 别名 | `/eai` 组命令 + `eai-*` 扁平别名 | 命名统一为 eai；不再维护双前缀 |
+| `/todo` `/status` `/go` `/issue` `/error` `/meta` 等 | **不注册为用户命令**，全部下沉为 `eai_*` 工具 | 用户只与 PM 入口交互；其余操作由模型调用工具完成（代码里保留 `/eai-*` 别名实现，但被 `VISIBLE_COMMANDS` 隐藏） |
 
 ### 2.3 工具
 
@@ -77,7 +71,7 @@
 ai-coordination/            # 包名 dsh-eai-workflow；这是 bundle 根，不是子目录
 ├── package.json            dsh.bundle.patch 清单（locale/icon/files/exports）
 ├── cordis.patch.yml        顶层插件行 ai-coordination + 预设行 preset-eai-workflow
-├── index.js                注册 13 工具 / 14 命令 / 4 技能
+├── index.js                注册 13 工具 / 1 用户命令 / 4 技能
 ├── src/
 │   ├── lib.js              纯函数（todo 解析渲染、编号、插桩、交接卡、remote 解析）
 │   ├── pool.js             RAG 卡池纯函数（front-matter/taxonomy/校验/分词/打分/序列化）
@@ -124,7 +118,7 @@ compaction + subagent/fork/workflow + ask-user + todo + web + present。
 | 项 | 结果 |
 | --- | --- |
 | 单元/契约/全链路测试 | `npm test` → **30/30** 通过（lib 9 + pool 6 + 插件契约 2 + full 13） |
-| 安装 | `plugin_manager install_bundle target=<仓库根>` → `application: applied`，bundle `dsh-eai-workflow@1.0.1`（仓库根即 bundle；remove→install 后 link 指向根目录） |
+| 安装 | `plugin_manager install_bundle target=<仓库根>` → `application: applied`，bundle `dsh-eai-workflow@1.1.0`（仓库根即 bundle；remove→install 后 link 指向根目录） |
 | 工具 schema | `ctx.tools.register` 不做参数编译：插件统一把 `required:true` 简写编译为合法 JSON Schema（`type:object` + `properties` + `required`），修复 `eai_agent` 的 `type` 参数导致 provider 报 `anyOf` 非法 schema |
 | 预设行 | `Config.listConfigs(name=dsh-agent-preset)` 出现 `include:preset-eai-workflow`（status schema） |
 | 技能目录 | 安装后目录出现 `eai-coordination` / `eai-handoff` / `eai-dispatch` / `eai-growth` |
@@ -148,7 +142,7 @@ compaction + subagent/fork/workflow + ask-user + todo + web + present。
    代价是每个会话多 13 个工具 schema（约 4k tokens 的工具描述）；如只想在 EAI 预设内可见，
    可把顶层 insert 改为预设内 `plugins` 行，代价是标准会话无法使用 `/eai-*`。
 3. **无 UI 小部件**：pi 的状态条/进度条在 DSH 没有等价注入点，改为 `/eai-status` 与 `eai_status` 文本。
-4. **命令无交互式选择**：`/eai go` 需要显式参数（`s1` / `T-003`）；无参时列阶段。
+4. **用户侧只有一个命令**：`/eai-pm <需求>`；阶段调度、看板、issue、交接等不再提供斜杠命令，改为模型调用 `eai_*` 工具。
 5. **沙箱**：写操作遵循会话策略。`read-only` 一律拒绝；`workspace-write` 下全局池（工作区外）写入会被拒绝，
    工具会提示需要 `danger-full-access` 或把 `AI_GLOBAL_DIR` 指到工作区内。
 6. **issues 只支持 GitHub / Gitee**（与 pi 版一致）；认证缺失时返回可操作的错误。

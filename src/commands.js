@@ -41,7 +41,12 @@ import { cwdOf, execOfInvocation, policyOf, shortSessionOf } from "./host.js";
 export function registerCoordinationCommands(ctx, env) {
 	const resolveDir = async (invocation, explicit) => (explicit ? path.resolve(explicit) : await cwdOf(ctx, execOfInvocation(invocation)));
 
+	// 用户侧只开放 /eai-pm；其余命令（/eai 组与 /eai-* 别名）保留实现但不注册，
+	// 由模型通过 eai_* 工具完成。要重新暴露某个命令，把它加进下面的集合即可。
+	const VISIBLE_COMMANDS = new Set(["eai-pm"]);
+
 	const define = (name, description, hint, handler) => {
+		if (!VISIBLE_COMMANDS.has(name)) return;
 		ctx.commands.register({
 			name,
 			description,

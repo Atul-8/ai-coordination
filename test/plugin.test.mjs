@@ -30,7 +30,7 @@ function makeHarness() {
 	return { tools, commands, skills, call, cwd };
 }
 
-test("插件注册 13 工具 / 14 命令 / 4 技能", async () => {
+test("插件注册 13 工具 / 1 用户命令 / 4 技能", async () => {
 	const dir = await fsp.mkdtemp(path.join(os.tmpdir(), "dsh-eai-reg-"));
 	process.env.AI_GLOBAL_DIR = path.join(dir, "global");
 	try {
@@ -50,22 +50,7 @@ test("插件注册 13 工具 / 14 命令 / 4 技能", async () => {
 			"eai_status",
 			"eai_todo",
 		]);
-		assert.deepEqual([...commands.keys()].sort(), [
-			"eai",
-			"eai-agents",
-			"eai-arch",
-			"eai-dispatch",
-			"eai-go",
-			"eai-growth",
-			"eai-handoff",
-			"eai-init",
-			"eai-issues",
-			"eai-pm",
-			"eai-recall",
-			"eai-research",
-			"eai-status",
-			"eai-todo",
-		]);
+		assert.deepEqual([...commands.keys()], ["eai-pm"]);
 		assert.deepEqual(skills.map((skill) => skill.name).sort(), ["eai-coordination", "eai-dispatch", "eai-growth", "eai-handoff"]);
 
 		// 工具参数必须是合法 JSON Schema（不能把 required:true 简写直接发给模型）
@@ -275,10 +260,6 @@ test("端到端：初始化 → 任务 → 计划 → 状态 → 交接 → 错�
 		assert.match(dispatchJson.tasks[0].prompt, /纪律/);
 		assert.ok(dispatchJson.tasks[0].role);
 
-		const growth = await commands.get("eai-growth").handler({ rawInput: "", agent: { id: SESSION }, signal: new AbortController().signal });
-		assert.equal(growth.kind, "success");
-		assert.match(growth.text, /待复核卡/);
-
 		// 旧经验检索：能召回刚记录的 ERR
 		const recall = await call("eai_recall", { query: "断言不匹配", root: project });
 		assert.match(recall.text, /ERR-001/);
@@ -298,12 +279,10 @@ test("端到端：初始化 → 任务 → 计划 → 状态 → 交接 → 错�
 		assert.match((await call("eai_issue", { action: "list", root: project })).text, /remote=（未配置/);
 		await assert.rejects(call("eai_issue", { action: "sync", root: project }), /git remote origin/);
 
-		// 命令：/eai-status 与 /eai-go 空参
-		const statusCommand = await commands.get("eai-status").handler({ rawInput: "", agent: { id: SESSION }, signal: new AbortController().signal });
-		assert.equal(statusCommand.kind, "success");
-		assert.match(statusCommand.text, /项目/);
-		const goCommand = await commands.get("eai-go").handler({ rawInput: "", agent: { id: SESSION }, signal: new AbortController().signal });
-		assert.match(goCommand.text, /可选阶段/);
+		// 用户命令只有 /eai-pm
+		const pmCommand = await commands.get("eai-pm").handler({ rawInput: "实现登录", agent: { id: SESSION }, signal: new AbortController().signal });
+		assert.equal(pmCommand.kind, "success");
+		assert.match(pmCommand.text, /G0 路由/);
 	} finally {
 		await fsp.rm(dir, { recursive: true, force: true });
 		delete process.env.AI_GLOBAL_DIR;

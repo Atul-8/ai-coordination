@@ -88,18 +88,16 @@ dsh plugin add github:Atul-8/ai-coordination
 | `eai_arch` | 七层单向依赖检查（直接 import，支持 `@/` 别名与 Python 相对导入） |
 | `eai_research` | 记录外部方案检索（计划门禁产物：`.ai/research/RESEARCH-NNN-*.md`） |
 
-## 命令
+## 命令（用户入口只有 /eai-pm）
 
 ```
-/eai status | todo | init | pm <需求> | go <sN|T-NNN> | issues [sync] | meta | handoff [done]
-/eai agents [任务] | dispatch [sN] | growth | recall <关键词> | arch
-/eai research <主题> | <来源…>
-/eai-status  /eai-todo  /eai-init  /eai-pm  /eai-go  /eai-issues
-/eai-handoff  /eai-agents  /eai-dispatch  /eai-growth
-/eai-recall  /eai-arch  /eai-research
+/eai-pm <需求描述>
 ```
 
-`/eai go s1` 会把所选任务写入 `@session:` 关联，并把任务清单 followup 给当前会话执行。
+用户只看到这一个入口：它读取 todo.md 看板，做 G0 路由（小活直接做 / 大活走计划 / 错误走 G3 / 经验进 META / 可并行先派发），
+然后把工作交给当前会话。其余能力不暴露为斜杠命令，由模型通过下面的 `eai_*` 工具完成。
+
+> 实现里保留了 `/eai` 组命令与 `/eai-*` 别名的代码，但注册时被隐藏（`VISIBLE_COMMANDS`）；需要时加回即可。
 
 ## 技能
 

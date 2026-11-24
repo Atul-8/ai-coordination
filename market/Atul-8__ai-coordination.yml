@@ -2,5 +2,5 @@ url: https://github.com/Atul-8/ai-coordination
 name: Atul-8/ai-coordination
 category: workflow
 description:
-  en: 'EAI workflow plugin for DeepSeek Harness: 13 eai_* tools, /eai-* commands, four skills and an EAI agent preset covering todo.md planning, git issue sync, G3 error/META distillation, RAG role-card dispatch and cross-host handoff.'
-  zh: 'DeepSeek Harness 的 EAI 工作流插件：13 个 eai_* 工具、/eai-* 命令、4 个技能与 EAI 预设，覆盖 todo.md 计划、git issue 同步、G3 错误/META 蒸馏、RAG 角色卡派发与跨宿主交接。'
+  en: 'EAI workflow plugin for DeepSeek Harness: 13 eai_* tools, one /eai-pm entry point, four skills and an EAI agent preset covering todo.md planning, git issue sync, G3 error/META distillation, RAG role-card dispatch and cross-host handoff.'
+  zh: 'DeepSeek Harness 的 EAI 工作流插件：13 个 eai_* 工具、单一 /eai-pm 入口、4 个技能与 EAI 预设，覆盖 todo.md 计划、git issue 同步、G3 错误/META 蒸馏、RAG 角色卡派发与跨宿主交接。'

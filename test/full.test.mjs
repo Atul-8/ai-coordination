@@ -597,76 +597,34 @@ test("eai_dispatch：矩阵、JSON 派发计划、缺口", async () => {
 // commands
 // ---------------------------------------------------------------------------
 
-test("全部 /eai 命令可执行", async () => {
+test("用户入口只有 /eai-pm（其余命令不注册）", async () => {
 	const { dir, project } = await freshProject();
 	try {
 		const followups = [];
 		const agents = { get: () => ({ followup: async (message) => followups.push(message) }) };
-		const { cmd, call } = harness({ workingDir: project, agents });
-		assert.equal((await cmd("eai-init", "")).kind, "success");
-		await call("eai_todo", { action: "add", desc: "命令路由测试任务" });
-		await cmd("eai-todo", "");
-		await cmd("eai-todo", "");
-		await cmd("eai", "todo");
-		await cmd("eai", "status");
-		await cmd("eai", "meta");
-		await cmd("eai", "agents");
-		await cmd("eai", "agents", "");
-		await cmd("eai-agents", "");
-		await cmd("eai", "growth");
-		await cmd("eai-growth", "");
-		await cmd("eai", "arch");
-		await cmd("eai-arch", "");
-		assert.match((await cmd("eai-recall", "任意")).text ?? "", /旧经验检索|未命中/);
-		await assert.rejects(async () => {
-			const result = await cmd("eai-recall", "");
-			if (result.kind === "error") throw new Error(result.text);
-			return result;
-		}, /用法/);
-		assert.equal((await cmd("eai", "recall 任意")).kind, "success");
+		const { cmd, call, commands } = harness({ workingDir: project, agents });
+		assert.deepEqual([...commands.keys()], ["eai-pm"]);
 
-		const emptyResearch = await cmd("eai-research", "");
-		assert.equal(emptyResearch.kind, "error");
-		assert.match(emptyResearch.text, /用法/);
-		const emptyPm = await cmd("eai-pm", "");
-		assert.equal(emptyPm.kind, "error");
-		assert.match(emptyPm.text, /用法/);
+		const empty = await cmd("eai-pm", "");
+		assert.equal(empty.kind, "error");
+		assert.match(empty.text, /用法/);
+
 		const pm = await cmd("eai-pm", "修复登录问题");
 		assert.equal(pm.kind, "success");
 		assert.match(pm.text, /G0 路由/);
-		const research = await cmd("eai-research", "插件测试 | https://github.com/example/x");
-		assert.equal(research.kind, "success");
-		assert.match(research.text, /RESEARCH-001/);
+		assert.match(followups.at(-1).content[0].text, /需求：修复登录问题/);
 
-		await cmd("eai", "go");
-		await cmd("eai-go", "");
-		const noSessionGo = await cmd("eai", "go s0", { agent: {} });
-		assert.equal(noSessionGo.kind, "error");
-		assert.match(noSessionGo.text, /没有关联会话/);
-		await assert.rejects(async () => {
-			const result = await cmd("eai", "go s9");
-			if (result.kind === "error") throw new Error(result.text);
-			return result;
-		}, /未定义阶段/);
+		await call("eai_init", {});
+		await call("eai_todo", { action: "add", desc: "看板可见的任务" });
+		const withBoard = await cmd("eai-pm", "新增导出功能");
+		assert.equal(withBoard.kind, "success");
+		assert.match(followups.at(-1).content[0].text, /看板可见的任务/);
 
-		await cmd("eai", "handoff");
-		await cmd("eai-handoff", "");
-		await cmd("eai", "handoff done");
-
-		await cmd("eai", "issues");
-		await cmd("eai-issues", "list");
-		const unknownSub = await cmd("eai", "unknown-sub");
-		assert.equal(unknownSub.kind, "error");
-		assert.match(unknownSub.text, /未知子命令/);
-		assert.equal((await cmd("eai", "")).kind, "success"); // 空参回落到状态
-
-		// /eai go s0 会写 @session 并 followup
-		const goResult = await cmd("eai", "go s0");
-		assert.equal(goResult.kind, "success", `go 失败：${goResult.text}`);
-		const todoText = await fsp.readFile(path.join(project, "todo.md"), "utf8");
-		assert.match(todoText, /@session:0123abcd/);
-		assert.ok(followups.length >= 1);
-		assert.ok(followups.some((message) => /阶段调度/.test(message.content[0].text)));
+		// 宿主没有 agents 服务时，返回可粘贴的提示词而不是静默失败
+		const { cmd: fallbackCmd } = harness({ workingDir: project });
+		const fallback = await fallbackCmd("eai-pm", "无宿主唤醒");
+		assert.equal(fallback.kind, "success");
+		assert.match(fallback.text, /请把下面内容发给我/);
 	} finally {
 		await cleanup(dir);
 	}

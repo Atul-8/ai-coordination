@@ -8,7 +8,7 @@
 | --- | --- | --- |
 | 纯函数 | `test/lib.test.mjs` | todo 解析/渲染、编号、AGENTS 插桩、交接卡、remote 解析、路径边界 |
 | 卡池 | `test/pool.test.mjs` | front-matter/taxonomy/卡校验/分词/IDF 打分/序列化 |
-| 插件契约 | `test/plugin.test.mjs` | 13 工具 / 13 命令 / 4 技能注册；**每个工具 parameters/output 是合法 JSON Schema**；mock 上下文端到端 |
+| 插件契约 | `test/plugin.test.mjs` | 13 工具 / 1 用户命令 / 4 技能注册；**每个工具 parameters/output 是合法 JSON Schema**；mock 上下文端到端 |
 | 全链路 | `test/full.test.mjs` | 每个工具 action、每个命令、错误分支、沙箱、bundle 清单 |
 
 ## 覆盖矩阵（full.test.mjs）
@@ -27,7 +27,7 @@
 | issues | 无 remote 报错；本地 github remote 下 sync/list/close-done 的 dry-run；gitee 无 token 报错 |
 | 角色卡 | 空 taxonomy 拒绝建卡；播种卡清单；query 命中/缺参；6 类非法建卡；register/update/reflect/memory_add/memory_list/first_mission_done；卡文件落盘 |
 | 派发 | 无任务提示；矩阵与 role；`DISPATCH-*.json` 的任务数/prompt/缺口；record:false 不落盘 |
-| 命令 | `/eai` 组全子命令 + 全部扁平别名；空参/未知子命令；`/eai go` 写 `@session` 并 followup；research 参数格式 |
+| 命令 | 只注册 `/eai-pm`；空参拒绝、正常路由、无 agents 服务时回退为可粘贴提示词；其余 `/eai-*` 不注册 |
 | 沙箱 | read-only 拒绝写；workspace-write 越界拒绝；范围内放行；全局池在工作区外时警告但不阻断 |
 | 清单 | `dsh.bundle.patch`、preset-eai-workflow/agi、persona、locale、icon、4 个技能 frontmatter |
 
@@ -42,7 +42,7 @@
 | `set_issue` 写入 NaN/小数 | 整数 ≥1 校验 | `"abc"` / `3.7` 拒绝 |
 | 重复 promote 污染全局池 | 按来源去重 | 两次 promote 只保留一条 |
 | 多行 desc 破坏 todo 行 | 压成单行 | 换行描述写成单行 |
-| 无 session 的 consume / `/eai go` | 明确报错 | 空 session 拒绝 |
+| 无 session 的 consume | 明确报错（命令层已隐藏，工具仍校验） | 空 session 拒绝 |
 | todo.md 缺失静默当空 | `loadTodo` 报缺失 | 删除后 list 报错 |
 | 外部包 `lodash/core` 误报 | 裸包名跳过 | 外部 import 不产生违规 |
 | 同秒 dispatch 覆盖 | 秒级 + 冲突序号 | 连续两次路径不同 |
@@ -62,5 +62,5 @@
 - [ ] `npm test` 全绿（30/30）
 - [ ] `plugin_manager remove_bundle` → `install_bundle <仓库根>`，结果 `application: applied`
 - [ ] 新会话选 `EAI · 工作流`，跑 `eai_init` → `eai_todo add` → `eai_status`
-- [ ] 版本号已 bump（当前 `1.0.1`），README/DESIGN 数字一致
+- [ ] 版本号已 bump（当前 `1.1.0`），README/DESIGN 数字一致
 - [ ] LICENSE-REQ-001 状态与 README/THIRD-PARTY 一致（已授权，发布记录可选）
