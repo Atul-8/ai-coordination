@@ -1,4 +1,38 @@
-# pi-ai-coordination
+# ai-coordination（DSH 版 · 当前分支 `dsh`）
+
+七层分治协调框架的 **DSH bundle**，位于 [`dsh-plugin/`](dsh-plugin/)，包名 `dsh-ai-coordination`。
+框架 = 全局插件，项目 = 纯数据（`.ai/`、`todo.md`、`AGENTS.md`）。
+
+| 能力 | 内容 |
+| --- | --- |
+| 工具 | `coord_init` `coord_todo` `coord_plan_save` `coord_status` `coord_issue` `coord_error` `coord_meta` `coord_handoff` |
+| 命令 | `/coord status\|todo\|init\|go\|issues\|meta\|handoff` + `/coord-*` 扁平别名 |
+| 预设 | **AGI · 协调开发**（persona + 计划模式 + 委派/压缩分组） |
+| 技能 | `agi-coordination` `agi-handoff` `agi-dispatch` |
+| 全链路评估 | [docs/DESIGN-DSH.md](docs/DESIGN-DSH.md)（映射表、取舍、验证记录、路线图） |
+
+## DSH 快速开始
+
+1. 安装：**Plugins → Add plugin** 选择 `dsh-plugin/`；或 `plugin_manager install_bundle` 传绝对路径。
+2. 项目内让 AI 调用 `coord_init`，或键入 `/coord-init`（幂等；会原地升级 pi/ZCode 旧 AGENTS.md 插桩）。
+3. 新会话选择 **AGI · 协调开发** 预设（框架工具对所有会话可见，此预设额外提供 persona 与完整工具组合）。
+4. 计划：计划模式 → `exit_plan_mode` 审批 → `coord_plan_save` 落盘；调度：`/coord-go s1`。
+
+> 已验证：单测 11/11；desktop profile 安装 `application: applied`；demo 项目
+> init → todo → plan → status → handoff → error/META 全链路实跑。
+> 注意：bundle 以 link 方式安装，改源码后需重启 DSH 才会加载新模块。
+
+## 仓库结构
+
+| 路径 | 说明 |
+| --- | --- |
+| `dsh-plugin/` | **DSH bundle（当前主线）**：插件、预设、技能、模板、测试 |
+| `docs/DESIGN-DSH.md` | pi → DSH 全链路评估与迁移记录 |
+| `extensions/` `prompts/` `scripts/` `skills/` `templates/` | pi 宿主版（历史，见下节） |
+
+---
+
+# pi-ai-coordination（pi 宿主版 · 历史）
 
 ai-coordination 七层分治框架（v1.2.3，Claude Code 插件）的 **pi 原生重构版**。
 

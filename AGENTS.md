@@ -3,6 +3,11 @@
 > 本文件由 pi-ai-coordination 框架在项目初始化时部署（`scripts/init-project.js`）。
 > **激活检测**：项目根存在 `.ai/` 目录 = 框架启用，以下规则生效；否则全部忽略。
 > 完整铁律（G0-G4）见技能 `coordination`（skills/coordination/SKILL.md）。
+>
+> **宿主说明（分支 `dsh`）**：本仓库同时提供 DSH bundle [`dsh-plugin/`](dsh-plugin/)，其项目模板为
+> `dsh-plugin/templates/AGENTS.template.md`，工具/命令命名为 `coord_*` / `/coord-*`。
+> 两个宿主共享同一套项目数据格式（todo.md / `.ai/` / HANDOFF），可在同一项目上接力；
+> 全链路对照见 [docs/DESIGN-DSH.md](docs/DESIGN-DSH.md)。下文以 pi 宿主命令为例。
 
 ## 核心思想（七层分治）
 
