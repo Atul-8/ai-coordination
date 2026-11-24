@@ -32,7 +32,7 @@ pi 版在 `pi-ai-coordination` 分支，ZCode 版在 `zcode-ai-coordination` 分
 1. 改代码前先跑 `npm test`，确认基线是绿的（G2.5：红→绿）。
 2. 改行为 → 同步 `README.md`（工具/命令表）与 `docs/DESIGN.md`（映射/边界/验证记录）。
 3. 改 `package.json` 的 `version`（本地安装用），然后重新 `plugin_manager install_bundle` 指向仓库根。
-4. 验证：`npm test` 全绿（17 项）→ 安装 `application: applied` → 重启 DSH → 新建会话选 `AGI · 协调开发` →
+4. 验证：`npm test` 全绿（30 项，含 schema 契约与全链路）→ 安装 `application: applied` → 重启 DSH → 新建会话选 `AGI · 协调开发` →
    跑 `coord_init` / `coord_todo` / `coord_status` 冒烟。
 5. 提交信息用 `feat|fix|docs|chore(dsh): …`，与分支语义一致；不提交 `.ai/`、`todo.md`、`node_modules/`。
 

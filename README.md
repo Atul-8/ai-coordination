@@ -144,8 +144,9 @@ bundle 以 link 方式安装时，修改 JS 源码需要重启 DSH 才会加载�
 | `templates/` | 部署到目标项目的模板（`AGENTS.template.md` 等 10 个） |
 | `scripts/issues.js` | 零依赖 CLI，init 时刷新到 `<项目>/.ai/scripts/` |
 | `skills/` · `locale/` · `icon.svg` | 技能、插件市场元数据、图标 |
-| `test/` | 17 个单测（纯函数 + mock 上下文端到端） |
+| `test/` | 30 个测试（纯函数 + schema 契约 + mock 上下文全链路） |
 | `docs/DESIGN.md` | pi → DSH 全链路评估、取舍、验证记录、路线图 |
+| `docs/TESTING.md` | 测试矩阵与分发前 checklist |
 
 分支：`dsh`（本分支，DSH 形态）· `pi-ai-coordination`（pi 扩展版）· `zcode-ai-coordination`（ZCode 插件版）。
 三者共享 `todo.md` / `.ai/` / HANDOFF 数据契约，同一项目可跨宿主接力。
@@ -153,8 +154,10 @@ bundle 以 link 方式安装时，修改 JS 源码需要重启 DSH 才会加载�
 ## 开发
 
 ```bash
-npm test          # node --test test/lib.test.mjs test/pool.test.mjs test/plugin.test.mjs
+npm test          # 30 项：lib + pool + plugin 契约 + full 全链路
 ```
+
+覆盖矩阵与未覆盖项见 [docs/TESTING.md](docs/TESTING.md)。
 
 ## 计划门禁（v0.6）
 

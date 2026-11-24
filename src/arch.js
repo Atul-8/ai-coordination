@@ -35,7 +35,7 @@ async function walk(io, dir, out, depth = 0) {
 
 function layerOf(file, root) {
 	const rel = path.relative(root, file).replace(/\\/g, "/");
-	for (const layer of LAYERS) if (rel.startsWith(`${layer.id}/`)) return layer.id;
+	for (const layer of LAYERS) if (rel === layer.id || rel.startsWith(`${layer.id}/`)) return layer.id;
 	return null;
 }
 

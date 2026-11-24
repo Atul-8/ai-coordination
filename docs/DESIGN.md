@@ -122,8 +122,8 @@ compaction + subagent/fork/workflow + ask-user + todo + web + present。
 
 | 项 | 结果 |
 | --- | --- |
-| 单元/端到端测试 | `npm test`（lib + pool + plugin）→ 17/17 通过 |
-| 安装 | `plugin_manager install_bundle target=<仓库根>` → `application: applied`，bundle `dsh-ai-coordination@0.6.2`（仓库根即 bundle；remove→install 后 link 指向根目录） |
+| 单元/契约/全链路测试 | `npm test` → **30/30** 通过（lib 9 + pool 6 + 插件契约 2 + full 13） |
+| 安装 | `plugin_manager install_bundle target=<仓库根>` → `application: applied`，bundle `dsh-ai-coordination@0.6.3`（仓库根即 bundle；remove→install 后 link 指向根目录） |
 | 工具 schema | `ctx.tools.register` 不做参数编译：插件统一把 `required:true` 简写编译为合法 JSON Schema（`type:object` + `properties` + `required`），修复 `coord_agent` 的 `type` 参数导致 provider 报 `anyOf` 非法 schema |
 | 预设行 | `Config.listConfigs(name=dsh-agent-preset)` 出现 `include:preset-agi`（status schema） |
 | 技能目录 | 安装后目录出现 `agi-coordination` / `agi-handoff` / `agi-dispatch` / `agi-growth` |
@@ -131,6 +131,7 @@ compaction + subagent/fork/workflow + ask-user + todo + web + present。
 | 实跑 | 在临时 demo 项目：init（建 14 项）→ stage_add → add → plan_save（PLAN-001 + T-002..T-004）→ status（看板正确）→ handoff write/read/consume（状态 resumed、T-002 重绑）→ error（ERR-001 + META-001）→ meta list → issue list（无 remote 时明确报错，不伪造）；demo 已清理 |
 | 角色卡池实跑 | init 播种 4 张基卡 → query 命中 writer → register/update/reflect/memory_add/first_mission → `coord_dispatch` 生成矩阵并落盘 md + json（含每个 subagent 的 prompt） |
 | 门禁实跑 | 多步骤计划缺 acceptance → 拒绝；缺 research 且无 skip_research → 拒绝；`coord_research` 记录后计划落盘并引用 RESEARCH-001 |
+| 全链路测试 | `test/full.test.mjs` 覆盖 13 工具每个 action、13 个命令、错误分支、read-only/workspace-write 沙箱、bundle 清单与技能；矩阵见 `docs/TESTING.md` |
 | 自纠正实跑 | `coord_error` 输出相关旧经验；`coord_recall "断言不匹配"` 召回 ERR-001；`coord_arch` 抓住 `../core` 与 `@/core` 两处反向引用 |
 | 路由实跑 | IDF 降权后，「补 IMU 零偏标定与驱动测试」不再被 chemistry-expert 用通用词“测试”抢走（候选 top3 仍可人工纠正） |
 | 重装后复核 | 从仓库根重装后实跑：`coord_meta list` 全局池按 15 条截断、交接卡字段单行化、`coord_init` 把 issues CLI 计入新建项（最新代码已生效） |

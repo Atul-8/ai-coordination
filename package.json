@@ -1,6 +1,6 @@
 {
   "name": "dsh-ai-coordination",
-  "version": "0.6.2",
+  "version": "0.6.3",
   "description": "七层分治协调框架的 DSH bundle：coord_* 工具 + /coord-* 命令 + AGI 预设 + 技能，项目数据落在 .ai/ 与 todo.md",
   "type": "module",
   "exports": {
@@ -26,7 +26,7 @@
     }
   },
   "scripts": {
-    "test": "node --test test/lib.test.mjs test/pool.test.mjs test/plugin.test.mjs"
+    "test": "node --test test/lib.test.mjs test/pool.test.mjs test/plugin.test.mjs test/full.test.mjs"
   },
   "keywords": [
     "dsh-bundle",
