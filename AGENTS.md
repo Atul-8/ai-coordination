@@ -1,95 +1,40 @@
-# AGENTS.md — pi-ai-coordination 运行时规范
+# AGENTS.md — 本仓库开发约定
 
-> 本文件由 pi-ai-coordination 框架在项目初始化时部署（`scripts/init-project.js`）。
-> **激活检测**：项目根存在 `.ai/` 目录 = 框架启用，以下规则生效；否则全部忽略。
-> 完整铁律（G0-G4）见技能 `coordination`（skills/coordination/SKILL.md）。
->
-> **宿主说明（分支 `dsh`）**：本仓库同时提供 DSH bundle [`dsh-plugin/`](dsh-plugin/)，其项目模板为
-> `dsh-plugin/templates/AGENTS.template.md`，工具/命令命名为 `coord_*` / `/coord-*`。
-> 两个宿主共享同一套项目数据格式（todo.md / `.ai/` / HANDOFF），可在同一项目上接力；
-> 全链路对照见 [docs/DESIGN-DSH.md](docs/DESIGN-DSH.md)。下文以 pi 宿主命令为例。
+> 本文件是 **ai-coordination 仓库自身**的维护规范，不是部署到用户项目的模板。
+> 部署模板是 `templates/AGENTS.template.md`（故意不用 `AGENTS.md` 命名，避免被本仓库会话自动加载）。
 
-## 核心思想（七层分治）
+## 这是什么
 
-七层架构：coordination（协调）→ presentation（表示）→ interface（接口）→ core（核心）→ shared（共享）+ testing（测试）+ docs（文档）。
-依赖单向向下（shared 零依赖），跨层必须走接口。结构地图：`.ai/STRUCTURE.md`（写操作后同步）。
+`dsh` 分支 = 七层分治协调框架的 **DSH bundle**（包名 `dsh-ai-coordination`），仓库根即插件根。
+pi 版在 `pi-ai-coordination` 分支，ZCode 版在 `zcode-ai-coordination` 分支；三个分支共享项目数据契约
+（`todo.md` / `.ai/` / `HANDOFF.md`），不要在本分支恢复 pi 的 `extensions/`、`prompts/`、`pi` 清单字段。
 
-## 任务流水线（todo → plan → issue → go）
+## 结构
 
-```
-/pm      需求入口（G0 路由：小活直接干，大活走流水线，错误走 G3）
-/plan    计划模式：只读探索 → Plan: 步骤 → 用户确认
-         → 落盘 docs/plans/PLAN-NNN-*.md → 步骤自动登记为 todo.md 任务
-/issue   node .ai/scripts/issues.js sync：待办任务 ↔ git issues（gh / GITEE_TOKEN）
-/go      阶段性调度：交互确认 → 按序执行 → 每完成一项 coord_todo done
-/status  项目状态报告（/coord-status 为扩展原生命令）
-/error   G3 五步法错误提炼
-/meta    经验提升到全局 META 池
-/handoff 跨宿主交接卡（/handoff 写卡交出 · /handoff done 消化接手；pi ↔ ZCode 开发到一半无缝接力）
-```
+| 路径 | 约束 |
+| --- | --- |
+| `index.js` | 只做装配：读模板资产 → 注册工具、命令、技能；业务逻辑放 `src/` |
+| `src/lib.js` | 纯函数、零 I/O；todo/plan/交接卡格式都在这里，改格式必须同步 `docs/DESIGN.md` 与测试 |
+| `src/project.js` | 所有落盘经 `createIo(policy)`（沙箱策略）；不要在工具里直接 `fs.writeFile` |
+| `src/tools.js` / `src/commands.js` | 只做参数校验与结果渲染；共享逻辑下沉到 `src/` |
+| `templates/` | 会被部署到用户项目；`AGENTS.template.md` 是规范正文，`todo.md` / `STRUCTURE.md` 等保持占位可读 |
+| `scripts/issues.js` | 零依赖 Node CLI；与 `src/issues.js` 行为保持一致 |
+| `skills/*/SKILL.md` | frontmatter 必须含 `name` / `description` / `whenToUse`；技能名以 `agi-` 前缀避免冲突 |
+| `cordis.patch.yml` | 顶层插件行 + `preset-agi` 预设；插件名只用 DSH 已发布包 |
+| `test/` | 改工具/格式必须补测试；`npm test` 全绿才算完成 |
 
-**todo.md 是唯一任务事实源**，行格式：
+## 开发流程
 
-```
-- [ ] T-001 [stage:s1] 任务描述 (#12) @session:01a05cc8
-      │            │              │       └ /go 调度时自动写入的 pi session 前 8 位
-      │            │              └ issues.js sync 回写的 issue 编号
-      │            └ 阶段标签，对应下方「阶段定义」小节
-      └ [ ] 待办 / [~] 进行中 / [x] 完成
-```
+1. 改代码前先跑 `npm test`，确认基线是绿的（G2.5：红→绿）。
+2. 改行为 → 同步 `README.md`（工具/命令表）与 `docs/DESIGN.md`（映射/边界/验证记录）。
+3. 改 `package.json` 的 `version`（本地安装用），然后重新 `plugin_manager install_bundle` 指向仓库根。
+4. 验证：`npm test` 全绿 → 安装 `application: applied` → 重启 DSH → 新建会话选 `AGI · 协调开发` →
+   跑 `coord_init` / `coord_todo` / `coord_status` 冒烟。
+5. 提交信息用 `feat|fix|docs|chore(dsh): …`，与分支语义一致；不提交 `.ai/`、`todo.md`、`node_modules/`。
 
-- 任务行只能用 `coord_todo` 工具维护，**禁止用 edit/write 直接改任务行**。
-- 阶段定义（`- s1: 标题`）可手工编辑；`/plan` 保存时自动回写 `<!-- plan:docs/plans/... -->`。
+## 兼容红线
 
-## 会话与状态（session 原生）
-
-- **不维护** WORKSTATE.md / LOG.md：会话上下文由 pi 原生承担（`/resume`、`/tree`、`/fork`；bash 内可用 `$PI_SESSION_FILE` / `$PI_SESSION_ID`）。
-- **跨宿主接力**：pi 会话树对另一宿主（ZCode）不可读——开发到一半换宿主必须写交接卡
-  `.ai/HANDOFF.md`（`/handoff` 写卡，整卡重写走 git 提交同步；接手方 G1 提示读卡，
-  按「验证→下一步」续作后 `/handoff done` 消化并用 coord_todo link 重绑本方会话）。
-- 任务 ↔ 会话关联记录在 todo.md 行内 `@session:` 标记；详细过程在 pi 会话树里，按需 `/tree` 回溯。
-
-## 铁律卡片
-
-| 门 | 何时 | 动作 |
-| --- | --- | --- |
-| G0 | 任何需求进来 | 路由：小活直接做；大活 → REQ 卡 + /plan 流水线；错误 → G3 |
-| G1 | 开门 / resume | 确认 todo.md 进度 + META 规则加载（session_start 自动提示）+ 读 `.ai/HANDOFF.md`（open 卡必读，验证→下一步续作；状态：/coord-status） |
-| G2 | 任何写操作后 | 跑层测试 → 更新 .ai/STRUCTURE.md / REQ / todo 状态 → 再写下一处 |
-| G2.5 | 任何新开发前 | 先证明测试体系能跑（红→绿），再写实现 |
-| G3 | 出错时 | 五步法：现象→根因→修复→预防→META（`.ai/errors/raw/ERR-NNN.md`，编号先查最大值） |
-| G4 | 离场前 | coord_todo 归档 + close-done 关 issue + git 提交推送 + STRUCTURE 校验 |
-
-## 编号规则
-
-- 任务 T-NNN（todo.md 自动递增）；计划 PLAN-NNN（docs/plans/ 自动递增）
-- 需求 REQ-NNN、错误 ERR-NNN（.ai/ 内手工，**先查现有最大编号再递增**）
-- META 规则：项目池 META-NNN（`.ai/errors/distilled/meta-rules.md`）；全局池 META-NNNN（`AI_GLOBAL_DIR`，默认 `C:\.ai_global`）
-
-## 大任务派发（全局智能体调配 · 动态调度）
-
-角色卡单池（RAG pool v2）在全局池：`AI_GLOBAL_DIR\agents\pool\*.md`（schema v2）+ `taxonomy.yml` + `scripts\`（检索三档），默认 `C:\.ai_global\agents\`。
-
-- **命名空间（固定前缀，勿改）**：`pi-dynamic-workflows`；动态 lanes 的 workflow key 一律
-  `pi-dynamic-workflows.<stage>.<T-NNN>`；常驻命名 agent 固定名 `pi-dynamic-workflows-pm`
-- **pm（调度者，常驻主会话）**：不派发自己——负责 G0 路由、动态调度各阶段 subagent、结果汇总
-- **PM 行为闭环（眼里有活，禁止空转等催）**：
-  1. 分支/计划/任务就绪后必须立即：盘点进度（todo/PLAN）→ 产出派发矩阵（阶段×并行×文件域防冲突）
-     → 组装任务卡（角色卡+任务卡）→ 一次顶层 workflowScript 派发 → 向用户汇报矩阵后 PM 空闲待命；
-  2. 不允许出现「分支已建、任务已登记、却无派发就停轮」的状态——那是 PM 失职；
-  3. 子代理完成唤醒后 PM 收口：验证（vitest/tsc/build）→ 分任务提交 → coord_todo done →
-     STRUCTURE/README 同步 → push。
-- **writer / reviewer / tester / architect**：subagent 执行；阶段 = lane（无依赖可并行接入），
-  任务 = lane 内 writer→reviewer 串行；lane 完成即动态续派
-- 派发 = 角色卡 + 任务卡（todo.md 描述 + REQ 文档）组合成 task；模板见
-  `pi-ai-coordination/templates/agents/dynamic-dispatch.example.js`
-- **workflowScript 沙箱契约（subagent 工具，违反即运行时崩溃）**：
-  可用 `runs.run / runs.all / runs.lanes / runs.host / runs.steer / runs.status / runs.ref / emit / console / return`；
-  不可用 `workflow` 工具的 log()/phase()/agent()/parallel()/pipeline()；
-  key 校验 `^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$` —— 禁用冒号，分隔符用点号
-- **RAG 池派发（自演化卡池，spec：`AI_GLOBAL_DIR\agents\docs\design\rag-pool-redesign.md`）**：
-  派发前检索三档（`node AI_GLOBAL_DIR\agents\scripts\query.mjs "<任务>"`）：强命中→组合派发｜
-  弱命中→派发+标注「边界试探」｜未命中→建卡协议（新卡必写 scope、禁万金油卡、first_mission: pending，
-  首任务后复核转 done）；子 agent scope 自查不符可拒单（out-of-scope + suggest_keywords）→
-  任务携反馈入队尾，FIFO 逐个出队重组再派，再退单再入队尾（反馈累加），累计 ≥2 次（两次即触发）PM 拆解自办或上报用户；
-  任务卡头 `meta_injection: full|partial|none` 控制 META 预注入，避免子 agent 重复读
+- `todo.md` 行格式与 `<!-- dsh-ai-coordination:agents:v1 BEGIN/END -->` 标记是跨宿主契约：
+  改它们必须同时改 pi 分支的 `lib.ts` / `init-project.js`，否则接力会断。
+- 工具名 `coord_*`、命令名 `/coord-*`、预设 id `agi` 已在 profile 安装态使用，不要无故改名。
+- 写文件必须走会话沙箱策略（`read-only` 拒绝、`workspace-write` 限制在工作区），不要绕过。

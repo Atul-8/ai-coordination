@@ -1,9 +1,9 @@
 # DSH 版全链路评估 —— 从 pi-ai-coordination 到 dsh-ai-coordination
 
-> 评估日期：2026-11-24 · 分支：`dsh` · 运行环境：DSH Desktop 0.2.2-rc.5（profile `desktop`）
+> 评估日期：2026-11-24 · 分支：`dsh`（仓库根即 bundle） · 运行环境：DSH Desktop 0.2.2-rc.5（profile `desktop`）
 > 结论：框架的**方法论层**（七层分治、G0–G4、todo/plan/issue/META/交接）与宿主无关，可完整保留；
-> **承载层**（扩展、提示词模板、会话、子代理编排）按 DSH 原生机制重写。已交付可安装 bundle
-> `dsh-plugin/`（包名 `dsh-ai-coordination`），预设 `AGI · 协调开发`。
+> **承载层**（扩展、提示词模板、会话、子代理编排）按 DSH 原生机制重写。仓库根目录就是可安装 bundle
+> `dsh-ai-coordination`，预设 `AGI · 协调开发`。
 
 ## 1. 评估方法
 
@@ -70,10 +70,10 @@
 | 全局池 `C:\.ai_global`（meta + agents RAG 池） | 同路径；`coord_meta promote`、`AI_GLOBAL_DIR` 可覆盖 | **保留**；bootstrap 不再联网克隆，只建最小骨架 |
 | `init-global.mjs` 克隆 `eai-code/ai-meta`、`eai-code/eai-agent` | 不自动克隆（避免安装即联网）；建目录与 README | 降级（有意） |
 
-## 3. 交付物
+## 3. 交付物（仓库根目录）
 
 ```
-dsh-plugin/
+ai-coordination/            # 包名 dsh-ai-coordination；这是 bundle 根，不是子目录
 ├── package.json            dsh.bundle.patch 清单（locale/icon/files/exports）
 ├── cordis.patch.yml        顶层插件行 ai-coordination + 预设行 preset-agi
 ├── index.js                注册 8 工具 / 7 命令 / 3 技能
@@ -89,8 +89,13 @@ dsh-plugin/
 ├── scripts/issues.js       零依赖 CLI（部署到 .ai/scripts/）
 ├── locale/{en,zh}.json     插件市场标题与描述
 ├── icon.svg                36×36 图标（七层分治）
-└── test/                   11 个单测（纯函数 + mock 上下文端到端）
+├── docs/                   本设计文档
+├── test/                   11 个单测（纯函数 + mock 上下文端到端）
+└── AGENTS.md               本仓库的开发约定（不是部署模板）
 ```
+
+> 分支模型：`dsh` 分支 = DSH 形态（pi 资产已移除）；pi 版完整保留在 `pi-ai-coordination` 分支，
+> `zcode-ai-coordination` 为 ZCode 版。三者共享项目数据契约，可跨宿主接力。
 
 ### 预设 `AGI · 协调开发`（id `agi`）
 
@@ -113,15 +118,16 @@ compaction + subagent/fork/workflow + ask-user + todo + web + present。
 | 项 | 结果 |
 | --- | --- |
 | 单元/端到端测试 | `node --test test/lib.test.mjs test/plugin.test.mjs` → 11/11 通过 |
-| 安装 | `plugin_manager install_bundle` → `application: applied`，bundle `dsh-ai-coordination@0.3.0` |
+| 安装 | `plugin_manager install_bundle target=<仓库根>` → `application: applied`，bundle `dsh-ai-coordination@0.4.0`（仓库根即 bundle；remove→install 后 link 指向根目录） |
 | 预设行 | `Config.listConfigs(name=dsh-agent-preset)` 出现 `include:preset-agi`（status schema） |
 | 技能目录 | 安装后目录出现 `agi-coordination` / `agi-handoff` / `agi-dispatch` |
 | 工具可用 | `Tool.listTools` 出现 8 个 `coord_*` |
 | 实跑 | 在临时 demo 项目：init（建 14 项）→ stage_add → add → plan_save（PLAN-001 + T-002..T-004）→ status（看板正确）→ handoff write/read/consume（状态 resumed、T-002 重绑）→ error（ERR-001 + META-001）→ meta list → issue list（无 remote 时明确报错，不伪造）；demo 已清理 |
+| 重装后复核 | 从仓库根重装后实跑：`coord_meta list` 全局池按 15 条截断、交接卡字段单行化、`coord_init` 把 issues CLI 计入新建项（最新代码已生效） |
 | 未验证 | ① 插件市场图标/详情页的实际渲染（无浏览器控制）；② 选择 `AGI` 预设的新会话端到端（需要用户新建会话）；③ GitHub/Gitee 真实 issue 创建（demo 无 remote） |
 
-> 注意：当前 profile 以 **link** 方式安装。安装后修改插件源码，运行中的 Host 仍执行旧模块；
-> 重启 DSH（或重新安装）后加载新代码。
+> 注意：profile 以 **link** 方式安装。改源码后运行中的 Host 仍执行旧模块；`remove_bundle` + `install_bundle`
+> 会重建插件实例并加载新代码，普通情况下重启 DSH 即可。
 
 ## 6. 已知边界与取舍
 

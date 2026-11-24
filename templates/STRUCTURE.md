@@ -1,7 +1,7 @@
 # STRUCTURE.md — 七层结构地图
 
 > G2 同步对象：每次新增/移动/删除文件或模块后，先跑通层测试，再更新本文件。
-> pi 会话内使用 `ls`/`find` 可随时校验本地图与实际目录的一致性。
+> 在 DSH 会话里用 `glob`/`grep` 或 `pwsh` 可随时校验本图与实际目录的一致性。
 
 ## 布局总览
 
@@ -9,10 +9,10 @@
 
 ```
 <项目根>/
-├── AGENTS.md            # 运行时规范（pi 自动加载）
+├── AGENTS.md            # 运行时规范（DSH agent-instructions 自动加载）
 ├── todo.md              # 任务事实源
 ├── docs/                # 第7层 文档层
-│   └── plans/           # /plan 产出的阶段计划
+│   └── plans/           # 计划落盘（PLAN-NNN）
 ├── .ai/                 # 第1层 协调层（框架数据，不含业务代码）
 ├── src/
 │   ├── presentation/    # 第2层 表示层（UI/渲染，只依赖 interface）
