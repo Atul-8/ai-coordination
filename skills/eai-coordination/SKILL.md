@@ -99,6 +99,7 @@ DSH 的计划模式（`exit_plan_mode`）负责只读探索与审批。计划被
 | `/eai init [root]` | 初始化（幂等） |
 | `/eai status` | 全量状态 |
 | `/eai todo` | 任务看板 |
+| `/eai pm <需求>` | G0 需求入口：分类路由后派发本会话 |
 | `/eai go s1` / `/eai go T-003` | 阶段/单任务调度 |
 | `/eai issues [sync] [--dry-run] [--stage s1]` | todo ↔ issues |
 | `/eai meta` | META 概览 |

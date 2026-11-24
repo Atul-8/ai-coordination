@@ -62,5 +62,5 @@
 - [ ] `npm test` 全绿（30/30）
 - [ ] `plugin_manager remove_bundle` → `install_bundle <仓库根>`，结果 `application: applied`
 - [ ] 新会话选 `EAI · 工作流`，跑 `eai_init` → `eai_todo add` → `eai_status`
-- [ ] 版本号已 bump（当前 `1.0.0`），README/DESIGN 数字一致
+- [ ] 版本号已 bump（当前 `1.0.1`），README/DESIGN 数字一致
 - [ ] LICENSE-REQ-001 状态与 README/THIRD-PARTY 一致（已授权，发布记录可选）

@@ -30,7 +30,7 @@ function makeHarness() {
 	return { tools, commands, skills, call, cwd };
 }
 
-test("插件注册 13 工具 / 13 命令 / 4 技能", async () => {
+test("插件注册 13 工具 / 14 命令 / 4 技能", async () => {
 	const dir = await fsp.mkdtemp(path.join(os.tmpdir(), "dsh-eai-reg-"));
 	process.env.AI_GLOBAL_DIR = path.join(dir, "global");
 	try {
@@ -60,6 +60,7 @@ test("插件注册 13 工具 / 13 命令 / 4 技能", async () => {
 			"eai-handoff",
 			"eai-init",
 			"eai-issues",
+			"eai-pm",
 			"eai-recall",
 			"eai-research",
 			"eai-status",

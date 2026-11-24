@@ -24,20 +24,21 @@
 | `package.json` 的 `pi.extensions/skills/prompts` | pi 包清单 | `dsh.bundle.patch` + `exports` + `files` | 重写 |
 | `pi install` / `pi update` | pi 包管理 | `plugin_manager install_bundle`（本地目录或 npm 包） | 换承载 |
 | 全局安装、项目数据 | 全局插件 + 项目 `.ai/` | 同左：bundle 装 profile，项目数据仍落项目根 | **保留**（哲学不变） |
-| `AGENTS.md` 插桩 | `init-project.js` 写标记块 | `eai_init` 写同构标记（dsh v1），并**原位升级** pi/zcode 旧块 | 保留并增强 |
+| `AGENTS.md` 插桩 | `init-project.js` 写标记块 | `eai_init` 写 `eai-workflow:agents:v1` 标记，并**原位升级** legacy-dsh/pi/zcode 旧块 | 保留并增强 |
 
 ### 2.2 命令与交互
 
 | pi | DSH | 说明 |
 | --- | --- | --- |
 | `/eai-init` 扩展命令 | `/eai-init`、`/eai init`（`ctx.commands.register`） | 命令处理函数直接执行并返回文本 |
+| `/pm` 提示词（G0 路由） | `/eai-pm <需求>`、`/eai pm <需求>` | 读取 todo 看板后把需求+路由纪律 followup 给本会话；空参拒绝 |
 | `/todo` 看板 | `/eai-todo`、`/eai todo` | 纯计算，无 UI 依赖 |
 | `/eai-status` | `/eai-status`、`/eai status` | 纯计算 |
 | `/go s1` 交互选阶段 + 确认 | `/eai-go s1` 写 `@session` 后 `agent.followup()` 派发；无参列出阶段 | 命令树没有多选 UI，选择改为参数；确认由用户显式输入完成 |
 | `/plan` 自建只读计划模式 | **删除自建模式**，改用 DSH `dsh-plan-mode` + `exit_plan_mode` | DSH 已有更完整的计划审批；自建会与宿主模式冲突 |
 | `/issue` 提示词 | `/eai-issues` 命令 + `eai_issue` 工具 | 逻辑从提示词下沉为工具，行为可测 |
 | `/error` `/meta` `/status` 提示词 | `eai_error` / `eai_meta` / `eai_status` 工具 + persona 纪律 | 提示词模板在 DSH 不再作为命令载体 |
-| `/eai` 组命令与 `eai-*` 别名 | `/eai` 组命令 + `eai-*` 扁平别名 | 命名统一为 `coord`；不再维护双前缀 |
+| `/eai` 组命令与 `eai-*` 别名 | `/eai` 组命令 + `eai-*` 扁平别名 | 命名统一为 eai；不再维护双前缀 |
 
 ### 2.3 工具
 
@@ -76,7 +77,7 @@
 ai-coordination/            # 包名 dsh-eai-workflow；这是 bundle 根，不是子目录
 ├── package.json            dsh.bundle.patch 清单（locale/icon/files/exports）
 ├── cordis.patch.yml        顶层插件行 ai-coordination + 预设行 preset-eai-workflow
-├── index.js                注册 13 工具 / 13 命令 / 4 技能
+├── index.js                注册 13 工具 / 14 命令 / 4 技能
 ├── src/
 │   ├── lib.js              纯函数（todo 解析渲染、编号、插桩、交接卡、remote 解析）
 │   ├── pool.js             RAG 卡池纯函数（front-matter/taxonomy/校验/分词/打分/序列化）
@@ -123,7 +124,7 @@ compaction + subagent/fork/workflow + ask-user + todo + web + present。
 | 项 | 结果 |
 | --- | --- |
 | 单元/契约/全链路测试 | `npm test` → **30/30** 通过（lib 9 + pool 6 + 插件契约 2 + full 13） |
-| 安装 | `plugin_manager install_bundle target=<仓库根>` → `application: applied`，bundle `dsh-eai-workflow@1.0.0`（仓库根即 bundle；remove→install 后 link 指向根目录） |
+| 安装 | `plugin_manager install_bundle target=<仓库根>` → `application: applied`，bundle `dsh-eai-workflow@1.0.1`（仓库根即 bundle；remove→install 后 link 指向根目录） |
 | 工具 schema | `ctx.tools.register` 不做参数编译：插件统一把 `required:true` 简写编译为合法 JSON Schema（`type:object` + `properties` + `required`），修复 `eai_agent` 的 `type` 参数导致 provider 报 `anyOf` 非法 schema |
 | 预设行 | `Config.listConfigs(name=dsh-agent-preset)` 出现 `include:preset-eai-workflow`（status schema） |
 | 技能目录 | 安装后目录出现 `eai-coordination` / `eai-handoff` / `eai-dispatch` / `eai-growth` |

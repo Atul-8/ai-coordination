@@ -4,6 +4,7 @@
  * 与 pi 版 /go /status /todo 的职责对应：
  *   /eai status      看板与状态
  *   /eai todo        任务看板
+ *   /eai pm <需求>   G0 需求入口：分类路由后派发给本会话
  *   /eai init        初始化项目（幂等）
  *   /eai go s1       阶段调度：写 @session 关联并把任务清单派发给模型
  *   /eai handoff     读交接卡；/eai handoff done 消化交接卡
@@ -150,6 +151,42 @@ export function registerCoordinationCommands(ctx, env) {
 		return `已写入 @session 关联（${short}），但当前宿主不能自动唤醒模型。请把下面内容发给我执行：\n\n${prompt}`;
 	};
 
+	const runPm = async (invocation, arg) => {
+		const requirement = String(arg ?? "").trim();
+		if (!requirement) {
+			throw new Error("用法：/eai-pm <需求描述>（G0 路由；空参不路由，避免空跑）");
+		}
+		const startDir = await resolveDir(invocation);
+		let board = "（项目尚未初始化：先 /eai-init 或让 AI 调用 eai_init）";
+		try {
+			const { file } = await loadTodo(startDir, policyOf(ctx, execOfInvocation(invocation)));
+			board = L.renderBoard(file);
+		} catch (error) {
+			board = `（项目未激活：${error.message}）`;
+		}
+		const prompt = [
+			`[/eai-pm G0 路由] 需求：${requirement}`,
+			"",
+			"当前任务看板：",
+			board,
+			"",
+			"按 G0 路由后再执行，不要直接开写：",
+			"1. 小活（≤2 次写操作、单会话可完成）→ 直接做，写后走 G2。",
+			"2. 大活（多文件/多阶段/需跨会话）→ 写 REQ 卡 → 计划模式 → 审批后 eai_plan_save（多步骤必须 acceptance；先 eai_research）→ eai_issue sync → /eai-go <阶段>。",
+			"3. 错误/缺陷 → eai_error 五步法；动手前先 eai_recall 旧经验。",
+			"4. 经验教训 → eai_meta promote。",
+			"5. 可并行的大活 → eai_agent query 检索角色卡 → eai_dispatch 生成矩阵 → subagent/workflow 派发；PM 不阻塞，派发后向用户汇报并待命。",
+			"",
+			"输出：路由类型（小活/大活/错误/经验）+ REQ 编号（如创建）+ 建议的下一步命令；然后按该路线继续。",
+		].join("\n");
+		const agent = ctx.get?.("agents")?.get(invocation.agent?.id);
+		if (agent?.followup) {
+			await agent.followup({ content: [{ type: "text", text: prompt }], source: { kind: "user" } });
+			return `已接管需求并派发 G0 路由：${requirement}`;
+		}
+		return `当前宿主不能自动唤醒模型。请把下面内容发给我执行：\n\n${prompt}`;
+	};
+
 	const runHandoff = async (invocation, arg) => {
 		const startDir = await resolveDir(invocation);
 		const policy = policyOf(ctx, execOfInvocation(invocation));
@@ -265,8 +302,8 @@ export function registerCoordinationCommands(ctx, env) {
 	// /eai 组命令
 	define(
 		"eai",
-		"coordination 入口：/eai init|status|todo|go|handoff|issues|meta|agents|dispatch|growth|recall|arch|research",
-		"init | status | todo | go <sN|T-NNN> | handoff [done] | issues [sync] | meta | agents [任务] | dispatch [sN] | growth | recall <关键词> | arch | research <主题> | <来源…>",
+		"coordination 入口：/eai init|status|todo|pm|go|handoff|issues|meta|agents|dispatch|growth|recall|arch|research",
+		"init | status | todo | pm <需求> | go <sN|T-NNN> | handoff [done] | issues [sync] | meta | agents [任务] | dispatch [sN] | growth | recall <关键词> | arch | research <主题> | <来源…>",
 		async (invocation) => {
 			const raw = String(invocation.rawInput ?? "").trim();
 			const [sub, ...rest] = raw.split(/\s+/);
@@ -279,6 +316,8 @@ export function registerCoordinationCommands(ctx, env) {
 					return runStatus(invocation);
 				case "todo":
 					return runTodo(invocation);
+				case "pm":
+					return runPm(invocation, arg);
 				case "go":
 					return runGo(invocation, arg);
 				case "handoff":
@@ -309,6 +348,7 @@ export function registerCoordinationCommands(ctx, env) {
 	define("eai-init", "初始化项目 coordination 层（幂等）", "[项目根]", (invocation) => runInit(invocation, String(invocation.rawInput ?? "").trim()));
 	define("eai-status", "coordination 全量状态（todo / META / HANDOFF / 结构）", undefined, (invocation) => runStatus(invocation));
 	define("eai-todo", "查看 todo.md 任务看板", undefined, (invocation) => runTodo(invocation));
+	define("eai-pm", "G0 需求入口：分类路由（小活/大活/错误/经验）并派发给本会话", "<需求描述>", (invocation) => runPm(invocation, String(invocation.rawInput ?? "").trim()));
 	define("eai-go", "阶段调度：写 @session 关联并把任务清单派发给本会话", "[sN | T-NNN]", (invocation) => runGo(invocation, String(invocation.rawInput ?? "").trim()));
 	define("eai-handoff", "读交接卡；/eai-handoff done 消化接管", "[done]", (invocation) => runHandoff(invocation, String(invocation.rawInput ?? "").trim()));
 	define("eai-issues", "todo.md ↔ git issues：list / sync / close-done [--stage sN] [--dry-run]", "[sync|list|close-done|view N|close N|open N]", (invocation) => runIssues(invocation, String(invocation.rawInput ?? "").trim()));

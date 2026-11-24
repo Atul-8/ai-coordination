@@ -628,6 +628,12 @@ test("全部 /eai 命令可执行", async () => {
 		const emptyResearch = await cmd("eai-research", "");
 		assert.equal(emptyResearch.kind, "error");
 		assert.match(emptyResearch.text, /用法/);
+		const emptyPm = await cmd("eai-pm", "");
+		assert.equal(emptyPm.kind, "error");
+		assert.match(emptyPm.text, /用法/);
+		const pm = await cmd("eai-pm", "修复登录问题");
+		assert.equal(pm.kind, "success");
+		assert.match(pm.text, /G0 路由/);
 		const research = await cmd("eai-research", "插件测试 | https://github.com/example/x");
 		assert.equal(research.kind, "success");
 		assert.match(research.text, /RESEARCH-001/);
@@ -660,7 +666,7 @@ test("全部 /eai 命令可执行", async () => {
 		const todoText = await fsp.readFile(path.join(project, "todo.md"), "utf8");
 		assert.match(todoText, /@session:0123abcd/);
 		assert.ok(followups.length >= 1);
-		assert.match(followups[0].content[0].text, /阶段调度/);
+		assert.ok(followups.some((message) => /阶段调度/.test(message.content[0].text)));
 	} finally {
 		await cleanup(dir);
 	}

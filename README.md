@@ -91,10 +91,10 @@ dsh plugin add github:Atul-8/ai-coordination
 ## 命令
 
 ```
-/eai status | todo | init | go <sN|T-NNN> | issues [sync] | meta | handoff [done]
+/eai status | todo | init | pm <需求> | go <sN|T-NNN> | issues [sync] | meta | handoff [done]
 /eai agents [任务] | dispatch [sN] | growth | recall <关键词> | arch
 /eai research <主题> | <来源…>
-/eai-status  /eai-todo  /eai-init  /eai-go  /eai-issues
+/eai-status  /eai-todo  /eai-init  /eai-pm  /eai-go  /eai-issues
 /eai-handoff  /eai-agents  /eai-dispatch  /eai-growth
 /eai-recall  /eai-arch  /eai-research
 ```
