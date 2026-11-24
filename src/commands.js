@@ -20,6 +20,7 @@ import { runIssueTool } from "./issues.js";
 import { consumeHandoff, readHandoff } from "./project.js";
 import { checkArchitecture } from "./arch.js";
 import { recallExperience, renderRecall } from "./recall.js";
+import { recordResearch } from "./research.js";
 import {
 	buildDispatch,
 	listAgentCards,
@@ -235,11 +236,28 @@ export function registerCoordinationCommands(ctx, env) {
 		return result.text;
 	};
 
+	const runResearch = async (invocation, arg) => {
+		const value = String(arg ?? "").trim();
+		if (!value) throw new Error("用法：/coord research <主题> | <来源1> <来源2> …（来源可用逗号分隔）");
+		const [topic, ...rest] = value.split("|").map((part) => part.trim());
+		const sources = (rest.join("|").split(/[\s,，]+/).filter(Boolean));
+		if (sources.length === 0) throw new Error("research 至少给 1 条来源（URL / owner/repo），格式：/coord research 主题 | 来源1 来源2");
+		const startDir = await resolveDir(invocation);
+		const result = await recordResearch({
+			startDir,
+			topic,
+			sources,
+			sessionId: invocation.agent?.id,
+			policy: policyOf(ctx, execOfInvocation(invocation)),
+		});
+		return `${result.id} 已记录 → ${result.path}\n计划落盘时传 research:'${result.id}'。`;
+	};
+
 	// /coord 组命令
 	define(
 		"coord",
-		"coordination 入口：/coord init|status|todo|go|handoff|issues|meta|agents|dispatch|growth|recall|arch",
-		"init | status | todo | go <sN|T-NNN> | handoff [done] | issues [sync] | meta | agents [任务] | dispatch [sN] | growth | recall <关键词> | arch",
+		"coordination 入口：/coord init|status|todo|go|handoff|issues|meta|agents|dispatch|growth|recall|arch|research",
+		"init | status | todo | go <sN|T-NNN> | handoff [done] | issues [sync] | meta | agents [任务] | dispatch [sN] | growth | recall <关键词> | arch | research <主题> | <来源…>",
 		async (invocation) => {
 			const raw = String(invocation.rawInput ?? "").trim();
 			const [sub, ...rest] = raw.split(/\s+/);
@@ -269,6 +287,8 @@ export function registerCoordinationCommands(ctx, env) {
 					return runRecall(invocation, arg);
 				case "arch":
 					return runArch(invocation);
+				case "research":
+					return runResearch(invocation, arg);
 				default:
 					return runStatus(invocation);
 			}
@@ -287,4 +307,5 @@ export function registerCoordinationCommands(ctx, env) {
 	define("coord-growth", "自我成长状态：待复核卡 / 记忆分布 / 全局 META", undefined, (invocation) => runGrowth(invocation));
 	define("coord-recall", "旧经验检索：ERR / META / 角色记忆", "<现象或关键词>", (invocation) => runRecall(invocation, String(invocation.rawInput ?? "").trim()));
 	define("coord-arch", "七层单向依赖检查（src/<layer> 直接 import）", undefined, (invocation) => runArch(invocation));
+	define("coord-research", "记录外部方案检索（计划门禁）；格式：/coord-research 主题 | 来源1 来源2", "<主题> | <来源…>", (invocation) => runResearch(invocation, String(invocation.rawInput ?? "").trim()));
 }

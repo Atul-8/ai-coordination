@@ -20,7 +20,7 @@ whenToUse: 任务跨多个阶段或文件域；需要 writer→reviewer 串行�
 ## 派发前：检索 → 矩阵 → 任务卡
 
 1. **检索三档**：`coord_agent {action:'query', task:'任务描述'}` → 强命中（top ≥ 3）组合派发｜弱命中标注「边界试探」｜缺口走建卡协议（`coord_agent register`，见技能 `agi-growth`）。
-2. **生成矩阵**：`coord_dispatch {stage:'s1'}` 从 todo.md 未完成任务生成「阶段 × 任务 × 角色卡 × 缺口」矩阵，并落盘 `.ai/dispatch/DISPATCH-*.md`。矩阵是派发依据，不执行派发。
+2. **生成矩阵**：`coord_dispatch {stage:'s1'}` 从 todo.md 未完成任务生成「阶段 × 任务 × 角色卡 × 缺口」矩阵，并落盘 `.ai/dispatch/DISPATCH-*.md` + `.json`（JSON 含每个任务的 role/prompt/alternatives，可直接喂给 `subagent`）。矩阵是派发依据，不执行派发。
 3. **组装任务卡**：任务 ID + 目标 + 验收命令 + 写入范围（文件域）+ 角色卡 scope + `meta_injection`（full/partial/none）+ 退单规则。
 4. 真正执行时用 `subagent` / `subagent_fork` / `workflow`；子 agent 不负责归档。
 

@@ -82,6 +82,22 @@ test("tokenize + scoreCard 命中与 dont 减分", () => {
 	assert.ok(negative < 0, `negative=${negative}`);
 });
 
+test("buildIdf 降低通用词权重，避免「测试/实现」抢路由", () => {
+	const cards = [
+		{ name: "a", keywords: ["测试", "实现"], scope: { do: ["测试 实现"] } },
+		{ name: "b", keywords: ["测试", "编码"], scope: { do: ["测试 编码"] } },
+		{ name: "c", keywords: ["IMU", "标定"], scope: { do: ["IMU 标定"] } },
+	];
+	const idf = P.buildIdf(cards);
+	assert.ok(idf("IMU") > idf("测试"), `idf(IMU)=${idf("IMU")} idf(测试)=${idf("测试")}`);
+	const tokens = P.tokenize("IMU 测试");
+	const imuCard = { ...cards[2], taxonomy: [], scope: { do: ["IMU 标定"], dont: [] } };
+	const testCard = { ...cards[0], taxonomy: [], scope: { do: ["测试 实现"], dont: [] } };
+	const imuScore = P.scoreCard(imuCard, { nodes: [] }, tokens, idf);
+	const testScore = P.scoreCard(testCard, { nodes: [] }, tokens, idf);
+	assert.ok(imuScore > testScore, `imu=${imuScore} test=${testScore}`);
+});
+
 test("serializeCard 可被 parseFrontMatter 回读", () => {
 	const card = {
 		id: "tester",

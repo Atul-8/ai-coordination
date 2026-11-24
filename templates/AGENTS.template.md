@@ -57,8 +57,9 @@ todo.md 是**唯一任务事实源**，行格式：
 | `coord_dispatch` | 派发矩阵 + 任务卡（落盘 `.ai/dispatch/`） |
 | `coord_recall` | 旧经验检索（ERR / META / 角色记忆） |
 | `coord_arch` | 七层单向依赖检查 |
+| `coord_research` | 外部方案检索记录（计划门禁） |
 
-命令：`/coord status|todo|init|go <sN\|T-NNN>|issues|meta|handoff|agents|dispatch|growth|recall|arch`；扁平别名 `/coord-status` `/coord-go` 等。
+命令：`/coord status|todo|init|go <sN\|T-NNN>|issues|meta|handoff|agents|dispatch|growth|recall|arch|research`；扁平别名 `/coord-status` `/coord-go` 等。
 
 > 其他宿主：pi / ZCode 使用 `/pm` `/plan` `/issue` `/go` `/error` `/meta` `/status`；工具名相同（`coord_todo`）。
 
@@ -81,15 +82,15 @@ todo.md 是**唯一任务事实源**，行格式：
 
 ## 研究与分解（G0/G2 纪律）
 
-1. **不闭门造车**：非平凡实现前先检索（`web_search` / `web_fetch`：官方文档、开源仓库、已验证方案）。优先复用；在计划 notes 或 REQ 卡记录来源链接与取舍。查无方案才自研，并写明原因。
-2. **问题分解**：把需求拆成 n 个可独立验收的小问题，每个小问题配一条验收测试/命令；`coord_plan_save` 用 `acceptance` 一一对应。
+1. **不闭门造车**：非平凡实现前先检索（`web_search` / `web_fetch`：官方文档、开源仓库、已验证方案）。用 `coord_research` 记录主题、来源、取舍；`coord_plan_save` 不带 research 且不带 `skip_research` 理由时会拒绝落盘。优先复用；查无方案才自研，并写明原因。
+2. **问题分解**：把需求拆成 n 个可独立验收的小问题；多步骤计划的 `acceptance` 必填且与 `steps` 一一对应。
 3. **逐步验收再整合**：每个小问题先红→绿，全部通过后才做集成；集成单独列一步，不跳步。
 4. **旧经验先用**：开工或报错先 `coord_recall <关键词>`；`coord_error` 会自动召回相关 ERR/META/记忆，避免重复踩坑。
 
 ## 大任务派发（DSH 原生）
 
 - 检索角色卡：`coord_agent {action:'query', task}`（强命中组合派发｜弱命中标注边界试探｜缺口建卡）。
-- 生成矩阵：`coord_dispatch {stage}` → 阶段 × 任务 × 角色卡 × 缺口，落盘 `.ai/dispatch/`。
+- 生成矩阵：`coord_dispatch {stage}` → 阶段 × 任务 × 角色卡 × 缺口，落盘 `.ai/dispatch/`（md + 机器可读 json，含每个子 agent 的 prompt）。
 - 执行：`subagent`（独立上下文）/ `subagent_fork`（继承会话）/ `workflow`（`pipeline` 阶段内串行、阶段间无屏障）/ `team_task_*`（共享任务 DAG）。
 - **PM 不阻塞**：用 `subagent`（启动即返回）或 `workflow` 后台模式派发；派发后向用户汇报矩阵并待命，不轮询子代理。子代理完成通知到达后再收口（验证 → 提交 → `coord_todo done`）。
 - 派发纪律：阶段 = lane，任务 = lane 内 writer→reviewer 串行；同文件域不并行；每个任务卡必须含任务 ID、目标、验收命令、写入范围、角色 scope、`meta_injection`。

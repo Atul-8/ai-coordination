@@ -1,10 +1,14 @@
 /**
  * pool.js — RAG 角色卡池的纯函数层（front-matter / taxonomy / 校验 / 分词 / 打分）
  *
- * 移植自全局池 `agents/scripts/lib.mjs`（RAG pool v2，spec: rag-pool-redesign.md §4–§6）：
- *   - 单池 pool/*.md + taxonomy.yml + memory/<owner>/*.md
- *   - 关键词打分（不上 embedding，PM 是 LLM，只需把候选缩到 top-5）
- *   - 缺口判定 topScore < threshold → 建卡协议
+ * ✅ LICENSE-REQ-001（approved）：本文件解析/校验/打分逻辑移植或改写自 eai-agent
+ *   （https://gitee.com/eai-code/eai-agent，commit 623b3b4，LICENSE = GPL-3.0）。
+ *   2026-11-24 版权人书面授权以 LGPL-3.0 分发本移植范围（eai 为版权人个人开发仓库）。
+ *   记录：docs/THIRD-PARTY.md · 三渠道见 README「致谢与第三方代码」。
+ *
+ * 移植内容：front-matter 限定子集解析、taxonomy 路径校验、卡片校验、中文 2-gram 分词、
+ * 关键词打分（keywords×3 / scope.do×3 / taxonomy×2 / applies_to×2 / name×1 / dont×−2）。
+ * 设计参考：`agents/docs/design/rag-pool-redesign.md`（RAG pool v2）。
  *
  * 本文件零 I/O；读写与生命周期在 agents.js。
  */
@@ -230,23 +234,44 @@ function hits(values, querySet) {
 	return count;
 }
 
-/** 卡片打分：keywords×3、scope.do×3、taxonomy 段/别名×2、applies_to×2、name×1、scope.dont×(−2)。 */
-export function scoreCard(card, taxonomy, queryTokens) {
+/**
+ * 逆文档频率：同一 token 命中越多卡，区分度越低（「测试/实现」这类通用词降权）。
+ * 返回 idf(token) 函数；不传时打分退化为等权（兼容旧调用）。
+ */
+export function buildIdf(cards) {
+	const df = new Map();
+	for (const card of cards ?? []) {
+		const text = [card.name, ...(card.keywords ?? []), ...(card.scope?.do ?? []), ...(card.applies_to ?? [])].join(" ");
+		for (const token of new Set(tokenize(text))) df.set(token, (df.get(token) ?? 0) + 1);
+	}
+	const total = Math.max((cards ?? []).length, 1);
+	return (token) => Math.log(1 + total / (1 + (df.get(String(token).toLowerCase()) ?? 0)));
+}
+
+function weightedHits(values, querySet, idf) {
+	const tokens = fieldTokens(values);
+	let score = 0;
+	for (const token of querySet) if (tokens.has(token)) score += idf(token);
+	return score;
+}
+
+/** 卡片打分：keywords×3、scope.do×3、taxonomy 段/别名×2、applies_to×2、name×1、scope.dont×(−2)；命中按 idf 加权。 */
+export function scoreCard(card, taxonomy, queryTokens, idf = () => 1) {
 	const querySet = new Set(queryTokens);
 	let score = 0;
-	score += 3 * hits(card.keywords, querySet);
+	score += 3 * weightedHits(card.keywords, querySet, idf);
 	if (card.scope) {
-		score += 3 * hits(card.scope.do, querySet);
-		score -= 2 * hits(card.scope.dont, querySet);
+		score += 3 * weightedHits(card.scope.do, querySet, idf);
+		score -= 2 * weightedHits(card.scope.dont, querySet, idf);
 	}
-	score += 2 * hits(card.applies_to, querySet);
-	score += 1 * hits([card.name], querySet);
+	score += 2 * weightedHits(card.applies_to, querySet, idf);
+	score += 1 * weightedHits([card.name], querySet, idf);
 	const matched = new Set();
 	for (const path of card.taxonomy ?? []) {
 		for (const segment of String(path).split(".")) {
 			if (matched.has(segment)) continue;
 			const node = nodeById(taxonomy, segment);
-			if (hits([segment, ...(node?.aliases ?? [])], querySet) > 0) matched.add(segment);
+			if (weightedHits([segment, ...(node?.aliases ?? [])], querySet, idf) > 0) matched.add(segment);
 		}
 	}
 	score += 2 * matched.size;

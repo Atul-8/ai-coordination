@@ -33,8 +33,8 @@ whenToUse: 项目内有 .ai/ 目录；或用户要求初始化 coordination、�
 
 **研究与分解（大活入口必做）**：
 
-1. 先检索外部已有方案（`web_search` / `web_fetch`：官方文档、开源仓库、已验证做法）；优先复用，计划里记录来源与取舍。
-2. 把需求拆成 n 个可独立验收的小问题；每个小问题一条验收测试/命令（`coord_plan_save` 的 `acceptance`）。
+1. 先检索外部已有方案（`web_search` / `web_fetch`：官方文档、开源仓库、已验证做法），用 `coord_research` 记录来源与取舍；`coord_plan_save` 不带 research / skip_research 会拒绝落盘。
+2. 把需求拆成 n 个可独立验收的小问题；多步骤计划的 `acceptance` 必填且与 `steps` 一一对应。
 3. 逐个红→绿，最后单独一步做集成；禁止跳过验收一把梭。
 
 ## G1 · 开门
@@ -84,7 +84,8 @@ whenToUse: 项目内有 .ai/ 目录；或用户要求初始化 coordination、�
 
 DSH 的计划模式（`exit_plan_mode`）负责只读探索与审批。计划被批准后：
 
-1. 调用 `coord_plan_save {stage:'s1', steps:[...], notes:'...'}`；
+1. 调用 `coord_plan_save {stage:'s1', steps:[...], acceptance:[...], research:'RESEARCH-NNN', notes:'...'}`；
+   多步骤计划必须给 acceptance；research 来自 `coord_research`（纯文档任务用 `skip_research:'原因'` 显式跳过）。
 2. 它会写 `docs/plans/PLAN-NNN-*.md`、回写阶段行 `<!-- plan:... -->`、把步骤登记为任务；
 3. 需要 issue 时 `coord_issue {action:'sync', dry_run:true}` 预览，再真跑；
 4. 调度用 `/coord-go s1`（写入 @session 并唤醒本会话）或逐项 `coord_todo done`。
@@ -106,9 +107,10 @@ DSH 的计划模式（`exit_plan_mode`）负责只读探索与审批。计划被
 | `/coord growth` | 自我成长状态 |
 | `/coord recall <关键词>` | 旧经验检索 |
 | `/coord arch` | 七层单向依赖检查 |
+| `/coord research <主题> \| <来源…>` | 记录外部方案检索（计划门禁） |
 | `/coord handoff [done]` | 读卡 / 消化交接 |
 
-工具：`coord_init` `coord_todo` `coord_plan_save` `coord_status` `coord_issue` `coord_error` `coord_meta` `coord_handoff` `coord_agent` `coord_dispatch` `coord_recall` `coord_arch`。
+工具：`coord_init` `coord_todo` `coord_plan_save` `coord_status` `coord_issue` `coord_error` `coord_meta` `coord_handoff` `coord_agent` `coord_dispatch` `coord_recall` `coord_arch` `coord_research`。
 
 - 多 agent 派发：`coord_agent query` 检索角色卡 → `coord_dispatch` 生成矩阵/任务卡 → `subagent` / `workflow` 执行（技能 `agi-dispatch`）。
 - 自我成长：任务收口写 `coord_agent memory_add`；只改自己的卡用 `coord_agent update`；普适教训 `coord_meta promote`（技能 `agi-growth`）。

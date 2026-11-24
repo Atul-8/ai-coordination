@@ -52,13 +52,22 @@ function importSpecs(text) {
 }
 
 function resolveImport(spec, file, root) {
-	if (spec.startsWith(".")) {
-		const base = path.resolve(path.dirname(file), spec);
-		const rel = path.relative(root, base).replace(/\\/g, "/");
-		for (const layer of LAYERS) if (rel.startsWith(`${layer.id}/`)) return layer.id;
-		return null;
+	let value = spec;
+	const isPython = file.endsWith(".py");
+	if (isPython) {
+		if (value.startsWith(".")) {
+			const lead = value.match(/^\.+/)?.[0] ?? ".";
+			value = value.slice(lead.length).replace(/\./g, "/");
+			return layerOf(path.resolve(path.dirname(file), "../".repeat(lead.length - 1), value), root);
+		}
+		return layerOf(path.join(root, value.replace(/\./g, "/")), root);
 	}
-	const normalized = spec.replace(/\\/g, "/");
+	if (value.startsWith("@/") || value.startsWith("~/")) value = value.slice(2);
+	if (value.startsWith("src/")) value = value.slice(4);
+	if (value.startsWith(".")) {
+		return layerOf(path.resolve(path.dirname(file), value), root);
+	}
+	const normalized = value.replace(/\\/g, "/");
 	for (const layer of LAYERS) if (new RegExp(`(^|/)${layer.id}(/|$)`).test(normalized)) return layer.id;
 	return null;
 }

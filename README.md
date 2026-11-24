@@ -10,6 +10,28 @@ G3 错误/META 蒸馏 + 跨宿主交接」做成宿主级能力，并附带 `AGI
 - `coord_*` 工具与 `/coord-*` 命令对所有会话可见，工具自己判断项目是否已初始化。
 - 选择 **AGI · 协调开发** 预设的会话额外获得 persona、计划模式、委派与压缩分组。
 
+## 致谢与第三方代码（重要）
+
+本项目遵循「**先授权、后使用**」，任何复用他人代码都必须在此声明感谢：
+
+- **MIT / ISC / BSD-2** 等宽松许可：README 致谢 + 保留原始版权声明与许可证文本。
+- **非 MIT**（Apache-2.0 / GPL / LGPL / MPL / CC-BY / 自定义）：必须**先报备开发者并取得书面同意**，同意后才能使用；
+  未获同意不得合并、发布。三种渠道缺一不可：
+  1. 仓库 Issue（标签 `license-request`）；
+  2. 邮件（来源/许可证/使用范围/请求事项）；
+  3. 公开披露：README 本节 + [docs/THIRD-PARTY.md](docs/THIRD-PARTY.md)，随提交入库。
+
+### 当前第三方代码台账
+
+| 来源 | 许可证 | 使用范围 | 状态 |
+| --- | --- | --- | --- |
+| [eai-agent](https://gitee.com/eai-code/eai-agent)（commit `623b3b4`） | **GPL-3.0**（以其 LICENSE 为准） | `src/pool.js`：front-matter 解析、taxonomy/卡片校验、中文分词与关键词打分（移植/改写自 `scripts/lib.mjs`） | ✅ **已授权**（2026-11-24 版权人书面授权，LGPL-3.0 例外） |
+| DeepSeek Harness（DSH） | 官方发行包 | 运行时、插件/预设 API 与文档参考 | 使用官方接口，无代码复制 |
+
+> **LICENSE-REQ-001 已获批**：授权范围仅限 `src/pool.js` 列出的逻辑；后续从 eai 引入新实现需重新报备。
+> 三渠道留痕：README 本节 + [docs/THIRD-PARTY.md](docs/THIRD-PARTY.md) + [交接卡](docs/HANDOFF-LICENSE-REQ-001.md)；
+> 渠道① GitHub Issue 待人工创建（当前 PAT 无 issues 写权限），正文已备：[docs/LICENSE-REQ-001-ISSUE.md](docs/LICENSE-REQ-001-ISSUE.md)。
+
 ## 安装
 
 本地目录安装（仓库根）：
@@ -56,16 +78,18 @@ bundle 以 link 方式安装时，修改 JS 源码需要重启 DSH 才会加载�
 | `coord_agent` | RAG 角色卡池：检索 / 建卡 / 自升级 / 记忆沉淀 / first_mission |
 | `coord_dispatch` | 派发矩阵 + 任务卡（落盘 `.ai/dispatch/`） |
 | `coord_recall` | 旧经验检索：ERR / 项目与全局 META / 角色记忆 |
-| `coord_arch` | 七层单向依赖检查（直接 import 的启发式扫描） |
+| `coord_arch` | 七层单向依赖检查（直接 import，支持 `@/` 别名与 Python 相对导入） |
+| `coord_research` | 记录外部方案检索（计划门禁产物：`.ai/research/RESEARCH-NNN.md`） |
 
 ## 命令
 
 ```
 /coord status | todo | init | go <sN|T-NNN> | issues [sync] | meta | handoff [done]
 /coord agents [任务] | dispatch [sN] | growth | recall <关键词> | arch
+/coord research <主题> | <来源…>
 /coord-status  /coord-todo  /coord-init  /coord-go  /coord-issues
 /coord-handoff  /coord-agents  /coord-dispatch  /coord-growth
-/coord-recall  /coord-arch
+/coord-recall  /coord-arch  /coord-research
 ```
 
 `/coord go s1` 会把所选任务写入 `@session:` 关联，并把任务清单 followup 给当前会话执行。
@@ -101,15 +125,15 @@ bundle 以 link 方式安装时，修改 JS 源码需要重启 DSH 才会加载�
 
 | # | 核心思想 | 实现方式 | 状态 |
 | --- | --- | --- | --- |
-| 1 | 分治架构单向依赖 | 七层依赖写进 persona/AGENTS/技能；`coord_arch` 扫描 `src/<layer>` 直接 import，报反向/跨层引用；G2 写后必跑 | 纪律 + 启发式自动检查 |
+| 1 | 分治架构单向依赖 | 七层依赖写进 persona/AGENTS/技能；`coord_arch` 扫描 `src/<layer>` 直接 import（`@/` 别名、`src/`、Python 相对导入），报反向/跨层引用；G2 写后必跑 | 纪律 + 启发式自动检查 |
 | 2 | 错误经验积累、自纠正、自用旧经验 | `coord_error` 五步法 → ERR 卡 + META；`coord_recall` 检索 ERR/项目 META/全局 META/角色记忆；`coord_error` 自动召回相关旧经验；同根因 2 次升级 REQ | 已实现 |
-| 3 | 多 agent：PM 派发 n 子代理、不阻塞 | `coord_agent query` → `coord_dispatch` 矩阵/任务卡 → `subagent`（启动即返回）/ `workflow` 后台；persona/AGENTS 明确「派发后汇报并待命，不轮询」；退单队列 + 2 次拆解 | 已实现（原生 subagent 非阻塞 + 纪律） |
-| 4 | Agent 提示词自我成长 | 角色记忆 `memory_add` → 自卡升级 `update`（version+1）→ 首任务 `first_mission_done`；普适教训升全局 META；主 agent persona/技能走仓库变更 + 重装 | 已实现（子 agent 提示词可自演化；主 agent 提示词不运行时自改） |
-| 5 | 不闭门造车：先检索开源/已验证方案 | persona/AGENTS/技能的研究优先纪律；`web_search` / `web_fetch`；计划 notes/REQ 记录来源与取舍 | 纪律（无独立工具，依赖宿主 web 工具） |
-| 6 | 问题细分 → 逐步验收 → 整合 | `coord_plan_save` 的 `steps` + `acceptance` 一一对应；G2.5 红→绿；集成单独列一步；`coord_todo` 逐项 done | 已实现（工具字段 + 纪律） |
+| 3 | 多 agent：PM 派发 n 子代理、不阻塞 | `coord_agent query` → `coord_dispatch` 矩阵/任务卡/JSON 派发计划 → `subagent`（启动即返回）/ `workflow` 后台；persona/AGENTS 明确派发后汇报待命；退单队列 + 2 次拆解 | 已实现（原生 subagent 非阻塞 + 纪律 + 机器可读任务卡） |
+| 4 | Agent 提示词自我成长 | 角色记忆 `memory_add` → `reflect` 提取新检索词 → `update`（version+1）→ 首任务 `first_mission_done`；普适教训升全局 META；主 agent persona/技能走仓库变更 + 重装 | 已实现（子 agent 提示词可自演化；主 agent 提示词不运行时自改） |
+| 5 | 不闭门造车：先检索开源/已验证方案 | `coord_research` 记录来源与取舍（`.ai/research/`）；`coord_plan_save` 无 research 且无 `skip_research` 理由时**拒绝落盘**；`web_search` / `web_fetch` 负责检索 | 已实现（硬门禁，纯文档任务可显式跳过） |
+| 6 | 问题细分 → 逐步验收 → 整合 | 多步骤计划**强制** `acceptance`（与 steps 一一对应）；G2.5 红→绿；集成单独列一步；`coord_todo` 逐项 done | 已实现（工具强校验） |
 
-> 边界：`coord_arch` 是启发式（直接 import），间接跨层仍需 G2 评审；「研究优先」是纪律而非强制门禁；
-> 主 agent 的 persona/技能不允许运行时自改（提示词成长体现在角色卡与仓库演进）。完整论证见 [docs/DESIGN.md](docs/DESIGN.md)。
+> 边界：`coord_arch` 是启发式（直接 import），间接跨层仍需 G2 评审；研究门禁与验收门禁可显式跳过/单步豁免，
+> 但跳过会留下理由。完整论证见 [docs/DESIGN.md](docs/DESIGN.md)。
 
 ## 仓库结构
 
@@ -120,7 +144,7 @@ bundle 以 link 方式安装时，修改 JS 源码需要重启 DSH 才会加载�
 | `templates/` | 部署到目标项目的模板（`AGENTS.template.md` 等 10 个） |
 | `scripts/issues.js` | 零依赖 CLI，init 时刷新到 `<项目>/.ai/scripts/` |
 | `skills/` · `locale/` · `icon.svg` | 技能、插件市场元数据、图标 |
-| `test/` | 16 个单测（纯函数 + mock 上下文端到端） |
+| `test/` | 17 个单测（纯函数 + mock 上下文端到端） |
 | `docs/DESIGN.md` | pi → DSH 全链路评估、取舍、验证记录、路线图 |
 
 分支：`dsh`（本分支，DSH 形态）· `pi-ai-coordination`（pi 扩展版）· `zcode-ai-coordination`（ZCode 插件版）。
@@ -131,6 +155,12 @@ bundle 以 link 方式安装时，修改 JS 源码需要重启 DSH 才会加载�
 ```bash
 npm test          # node --test test/lib.test.mjs test/pool.test.mjs test/plugin.test.mjs
 ```
+
+## 计划门禁（v0.6）
+
+- 多步骤计划：`acceptance` 必填且与 `steps` 一一对应（问题分解 → 逐步验收 → 整合）。
+- 外部方案：`coord_plan_save` 必须带 `research:'RESEARCH-NNN'`，或显式 `skip_research:'原因'`（纯文档/无实现）。
+- 研究记录：`coord_research {topic, sources:[URL|owner/repo], decision, notes}` → `.ai/research/`。
 
 改完源码：bump `version` → 重新 `plugin_manager install_bundle` → 重启 DSH → 新建会话选 AGI 预设验证。
 开发约定见 [AGENTS.md](AGENTS.md)。

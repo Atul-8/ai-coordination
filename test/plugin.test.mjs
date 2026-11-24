@@ -30,7 +30,7 @@ function makeHarness() {
 	return { tools, commands, skills, call, cwd };
 }
 
-test("插件注册 12 工具 / 12 命令 / 4 技能", async () => {
+test("插件注册 13 工具 / 13 命令 / 4 技能", async () => {
 	const dir = await fsp.mkdtemp(path.join(os.tmpdir(), "dsh-agi-reg-"));
 	process.env.AI_GLOBAL_DIR = path.join(dir, "global");
 	try {
@@ -46,6 +46,7 @@ test("插件注册 12 工具 / 12 命令 / 4 技能", async () => {
 			"coord_meta",
 			"coord_plan_save",
 			"coord_recall",
+			"coord_research",
 			"coord_status",
 			"coord_todo",
 		]);
@@ -60,6 +61,7 @@ test("插件注册 12 工具 / 12 命令 / 4 技能", async () => {
 			"coord-init",
 			"coord-issues",
 			"coord-recall",
+			"coord-research",
 			"coord-status",
 			"coord-todo",
 		]);
@@ -103,12 +105,29 @@ test("端到端：初始化 → 任务 → 计划 → 状态 → 交接 → 错�
 		const linked = await call("coord_todo", { action: "link", id: "T-002", root: project });
 		assert.match(linked.text, /aaaabbbb/);
 
-		// 阶段登记 + 计划落盘
+		// 阶段登记 + 计划门禁（多步必须 acceptance + 研究记录）
 		await call("coord_todo", { action: "stage_add", id: "s1", title: "核心实现", root: project });
+		await assert.rejects(
+			call("coord_plan_save", { stage: "s1", steps: ["实现解析器", "实现渲染器"], skip_research: "纯文档", root: project }),
+			/acceptance/,
+		);
+		await assert.rejects(
+			call("coord_plan_save", { stage: "s1", steps: ["实现解析器", "实现渲染器"], acceptance: ["a", "b"], root: project }),
+			/coord_research|闭门造车|skip_research/,
+		);
+		const research = await call("coord_research", {
+			topic: "todo.md 解析器实现方案",
+			sources: ["https://github.com/example/todo-parser — 参考状态机实现"],
+			decision: "adapt",
+			notes: "参考其状态机，去掉依赖",
+			root: project,
+		});
+		assert.equal(research.id, "RESEARCH-001");
 		const plan = await call("coord_plan_save", {
 			stage: "s1",
 			steps: ["实现解析器", "实现渲染器"],
 			acceptance: ["npm test 全绿（解析器）", "快照测试通过（渲染器）"],
+			research: research.id,
 			notes: "验收：node --test",
 			root: project,
 		});
@@ -119,6 +138,7 @@ test("端到端：初始化 → 任务 → 计划 → 状态 → 交接 → 错�
 		assert.match(planText, /PLAN-001/);
 		assert.match(planText, /1\. 实现解析器/);
 		assert.match(planText, /验收：npm test 全绿（解析器）/);
+		assert.match(planText, /研究.*RESEARCH-001/);
 		const todoText = await fsp.readFile(path.join(project, "todo.md"), "utf8");
 		assert.match(todoText, /- s1: 核心实现 <!-- plan:docs\/plans\/PLAN-001-/);
 
@@ -209,6 +229,10 @@ test("端到端：初始化 → 任务 → 计划 → 状态 → 交接 → 错�
 		});
 		assert.match(upgraded.text, /v2/);
 
+		const reflected = await call("coord_agent", { action: "reflect", id: "imu-expert", task: "陀螺仪零偏标定与温度补偿" });
+		assert.match(reflected.text, /建议补充/);
+		assert.match(reflected.text, /温度|补偿|陀螺/);
+
 		const memory = await call("coord_agent", {
 			action: "memory_add",
 			owner: "imu-expert",
@@ -232,6 +256,10 @@ test("端到端：初始化 → 任务 → 计划 → 状态 → 交接 → 错�
 		assert.match(dispatch.text, /writer/);
 		assert.ok(dispatch.path, "dispatch record path");
 		await fsp.access(dispatch.path);
+		const dispatchJson = JSON.parse(await fsp.readFile(dispatch.path.replace(/\.md$/, ".json"), "utf8"));
+		assert.equal(dispatchJson.tasks.length, 2);
+		assert.match(dispatchJson.tasks[0].prompt, /纪律/);
+		assert.ok(dispatchJson.tasks[0].role);
 
 		const growth = await commands.get("coord-growth").handler({ rawInput: "", agent: { id: SESSION }, signal: new AbortController().signal });
 		assert.equal(growth.kind, "success");
@@ -244,12 +272,13 @@ test("端到端：初始化 → 任务 → 计划 → 状态 → 交接 → 错�
 		// 七层单向依赖检查：反向引用必须被抓住
 		await fsp.mkdir(path.join(project, "src", "shared"), { recursive: true });
 		await fsp.mkdir(path.join(project, "src", "core"), { recursive: true });
-		await fsp.writeFile(path.join(project, "src", "shared", "a.js"), 'import x from "../core/b.js";\nexport default x;\n', "utf8");
+		await fsp.writeFile(path.join(project, "src", "shared", "a.js"), 'import x from "../core/b.js";\nimport y from "@/core/b.js";\nexport default x + y;\n', "utf8");
 		await fsp.writeFile(path.join(project, "src", "core", "b.js"), "export default 1;\n", "utf8");
 		const arch = await call("coord_arch", { root: project });
 		assert.equal(arch.ok, false);
-		assert.match(arch.text, /反向依赖/);
+		assert.match(arch.text, /2 处反向依赖/);
 		assert.match(arch.text, /shared 依赖 core/);
+		assert.match(arch.text, /@\/core\/b\.js/);
 
 		// issue 无 remote 时报错而不是伪造
 		await assert.rejects(call("coord_issue", { action: "list", root: project }), /git remote origin/);

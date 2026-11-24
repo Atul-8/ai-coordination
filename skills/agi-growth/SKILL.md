@@ -47,6 +47,7 @@ whenToUse: 完成一个阶段后做复盘；角色卡需要升级 keywords/scope
 - 每次升级自动 `version+1` 并追加「自升级记录」。
 - **不许**为了抢任务放宽 scope；scope 越宽，退单越少但错配越多。
 - **角色卡就是子 agent 的提示词**：升级必须有经验证据（memory / 退单 / 复核缺陷），不是凭感觉改写；主 agent 的 persona 与技能属于仓库资产，通过改仓库 + 重装演进，不在运行时篡改宿主 prompt。
+- 拿不准补什么词时用 `coord_agent {action:'reflect', id, task}`：它从刚完成的任务里提取卡面未覆盖的检索词，只给建议不写盘；确认后再 `update`。
 
 ## 3. 全局 META（跨项目普适）
 

@@ -82,11 +82,12 @@ ai-coordination/            # 包名 dsh-ai-coordination；这是 bundle 根，�
 │   ├── pool.js             RAG 卡池纯函数（front-matter/taxonomy/校验/分词/打分/序列化）
 │   ├── agents.js           卡池 I/O：检索 / 建卡 / 自升级 / 记忆 / 派发矩阵
 │   ├── recall.js           旧经验检索（ERR / META / 角色记忆）
-│   ├── arch.js             七层单向依赖检查（直接 import）
+│   ├── arch.js             七层单向依赖检查（直接 import / 别名 / Python 相对导入）
+│   ├── research.js         外部方案检索记录（计划门禁）
 │   ├── project.js          .ai 定位、沙箱策略、初始化、计划/状态/交接/ERR/META 的 I/O
 │   ├── issues.js           todo ↔ GitHub/Gitee（原生实现，CLI 另行部署）
-│   ├── tools.js            12 个工具定义
-│   ├── commands.js         /coord 组 + 11 个扁平别名
+│   ├── tools.js            13 个工具定义
+│   ├── commands.js         /coord 组 + 12 个扁平别名
 │   └── host.js             cwd / 沙箱策略 / 会话 id 的宿主事实
 ├── skills/                 agi-coordination / agi-handoff / agi-dispatch / agi-growth
 ├── templates/              项目初始化模板（AGENTS.md、global-taxonomy.yml 等 10 个）
@@ -121,14 +122,16 @@ compaction + subagent/fork/workflow + ask-user + todo + web + present。
 
 | 项 | 结果 |
 | --- | --- |
-| 单元/端到端测试 | `npm test`（lib + pool + plugin）→ 16/16 通过 |
-| 安装 | `plugin_manager install_bundle target=<仓库根>` → `application: applied`，bundle `dsh-ai-coordination@0.5.1`（仓库根即 bundle；remove→install 后 link 指向根目录） |
+| 单元/端到端测试 | `npm test`（lib + pool + plugin）→ 17/17 通过 |
+| 安装 | `plugin_manager install_bundle target=<仓库根>` → `application: applied`，bundle `dsh-ai-coordination@0.6.0`（仓库根即 bundle；remove→install 后 link 指向根目录） |
 | 预设行 | `Config.listConfigs(name=dsh-agent-preset)` 出现 `include:preset-agi`（status schema） |
 | 技能目录 | 安装后目录出现 `agi-coordination` / `agi-handoff` / `agi-dispatch` / `agi-growth` |
-| 工具可用 | `Tool.listTools` 出现 12 个 `coord_*`（含 `coord_agent` / `coord_dispatch` / `coord_recall` / `coord_arch`） |
+| 工具可用 | `Tool.listTools` 出现 13 个 `coord_*`（含 `coord_agent` / `coord_dispatch` / `coord_recall` / `coord_arch` / `coord_research`） |
 | 实跑 | 在临时 demo 项目：init（建 14 项）→ stage_add → add → plan_save（PLAN-001 + T-002..T-004）→ status（看板正确）→ handoff write/read/consume（状态 resumed、T-002 重绑）→ error（ERR-001 + META-001）→ meta list → issue list（无 remote 时明确报错，不伪造）；demo 已清理 |
-| 角色卡池实跑 | init 播种 4 张基卡 → query 命中 writer → register/update/memory_add/first_mission → `coord_dispatch` 生成矩阵并落盘 `.ai/dispatch/` |
-| 自纠正实跑 | `coord_error` 输出相关旧经验；`coord_recall "断言不匹配"` 召回 ERR-001；`coord_arch` 抓住 `shared → core` 反向引用 |
+| 角色卡池实跑 | init 播种 4 张基卡 → query 命中 writer → register/update/reflect/memory_add/first_mission → `coord_dispatch` 生成矩阵并落盘 md + json（含每个 subagent 的 prompt） |
+| 门禁实跑 | 多步骤计划缺 acceptance → 拒绝；缺 research 且无 skip_research → 拒绝；`coord_research` 记录后计划落盘并引用 RESEARCH-001 |
+| 自纠正实跑 | `coord_error` 输出相关旧经验；`coord_recall "断言不匹配"` 召回 ERR-001；`coord_arch` 抓住 `../core` 与 `@/core` 两处反向引用 |
+| 路由实跑 | IDF 降权后，「补 IMU 零偏标定与驱动测试」不再被 chemistry-expert 用通用词“测试”抢走（候选 top3 仍可人工纠正） |
 | 重装后复核 | 从仓库根重装后实跑：`coord_meta list` 全局池按 15 条截断、交接卡字段单行化、`coord_init` 把 issues CLI 计入新建项（最新代码已生效） |
 | 未验证 | ① 插件市场图标/详情页的实际渲染（无浏览器控制）；② 选择 `AGI` 预设的新会话端到端（需要用户新建会话）；③ GitHub/Gitee 真实 issue 创建（demo 无 remote） |
 
@@ -139,7 +142,7 @@ compaction + subagent/fork/workflow + ask-user + todo + web + present。
 
 1. **计划模式不再自建**：`/plan` 的只读约束与步骤追踪由 DSH 提供；coordination 只负责批准后的落盘与登记。
 2. **全局工具可见性**：`coord_*` 注册在顶层（所有会话可见），未初始化项目调用时返回引导。
-   代价是每个会话多 12 个工具 schema（约 3–4k tokens 的工具描述）；如只想在 AGI 预设内可见，
+   代价是每个会话多 13 个工具 schema（约 4k tokens 的工具描述）；如只想在 AGI 预设内可见，
    可把顶层 insert 改为预设内 `plugins` 行，代价是标准会话无法使用 `/coord-*`。
 3. **无 UI 小部件**：pi 的状态条/进度条在 DSH 没有等价注入点，改为 `/coord-status` 与 `coord_status` 文本。
 4. **命令无交互式选择**：`/coord go` 需要显式参数（`s1` / `T-003`）；无参时列阶段。
@@ -174,7 +177,7 @@ compaction + subagent/fork/workflow + ask-user + todo + web + present。
 | 1 | 分治架构单向依赖 | 七层依赖写入 persona / AGENTS / 技能；`coord_arch` 扫描 `src/<layer>` 直接 import，报反向/跨层引用；G2 写后必跑 | 纪律 + 启发式自动检查；间接依赖仍需评审 |
 | 2 | 错误经验积累、自纠正、自用旧经验 | `coord_error` 五步法 → ERR + META；`coord_recall` 检索 ERR/项目 META/全局 META/角色记忆；`coord_error` 自动附相关旧经验；同根因 2 次升级 REQ | 已实现 |
 | 3 | 多 agent：PM 派发 n 子代理、不阻塞 | `coord_agent query` → `coord_dispatch` 矩阵/任务卡 → `subagent`（启动即返回）/ `workflow` 后台；persona/AGENTS 明确派发后汇报待命；退单队列 + 2 次拆解 | 已实现：非阻塞由 DSH subagent 提供，纪律与矩阵由插件补齐 |
-| 4 | Agent 提示词自我成长 | 角色记忆 → 自卡升级（version+1）→ first_mission 复核 → 全局 META；主 agent persona/技能走仓库变更 + 重装 | 子 agent 提示词可自演化；主 agent 运行时自改被有意禁止 |
+| 4 | Agent 提示词自我成长 | 角色记忆 `memory_add` → `reflect` 提取新检索词 → `update`（version+1，附自升级记录）→ 首任务 `first_mission_done`；普适教训升全局 META；主 agent persona/技能走仓库变更 + 重装 | 子 agent 提示词可自演化；主 agent 运行时自改被有意禁止 |
 | 5 | 不闭门造车：先检索开源/已验证方案 | persona/AGENTS/技能的研究优先纪律；`web_search` / `web_fetch`；计划 notes / REQ 记录来源与取舍 | 纯纪律，无独立门禁工具（路线图 7） |
 | 6 | 问题细分 → 逐步验收 → 整合 | `coord_plan_save` 的 `steps` + `acceptance` 一一对应；G2.5 红→绿；集成单独列一步；任务逐项 done | 工具字段 + 纪律；未强制每个任务必须有测试命令 |
 

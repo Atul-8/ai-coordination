@@ -32,9 +32,20 @@ pi 版在 `pi-ai-coordination` 分支，ZCode 版在 `zcode-ai-coordination` 分
 1. 改代码前先跑 `npm test`，确认基线是绿的（G2.5：红→绿）。
 2. 改行为 → 同步 `README.md`（工具/命令表）与 `docs/DESIGN.md`（映射/边界/验证记录）。
 3. 改 `package.json` 的 `version`（本地安装用），然后重新 `plugin_manager install_bundle` 指向仓库根。
-4. 验证：`npm test` 全绿（16 项）→ 安装 `application: applied` → 重启 DSH → 新建会话选 `AGI · 协调开发` →
+4. 验证：`npm test` 全绿（17 项）→ 安装 `application: applied` → 重启 DSH → 新建会话选 `AGI · 协调开发` →
    跑 `coord_init` / `coord_todo` / `coord_status` 冒烟。
 5. 提交信息用 `feat|fix|docs|chore(dsh): …`，与分支语义一致；不提交 `.ai/`、`todo.md`、`node_modules/`。
+
+## 第三方代码与许可（强制）
+
+- 复用任何外部代码/片段/模板，必须在 `README.md`「致谢与第三方代码」声明来源、许可证与用途。
+- **非 MIT**（Apache-2.0 / GPL / LGPL / MPL / CC-BY 等）必须先经三种渠道报备开发者并取得书面同意，才能合入：
+  ① 仓库 Issue（`license-request`）② README + `docs/THIRD-PARTY.md` 公开披露 ③ 会话交接卡
+  （本仓库用 `docs/HANDOFF-LICENSE-REQ-NNN.md`，因 `.ai/` 被 gitignore）；台账见 `docs/THIRD-PARTY.md`。
+- 未获批的移植保持 `pending`：不得发布，且必须准备「独立实现 / 移除」回退方案。
+- 当前状态：`LICENSE-REQ-001`（eai-agent GPL-3.0 → `src/pool.js`）已由版权人授权（2026-11-24，LGPL-3.0 例外）；
+  渠道① GitHub Issue 尚待人工创建（PAT 无 issues 权限），正文在 `docs/LICENSE-REQ-001-ISSUE.md`。
+- 从 eai 引入**新**实现（超出 `src/pool.js` 已授权范围）必须重新走三渠道报备。
 
 ## 兼容红线
 

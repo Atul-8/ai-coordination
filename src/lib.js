@@ -260,7 +260,7 @@ export function slugify(text, max = 16) {
 /**
  * 生成 docs/plans/PLAN-NNN-*.md 正文。
  */
-export function buildPlanDoc({ planNo, stageId, stageTitle, steps, acceptance, notes, sessionId, date = todayStr() }) {
+export function buildPlanDoc({ planNo, stageId, stageTitle, steps, acceptance, research, notes, sessionId, date = todayStr() }) {
 	const head = `# PLAN-${String(planNo).padStart(3, "0")} ${stageTitle ?? ""}`.trimEnd();
 	return [
 		head,
@@ -268,6 +268,7 @@ export function buildPlanDoc({ planNo, stageId, stageTitle, steps, acceptance, n
 		`- **阶段**: ${stageId}${stageTitle ? `（${stageTitle}）` : ""}`,
 		`- **日期**: ${date}`,
 		`- **会话**: ${sessionId ?? "unknown"}（宿主 session，完整上下文见会话日志）`,
+		...(research ? [`- **研究**: ${research}`] : []),
 		"- **来源**: 计划模式审批后经 coord_plan_save 落盘",
 		"",
 		"## 计划步骤",

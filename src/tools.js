@@ -26,6 +26,7 @@ import {
 import { runIssueTool } from "./issues.js";
 import { checkArchitecture } from "./arch.js";
 import { recallExperience, renderRecall } from "./recall.js";
+import { recordResearch } from "./research.js";
 import {
 	addAgentMemory,
 	buildDispatch,
@@ -34,6 +35,7 @@ import {
 	listAgentMemory,
 	poolPaths,
 	queryAgentPool,
+	reflectCard,
 	registerAgentCard,
 	renderCardList,
 	renderQuery,
@@ -245,7 +247,9 @@ export function registerCoordinationTools(ctx, env) {
 		parameters: {
 			stage: { type: "string", required: true, description: "计划归属阶段 id（必须先存在，如 s1）。" },
 			steps: { type: "array", items: { type: "string" }, description: "计划步骤（一句一个，可独立验证）。省略时从 plan 提取编号行。" },
-			acceptance: { type: "array", items: { type: "string" }, description: "与 steps 一一对应的验收标准（问题分解 → 逐步验收 → 最后整合）。" },
+			acceptance: { type: "array", items: { type: "string" }, description: "与 steps 一一对应的验收标准（多步骤计划必填；问题分解 → 逐步验收 → 最后整合）。" },
+			research: { type: "string", description: "coord_research 产出的研究编号（RESEARCH-NNN）；计划文档会引用它。" },
+			skip_research: { type: "string", description: "跳过研究门禁的理由（仅纯文档/无实现任务）；与 research 二选一。" },
 			plan: { type: "string", description: "计划 Markdown 原文；steps 省略时用它提取编号步骤。" },
 			title: { type: "string", description: "计划标题（默认取阶段标题）。" },
 			notes: { type: "string", description: "备注/风险/验收标准。" },
@@ -270,6 +274,8 @@ export function registerCoordinationTools(ctx, env) {
 				stage: String(args.stage),
 				steps,
 				acceptance: args.acceptance,
+				research: args.research,
+				skipResearch: args.skip_research,
 				notes: args.notes,
 				title: args.title,
 				sessionId: sessionIdOf(exec),
@@ -475,9 +481,9 @@ export function registerCoordinationTools(ctx, env) {
 	ctx.tools.register({
 		name: "coord_agent",
 		description:
-			"全局角色卡池（RAG pool v2，AI_GLOBAL_DIR/agents）：派发前检索、未命中建卡、角色自升级、经验沉淀。action: query 检索（任务描述→top 卡+记忆，缺口提示建卡）；list 卡片清单；register 建卡（≥3 keywords、scope.do/dont 必写、taxonomy 路径必须存在，first_mission=pending）；update 自升级（只改自己的卡，version+1）；memory_add 写本角色经验；memory_list 查经验；first_mission_done 首任务复核。",
+			"全局角色卡池（RAG pool v2，AI_GLOBAL_DIR/agents）：派发前检索、未命中建卡、角色自升级、经验沉淀。action: query 检索（任务描述→top 卡+记忆，缺口提示建卡）；list 卡片清单；register 建卡（≥3 keywords、scope.do/dont 必写、taxonomy 路径必须存在，first_mission=pending）；update 自升级（只改自己的卡，version+1）；reflect 从刚完成的任务里提取可补充的检索词（提示词成长建议，不写盘）；memory_add 写本角色经验；memory_list 查经验；first_mission_done 首任务复核。",
 		parameters: {
-			action: { type: "string", required: true, description: "query | list | register | update | memory_add | memory_list | first_mission_done" },
+			action: { type: "string", required: true, description: "query | list | register | update | reflect | memory_add | memory_list | first_mission_done" },
 			task: { type: "string", description: "query：任务描述（关键词越具体越好）。" },
 			limit: { type: "number", description: "query：返回卡/记忆条数（默认 5）。" },
 			threshold: { type: "number", description: "query：缺口阈值（默认 3；top 分低于它=建卡信号）。" },
@@ -552,6 +558,24 @@ export function registerCoordinationTools(ctx, env) {
 				return { ok: true, text: `${result.card.id} 已升级到 v${result.card.version}（${result.note}）\n路径：${result.path}` };
 			}
 
+			if (action === "reflect") {
+				if (!args.id || !args.task) throw new Error("reflect 需要 id 与 task（刚完成的任务描述）。");
+				const result = await reflectCard(io, String(args.id), String(args.task));
+				const existing = result.keywords ?? [];
+				return {
+					ok: true,
+					text: [
+						`提示词成长建议 · ${result.id}`,
+						`- 现有 keywords：${existing.join(" / ") || "（无）"}`,
+						`- 建议补充：${result.proposed.join(" / ") || "（本次任务没有新词，暂不升级）"}`,
+						"（分词候选可能含碎片，update 前人工筛掉噪声词。）",,
+						result.proposed.length
+							? `确认后：coord_agent {action:'update', id:'${result.id}', keywords:[${[...existing, ...result.proposed].map((word) => `'${word}'`).join(", ")}], note:'reflect: 补检索词'}`
+							: "无需升级；升级必须基于经验证据，不要凭感觉改卡。",
+					].join("\n"),
+				};
+			}
+
 			if (action === "memory_add") {
 				const owner = String(args.owner ?? args.id ?? "").trim();
 				if (!owner) throw new Error("memory_add 需要 owner（角色 id）。");
@@ -623,7 +647,9 @@ export function registerCoordinationTools(ctx, env) {
 			return {
 				ok: true,
 				path: result.path ?? "",
-				text: result.path ? `${result.text}\n\n已记录：${result.path}` : result.text,
+				text: result.path
+					? `${result.text}\n\n已记录：${result.path}\n机器可读派发计划（含每个 subagent 的 prompt）：${result.jsonPath}`
+					: result.text,
 			};
 		},
 	});
@@ -671,6 +697,42 @@ export function registerCoordinationTools(ctx, env) {
 			const startDir = await resolveRoot(args, exec);
 			const result = await checkArchitecture({ root: startDir, io: createIo(policyOf(ctx, exec)) });
 			return { ok: result.ok, text: result.text };
+		},
+	});
+
+	// ------------------------------------------------------------------ research
+	ctx.tools.register({
+		name: "coord_research",
+		description:
+			"记录外部方案检索（不闭门造车的门禁产物）：官方文档 / 开源仓库 / 已验证做法。coord_plan_save 落盘前必须传 research 编号，或显式 skip_research 说明原因。返回 RESEARCH-NNN 编号与 .ai/research/ 路径。",
+		parameters: {
+			topic: { type: "string", required: true, description: "要解决的实现问题（一句话）。" },
+			sources: { type: "array", items: { type: "string" }, required: true, description: "来源列表：URL 或 owner/repo（至少 1 条）；可附一句说明。" },
+			decision: { type: "string", description: "adopt（直接采用）/ adapt（改造）/ build（自研）/ reject（不采用）。" },
+			notes: { type: "string", description: "取舍与理由：为什么采用/不采用，与现有架构的冲突点。" },
+			root: { type: "string", description: "项目根；省略 = 当前会话工作目录。" },
+		},
+		output: {
+			schema: objectSchema({ ok: { type: "boolean" }, id: { type: "string" }, path: { type: "string" }, text: { type: "string" } }),
+			render: (_args, value) => text(value.text),
+		},
+		async execute(args, exec) {
+			const startDir = await resolveRoot(args, exec);
+			const result = await recordResearch({
+				startDir,
+				topic: args.topic,
+				sources: args.sources,
+				decision: args.decision,
+				notes: args.notes,
+				sessionId: sessionIdOf(exec),
+				policy: policyOf(ctx, exec),
+			});
+			return {
+				ok: true,
+				id: result.id,
+				path: result.file,
+				text: `${result.id} 已记录（${result.decision}，${result.sources} 条来源）→ ${result.path}\n计划落盘时传 research:'${result.id}'。`,
+			};
 		},
 	});
 }

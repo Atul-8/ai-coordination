@@ -334,13 +334,28 @@ export async function readTodoAt(paths, io) {
 // 计划落盘 + todo 登记
 // ---------------------------------------------------------------------------
 
-export async function savePlan({ startDir, stage, steps, acceptance, notes, sessionId, title, policy }) {
+export async function savePlan({ startDir, stage, steps, acceptance, research, skipResearch, notes, sessionId, title, policy }) {
 	const { paths, file, io } = await loadTodo(startDir, policy);
 	if (file.stages.length === 0) {
 		throw new Error("todo.md 尚无「阶段定义」。请先在 todo.md「阶段定义」小节登记阶段（如 `- s1: 阶段标题`）再保存计划。");
 	}
-	if (acceptance && acceptance.length !== steps.length) {
+	if (steps.length > 1) {
+		if (!Array.isArray(acceptance) || acceptance.length !== steps.length) {
+			throw new Error(`多步骤计划必须给 acceptance（与 steps 一一对应，${steps.length} 条）：问题分解 → 逐步验收 → 最后整合。`);
+		}
+	} else if (acceptance && acceptance.length !== steps.length) {
 		throw new Error(`acceptance 数量（${acceptance.length}）必须与 steps（${steps.length}）一一对应。`);
+	}
+
+	// 研究门禁：先记录外部方案检索，或显式说明为什么不需要（纯文档/无实现）
+	let researchRef = null;
+	if (research) {
+		const files = await io.list(path.join(paths.aiDir, "research"));
+		const match = files.find((name) => name.startsWith(String(research)) && name.endsWith(".md"));
+		if (!match) throw new Error(`找不到研究记录 ${research}（.ai/research/）。先 coord_research，或检查编号。`);
+		researchRef = `.ai/research/${match}`;
+	} else if (!skipResearch?.trim()) {
+		throw new Error("计划落盘前先记录外部方案检索：coord_research {topic, sources, decision}；纯文档/无实现任务可显式传 skip_research:'原因'。不要闭门造车。");
 	}
 	const targetStage = file.stages.find((candidate) => candidate.id === stage);
 	if (!targetStage) {
@@ -360,6 +375,7 @@ export async function savePlan({ startDir, stage, steps, acceptance, notes, sess
 		stageTitle: title?.trim() || targetStage.title,
 		steps,
 		acceptance,
+		research: researchRef,
 		notes,
 		sessionId,
 	});

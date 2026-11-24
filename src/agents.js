@@ -69,8 +69,9 @@ export async function queryAgentPool(io, task, { limit = 5, threshold = 3 } = {}
 	const [taxonomy, cards, memory] = await Promise.all([loadTaxonomy(io, paths), loadCards(io, paths), loadMemory(io, paths)]);
 	const query = String(task ?? "").trim();
 	const tokens = P.tokenize(query);
-	const scoredCards = cards
-		.filter((card) => card.status !== "deprecated")
+	const activeCards = cards.filter((card) => card.status !== "deprecated");
+	const idf = P.buildIdf(activeCards);
+	const scoredCards = activeCards
 		.map((card) => ({
 			id: card.id,
 			name: card.name,
@@ -81,7 +82,7 @@ export async function queryAgentPool(io, task, { limit = 5, threshold = 3 } = {}
 			scope: card.scope,
 			first_mission: card.first_mission,
 			version: card.version,
-			score: P.scoreCard(card, taxonomy, tokens),
+			score: P.scoreCard(card, taxonomy, tokens, idf),
 		}))
 		.sort((a, b) => b.score - a.score)
 		.slice(0, limit);
@@ -216,6 +217,23 @@ export async function updateAgentCard(io, id, patch) {
 	return { card, path: file, note };
 }
 
+/** 提示词成长建议：从这次任务里找出卡面没覆盖的检索词（不写盘，PM 决定是否 update）。 */
+export async function reflectCard(io, id, task) {
+	const paths = poolPaths();
+	const file = path.join(paths.poolDir, `${id}.md`);
+	const raw = await io.read(file);
+	if (!raw) throw new Error(`卡不存在：${id}`);
+	const frontMatter = P.parseFrontMatter(raw);
+	if (!frontMatter) throw new Error(`${id}.md 缺少 front-matter`);
+	const tokens = P.tokenize(task);
+	const existing = new Set(P.tokenize([...(frontMatter.keywords ?? []), ...(frontMatter.scope?.do ?? [])].join(" ")));
+	const generic = new Set(["测试", "实现", "开发", "代码", "任务", "问题", "修复", "项目", "功能", "需要", "一个", "这个", "我们"]);
+	const edges = new Set("与的和及在为对把被了着过是有无不就都也还又很更再");
+	const clean = (token) => token.length >= 2 && !generic.has(token) && !edges.has(token[0]) && !edges.has(token[token.length - 1]);
+	const proposed = tokens.filter((token) => clean(token) && !existing.has(token)).slice(0, 8);
+	return { id, keywords: frontMatter.keywords ?? [], proposed, summary: frontMatter.summary ?? "" };
+}
+
 export async function completeFirstMission(io, id) {
 	const paths = poolPaths();
 	const file = path.join(paths.poolDir, `${id}.md`);
@@ -305,6 +323,30 @@ export async function buildDispatch({ io, todoFile, paths, stage, taskIds, recor
 	}
 	const gaps = rows.filter((row) => !row.card).map((row) => row.item);
 
+	// 机器可读派发计划：PM 可直接把 prompt 交给 subagent，不必二次改写
+	const plan = rows.map((row) => {
+		const { item, card, alternatives } = row;
+		const prompt = [
+			`你是角色卡 \`${card?.id ?? "（未命中）"}\`${card ? `（${card.type}，${card.summary}）` : ""}。`,
+			`任务：${item.id} [${item.stage}] ${item.desc}`,
+			card ? `scope.do：${(card.scope?.do ?? []).join("；")}` : "scope.do：（无——先建卡）",
+			card ? `scope.dont：${(card.scope?.dont ?? []).join("；")}` : "scope.dont：（无）",
+			"",
+			"纪律：只做任务卡范围；先写/跑验收再实现（G2.5 红→绿）；完成后报告变更文件 + 测试命令与输出摘要；不改 todo.md、不 git commit（PM 收口）。",
+			"若 scope 不符：输出 {verdict:'out-of-scope', reason, suggest_keywords}，不要硬做。",
+		].join("\n");
+		return {
+			task: item.id,
+			stage: item.stage,
+			desc: item.desc,
+			role: card?.id ?? null,
+			roleType: card?.type ?? null,
+			score: card?.score ?? 0,
+			alternatives: alternatives.map((entry) => entry.id),
+			prompt,
+		};
+	});
+
 	const lines = [
 		`# 派发矩阵 · ${stage ? `阶段 ${stage}` : "全部未完成"}`,
 		"",
@@ -356,12 +398,16 @@ export async function buildDispatch({ io, todoFile, paths, stage, taskIds, recor
 	}
 
 	let filePath = null;
+	let jsonPath = null;
 	if (record) {
 		const stamp = `${L.todayStr().replace(/-/g, "")}-${new Date().toTimeString().slice(0, 5).replace(":", "")}`;
-		filePath = path.join(paths.aiDir, "dispatch", `DISPATCH-${stamp}.md`);
+		const dir = path.join(paths.aiDir, "dispatch");
+		filePath = path.join(dir, `DISPATCH-${stamp}.md`);
 		await io.write(filePath, lines.join("\n"));
+		jsonPath = path.join(dir, `DISPATCH-${stamp}.json`);
+		await io.write(jsonPath, JSON.stringify({ generatedAt: new Date().toISOString(), stage: stage ?? "all", metaInjection, tasks: plan }, null, 2));
 	}
-	return { tasks, rows, gaps, path: filePath, text: lines.join("\n") };
+	return { tasks, rows, gaps, plan, path: filePath, jsonPath, text: lines.join("\n") };
 }
 
 function escapeCell(value) {
